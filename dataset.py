@@ -19,6 +19,8 @@ import torch
 class Data_regression(Dataset):
     def __init__(self, data_name: str, data_size: int, input_col: Sequence[int], output_col: Sequence[int], 
                  split_ratio: Sequence[int | float]=[0.7,0.15,0.15], bool_normalize=True) -> None:
+        if not os.path.exists('data'):
+            os.makedirs('data')
         self.root_dir = 'data/'
         self.data_name = data_name
         self.data_size = data_size
