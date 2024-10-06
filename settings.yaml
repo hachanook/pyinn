@@ -1,0 +1,34 @@
+SIZE:
+  lx: 2.
+  ly: 1.
+
+MESH:
+  nelx: 100
+  nely: 50
+
+MATERIAL:
+  youngs_modulus: 100.0e+3
+  poisson_ratio: 0.3
+  norton_A: 1.e-14
+  norton_n: 3.5
+
+CREEP:
+  end_time: 20.
+  num_time_steps: 5
+
+OPTIMIZER:
+  num_iter: 60
+  plot_interval: 10
+  max_vol_frac: 0.5
+  move_limit: 0.1
+  filter_rmin: 1.5
+
+SOLVER:
+  # solver_options: {'jax_solver': {}}
+  solver_options: {'umfpack_solver': {}}
+  # solver_options: {'petsc_solver': {}}
+
+JAX:
+  platform: 'cpu'
+  disable_jit: False
+  gpu_id: 3
