@@ -8,13 +8,13 @@ PROBLEM:
   # interp_method: "nonlinear"
 
 DATA:
-  data_name : "1D_1D_sine"  
+  # data_name : "1D_1D_sine"  
   # data_name : '1D_1D_exp' 
   # data_name : "1D_2D_sine_exp"
   # data_name : '2D_1D_sine'
   # data_name : '2D_1D_exp'
-  # data_name : '8D_1D_physics' # borehole equation
+  data_name : '8D_1D_physics' # borehole equation
   # data_name : '10D_5D_physics' # five physics equations
 
-  data_size: 1_000
+  data_size: 10_000
   split_ratio: [0.7,0.15,0.15]

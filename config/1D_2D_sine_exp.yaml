@@ -1,0 +1,10 @@
+MODEL_PARAM: 
+  nmode : 1
+  nelem : 5
+  input_col : [0]
+  output_col : [1,2]
+
+TRAIN_PARAM:
+  num_epochs : 50
+  batch_size : 50
+  learning_rate : 1e-3

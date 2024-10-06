@@ -69,48 +69,5 @@ learning_rate = float(cfg_train_param['learning_rate'])
 # %%
 data = Data_regression(data_name, data_size, input_col=input_col, output_col=output_col,
                         split_ratio=split_ratio, bool_normalize=True)
-
-if data_name == "1D_2D_sine_exp":
-    nmode_H = 1
-    nelem = 5
-    num_epochs = 50
-    batch_size = 50
-    learning_rate = 1e-3
-    
-    data = Data_regression(data_name,data_size,input_col=[0],output_col=[1, 2],
-        split_ratio=split_ratio,bool_normalize=True)
-        
-    
-if data_name == "2D_1D_sine" or data_name == "2D_1D_exp":
-    nmode_H = 3
-    nelem = 10
-    num_epochs = 50
-    batch_size = 50
-    learning_rate = 1e-3
-
-    data = Data_regression(data_name,data_size,input_col=[0,1],output_col=[1],
-        split_ratio=split_ratio,bool_normalize=True)
-
-if data_name == "8D_1D_physics": # borehole equation
-    nmode_H = 10
-    nelem = 10
-    num_epochs = 50
-    batch_size = 200
-    learning_rate = 1e-3
-
-    data = Data_regression(data_name,data_size,input_col=list(range(8)),output_col=[8],
-        split_ratio=split_ratio,bool_normalize=True)
-    
-if data_name == "10D_5D_physics": # five physics equation
-    nmode_H = 10
-    nelem = 10
-    num_epochs = 50
-    batch_size = 200
-    learning_rate = 1e-3
-
-    data = Data_regression(data_name,data_size,input_col=list(range(10)),output_col=list(range(10,15)),
-        split_ratio=split_ratio,bool_normalize=True)
-
-
 regressor = Regression(data, nmode, nelem)  # HiDeNN-TD regressor class
 regressor.train(num_epochs, batch_size, learning_rate)  # Train module
