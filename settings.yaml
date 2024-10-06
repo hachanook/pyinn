@@ -1,34 +1,20 @@
-SIZE:
-  lx: 2.
-  ly: 1.
+GPU: 
+  gpu_idx: 0
 
-MESH:
-  nelx: 100
-  nely: 50
+PROBLEM:
+  run_type: "regression" 
+  # run_type: "classification" 
+  interp_method: "linear"
+  # interp_method: "nonlinear"
 
-MATERIAL:
-  youngs_modulus: 100.0e+3
-  poisson_ratio: 0.3
-  norton_A: 1.e-14
-  norton_n: 3.5
+DATA:
+  data_name : "1D_1D_sine"  
+  # data_name : '1D_1D_exp' 
+  # data_name : "1D_2D_sine_exp"
+  # data_name : '2D_1D_sine'
+  # data_name : '2D_1D_exp'
+  # data_name : '8D_1D_physics' # borehole equation
+  # data_name : '10D_5D_physics' # five physics equations
 
-CREEP:
-  end_time: 20.
-  num_time_steps: 5
-
-OPTIMIZER:
-  num_iter: 60
-  plot_interval: 10
-  max_vol_frac: 0.5
-  move_limit: 0.1
-  filter_rmin: 1.5
-
-SOLVER:
-  # solver_options: {'jax_solver': {}}
-  solver_options: {'umfpack_solver': {}}
-  # solver_options: {'petsc_solver': {}}
-
-JAX:
-  platform: 'cpu'
-  disable_jit: False
-  gpu_id: 3
+  data_size: 1_000
+  split_ratio: [0.7,0.15,0.15]
