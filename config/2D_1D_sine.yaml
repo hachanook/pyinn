@@ -8,3 +8,8 @@ TRAIN_PARAM:
   num_epochs : 50
   batch_size : 50
   learning_rate : 1e-3
+
+PLOT:
+  plot_bool: True
+  plot_in_axis: [0,1] # plot input axis
+  plot_out_axis: [0] # plot output axis

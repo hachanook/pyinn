@@ -96,7 +96,9 @@ def forward(params, x_dms_nds, x_idata):
     """
     pred = get_Ju_idata(x_idata, x_dms_nds, params)
     return pred
-v_forward = jax.vmap(forward, in_axes=(None,None, 0)) # returns (var,)
+v_forward = jax.vmap(forward, in_axes=(None,None, 0)) # returns (ndata,)
+vv_forward = jax.vmap(v_forward, in_axes=(None,None, 0)) # returns (ndata,)
+
 
 # x_idata_dms = jnp.array([0.5,1.0], dtype=jnp.float64) # (2,)
 # x_dms_nds = jnp.array([[0,1,2], [0,2,4]], dtype=jnp.float64) # (2,3)

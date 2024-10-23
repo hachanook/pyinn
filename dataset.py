@@ -62,7 +62,7 @@ class Data_regression(Dataset):
 
 def data_generation(data_name: str, data_size: int, input_col: Sequence[int]):
 
-    x_data_org = np.random.rand(data_size, len(input_col))
+    x_data_org = jnp.array(np.random.rand(data_size, len(input_col)))
         
     if data_name == "1D_1D_sine":
         u_data_org = np.sin(2*np.pi*x_data_org)
@@ -76,7 +76,7 @@ def data_generation(data_name: str, data_size: int, input_col: Sequence[int]):
         u_data_org = np.concatenate((u1_data_org, u2_data_org), axis=1)
         cols = ['x1','u1','u2']
     elif data_name == "2D_1D_sine":
-        u_data_org = np.sin(x_data_org[:,[0]]) * np.cos(x_data_org[:,[1]])
+        u_data_org = v_fun_2D_1D_sine(x_data_org)
         cols = ['x1','x2','u']
     elif data_name == "2D_1D_exp":
         u_data_org = np.exp(x_data_org[:,[0]] + 2*x_data_org[:,[1]])
@@ -167,4 +167,10 @@ def data_generation(data_name: str, data_size: int, input_col: Sequence[int]):
     csv_filename = f"{data_name}_{data_size}.csv" # 1D input, 1D output, sine curve
     df.to_csv(os.path.join(path_data, csv_filename), index=False)
 
+## define functions
 
+def fun_2D_1D_sine(x_data_org):
+    u_data_org =  jnp.sin(x_data_org[0]) * jnp.cos(x_data_org[1])
+    return u_data_org.reshape(1,)
+v_fun_2D_1D_sine = jax.vmap(fun_2D_1D_sine, in_axes = (0)) # output: (ndata, )
+vv_fun_2D_1D_sine = jax.vmap(v_fun_2D_1D_sine, in_axes = (0)) # output: (ndata, ndata)

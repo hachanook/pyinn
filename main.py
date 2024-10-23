@@ -17,6 +17,7 @@ import importlib.util
 from dataset import Data_regression
 from model import *
 from train import *
+from plot import *
 
 import yaml
 
@@ -66,8 +67,15 @@ learning_rate = float(cfg_train_param['learning_rate'])
 #     noise_level = 3  # 0, 1, 2, 3
 #     split_ratio = [0.7,0.15]  # [training ratio, validation ratio], default: [0.7, 0.15] / Gamma: [0.8,0.2]
 
-# %%
+## data import
 data = Data_regression(data_name, data_size, input_col=input_col, output_col=output_col,
                         split_ratio=split_ratio, bool_normalize=True)
+
+## train
 regressor = Regression(data, nmode, nelem)  # HiDeNN-TD regressor class
 regressor.train(num_epochs, batch_size, learning_rate)  # Train module
+
+## plot
+plot_regression(config_dataConfig['PLOT']['plot_bool'], regressor, config_dataConfig['PLOT']['plot_in_axis'], config_dataConfig['PLOT']['plot_out_axis'], 
+                data_name, color_map="viridis", vmin=0, vmax=1, marker_size=20)
+
