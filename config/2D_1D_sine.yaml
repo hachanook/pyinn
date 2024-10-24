@@ -1,8 +1,11 @@
 MODEL_PARAM: 
   nmode : 3
-  nelem : 5
+  nelem : 20
   input_col : [0,1]
-  output_col : [1]
+  output_col : [2]
+  bool_normalize: False
+  data_size: 10_000
+  split_ratio: [0.7,0.15,0.15]
 
 TRAIN_PARAM:
   num_epochs : 50
@@ -10,6 +13,6 @@ TRAIN_PARAM:
   learning_rate : 1e-3
 
 PLOT:
-  plot_bool: True
+  bool_plot: True
   plot_in_axis: [0,1] # plot input axis
   plot_out_axis: [0] # plot output axis

@@ -23,6 +23,8 @@ import importlib.util
 # from dataset import *
 from model import forward, v_forward
 # from settings import *
+# from dataset import v_fun_2D_1D_sine, vv_fun_2D_1D_sine
+# from model import v_forward, vv_forward   
 
 if importlib.util.find_spec("GPUtil") is not None: # for linux & GPU
     ''' If you are funning on GPU, please install the following libraries on your anaconda environment via 
@@ -42,6 +44,8 @@ if importlib.util.find_spec("GPUtil") is not None: # for linux & GPU
         # for i, gpu in enumerate(GPUs):
         print('---GPU {:d} ... Mem Free: {:.0f}MB / {:.0f}MB | Utilization {:3.0f}%\n'.format(gpu_idx, gpu.memoryFree, gpu.memoryTotal, gpu.memoryUtil*100))
 
+def get_linspace(xmin, xmax, nnode):
+    return jnp.linspace(xmin,xmax,nnode, dtype=jnp.float64)
 
 class Regression:
     def __init__(self, cls_data, nmode, nelem, prob=0.0):
@@ -49,7 +53,11 @@ class Regression:
         self.nmode = nmode
         self.nelem = nelem
         self.nnode = nelem+1
-        self.x_dms_nds = jnp.tile(jnp.linspace(0,1,self.nnode, dtype=jnp.float64), (self.cls_data.dim,1)) # (dim,nnode)
+        if cls_data.bool_normalize: # when the data is normalized
+            self.x_dms_nds = jnp.tile(jnp.linspace(0,1,self.nnode, dtype=jnp.float64), (self.cls_data.dim,1)) # (dim,nnode)
+        else: # when the data is not normalized
+            self.x_dms_nds = jax.vmap(get_linspace, in_axes=(0,0,None))(cls_data.x_data_minmax["min"], cls_data.x_data_minmax["max"], self.nnode)
+
         self.key = 3264
         self.prob = prob # dropout prob
         # self.u_p_modes = jax.random.uniform(jax.random.PRNGKey(self.key), (self.nmode, self.cls_hidenn.cls_data.dim, 
@@ -108,6 +116,9 @@ class Regression:
         train_dataloader = DataLoader(train_data, batch_size=batch_size, shuffle=True)
         test_dataloader = DataLoader(test_data, batch_size=batch_size, shuffle=True)
 
+        # ## debug
+        # x_data, u_data = self.cls_data.x_data, self.cls_data.u_data, 
+
 
         ## Define optimizer
         params = self.params
@@ -165,6 +176,7 @@ class Regression:
         #     mem_report('After training', gpu_idx)
 
         ## Test 
+        
         start_time_test = time.time()
         epoch_list_loss, epoch_list_r2 = [], [] 
         for batch in test_dataloader:
@@ -173,6 +185,12 @@ class Regression:
             r2_test = r2_score(u_test, u_pred_test)
             epoch_list_loss.append(loss_test)
             epoch_list_r2.append(r2_test)
+
+             
+            # U_pred = v_forward(self.params, self.x_dms_nds, x_test) # (ndata,var)
+            # U_exact = v_fun_2D_1D_sine(x_test) # (ndata,var)
+
+
         
         batch_loss_test = np.mean(epoch_list_loss)
         batch_r2_test = np.mean(epoch_list_r2)

@@ -31,17 +31,10 @@ gpu_idx = cfg_gpu['gpu_idx']  # set which GPU to run on Athena
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # GPU indexing
 os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_idx)  # GPU indexing
 
-cfg_problem = config['PROBLEM']
-run_type = cfg_problem["run_type"]
-interp_method = cfg_problem["interp_method"]
+run_type = config['PROBLEM']["run_type"]
+interp_method = config['PROBLEM']["interp_method"]
+data_name = config['DATA']["data_name"]
 
-# plot_bool = False
-# plot_axis = [0,1]  # for more than 2 inputs, select two axes to visualize [5, 20] for Gamma
-
-cfg_data = config['DATA']
-data_name = cfg_data["data_name"]
-data_size = cfg_data["data_size"]
-split_ratio = cfg_data["split_ratio"]
 
 with open(f'./config/{data_name}.yaml','r') as file_dataConfig:
     config_dataConfig = yaml.safe_load(file_dataConfig)
@@ -51,6 +44,9 @@ nmode = cfg_model_param['nmode']
 nelem = cfg_model_param['nelem']
 input_col = cfg_model_param['input_col']
 output_col = cfg_model_param['output_col']
+bool_normalize = cfg_model_param["bool_normalize"]
+data_size = cfg_model_param["data_size"]
+split_ratio = cfg_model_param["split_ratio"]
 
 cfg_train_param = config_dataConfig['TRAIN_PARAM']
 num_epochs = int(cfg_train_param['num_epochs'])
@@ -69,13 +65,14 @@ learning_rate = float(cfg_train_param['learning_rate'])
 
 ## data import
 data = Data_regression(data_name, data_size, input_col=input_col, output_col=output_col,
-                        split_ratio=split_ratio, bool_normalize=True)
+                        split_ratio=split_ratio, bool_normalize=bool_normalize)
 
 ## train
 regressor = Regression(data, nmode, nelem)  # HiDeNN-TD regressor class
 regressor.train(num_epochs, batch_size, learning_rate)  # Train module
 
 ## plot
-plot_regression(config_dataConfig['PLOT']['plot_bool'], regressor, config_dataConfig['PLOT']['plot_in_axis'], config_dataConfig['PLOT']['plot_out_axis'], 
-                data_name, color_map="viridis", vmin=0, vmax=1, marker_size=20)
+plot_regression(config_dataConfig['PLOT']['bool_plot'], regressor, config_dataConfig['PLOT']['plot_in_axis'], 
+                config_dataConfig['PLOT']['plot_out_axis'], data)
+
 
