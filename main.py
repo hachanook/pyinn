@@ -9,7 +9,7 @@ import jax.numpy as jnp
 from jax import config
 
 config.update("jax_enable_x64", True)
-import os
+import os, sys
 import importlib.util
 
 # from flax.training import train_state
@@ -40,8 +40,7 @@ with open(f'./config/{data_name}.yaml','r') as file_dataConfig:
     config_dataConfig = yaml.safe_load(file_dataConfig)
 
 cfg_model_param = config_dataConfig['MODEL_PARAM']
-nmode = cfg_model_param['nmode']
-nelem = cfg_model_param['nelem']
+
 input_col = cfg_model_param['input_col']
 output_col = cfg_model_param['output_col']
 bool_normalize = cfg_model_param["bool_normalize"]
@@ -68,7 +67,10 @@ data = Data_regression(data_name, data_size, input_col=input_col, output_col=out
                         split_ratio=split_ratio, bool_normalize=bool_normalize)
 
 ## train
-regressor = Regression(data, nmode, nelem)  # HiDeNN-TD regressor class
+if interp_method == "linear" or interp_method == "nonlinear":
+    regressor = Regression_INN(interp_method, data, cfg_model_param)  # HiDeNN-TD regressor class
+elif interp_method == "MLP":
+    regressor = Regression_MLP(interp_method, data, cfg_model_param)  # HiDeNN-TD regressor class
 regressor.train(num_epochs, batch_size, learning_rate)  # Train module
 
 ## plot

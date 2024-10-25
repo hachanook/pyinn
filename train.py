@@ -17,11 +17,12 @@ import time
 import torch
 from sklearn.metrics import r2_score
 import importlib.util
+import sys
 
 # from flax.training import train_state
 
 # from dataset import *
-from model import forward, v_forward
+from model import *
 # from settings import *
 # from dataset import v_fun_2D_1D_sine, vv_fun_2D_1D_sine
 # from model import v_forward, vv_forward   
@@ -47,33 +48,35 @@ if importlib.util.find_spec("GPUtil") is not None: # for linux & GPU
 def get_linspace(xmin, xmax, nnode):
     return jnp.linspace(xmin,xmax,nnode, dtype=jnp.float64)
 
-class Regression:
-    def __init__(self, cls_data, nmode, nelem, prob=0.0):
+class Regression_INN:
+    def __init__(self, interp_method, cls_data, cfg_model_param):
+
+        self.interp_method = interp_method
         self.cls_data = cls_data
-        self.nmode = nmode
-        self.nelem = nelem
-        self.nnode = nelem+1
+        self.cfg_model_param = cfg_model_param
+        self.key = 3264
+
+        self.v_forward = v_forward_INN
+        self.vv_forward = vv_forward_INN
+        self.nmode = cfg_model_param['nmode']
+        self.nelem = cfg_model_param['nelem']
+        self.nnode = self.nelem+1
+
+        ## initialization of trainable parameters
         if cls_data.bool_normalize: # when the data is normalized
             self.x_dms_nds = jnp.tile(jnp.linspace(0,1,self.nnode, dtype=jnp.float64), (self.cls_data.dim,1)) # (dim,nnode)
         else: # when the data is not normalized
             self.x_dms_nds = jax.vmap(get_linspace, in_axes=(0,0,None))(cls_data.x_data_minmax["min"], cls_data.x_data_minmax["max"], self.nnode)
 
-        self.key = 3264
-        self.prob = prob # dropout prob
-        # self.u_p_modes = jax.random.uniform(jax.random.PRNGKey(self.key), (self.nmode, self.cls_hidenn.cls_data.dim, 
-        #                                           self.cls_hidenn.nnode, self.cls_hidenn.cls_data.var), dtype=jnp.double,
-        #                                     minval=0.9, maxval=1.1)
-        
         self.params = jax.random.uniform(jax.random.PRNGKey(self.key), (self.nmode, self.cls_data.dim, 
-                                                  self.cls_data.var, self.nnode), dtype=jnp.double)
-        
+                                                self.cls_data.var, self.nnode), dtype=jnp.double)       
         numParam = self.nmode*self.cls_data.dim*self.cls_data.var*self.nnode
-        print(f"# of training parameters: {numParam}")
-        # self.u_p_modes_list = []
-        
-            
+        if interp_method == "linear" or interp_method == "nonlinear":
+            print("------------INN-------------")
+            print(f"# of training parameters: {numParam}")
+
     @partial(jax.jit, static_argnames=['self']) # jit necessary
-    def get_loss_TD(self, params, x_data, u_data):
+    def get_loss_MSE(self, params, x_data, u_data):
         ''' Compute loss value at (m)th mode given upto (m-1)th mode solution, which is u_pred_old
         --- input ---
         u_p_modes: (nmode, dim, nnode, var)
@@ -81,15 +84,15 @@ class Regression:
         shape_vals_data, patch_nodes_data: defined in "get_HiDeNN_shape_fun"
         '''
         
-        u_pred = v_forward(params, self.x_dms_nds, x_data) # (ndata_train, var)
+        u_pred = self.v_forward(params, self.x_dms_nds, x_data) # (ndata_train, var)
         loss = ((u_pred- u_data)**2).mean()
         return loss, u_pred
     
-    Grad_get_loss_TD = jax.jit(jax.value_and_grad(get_loss_TD, argnums=1, has_aux=True), static_argnames=['self'])
+    Grad_get_loss_MSE = jax.jit(jax.value_and_grad(get_loss_MSE, argnums=1, has_aux=True), static_argnames=['self'])
     
     @partial(jax.jit, static_argnames=['self']) # This will slower the function
     def update_optax(self, params, opt_state, x_data, u_data):
-        ((loss, u_pred), grads) = self.Grad_get_loss_TD(params, x_data, u_data)
+        ((loss, u_pred), grads) = self.Grad_get_loss_MSE(params, x_data, u_data)
         updates, opt_state = self.optimizer.update(grads, opt_state)
         params = optax.apply_updates(params, updates)
         return params, opt_state, loss, u_pred    
@@ -115,10 +118,6 @@ class Regression:
             val_dataloader = DataLoader(test_data, batch_size=self.batch_size, shuffle=True)
         train_dataloader = DataLoader(train_data, batch_size=batch_size, shuffle=True)
         test_dataloader = DataLoader(test_data, batch_size=batch_size, shuffle=True)
-
-        # ## debug
-        # x_data, u_data = self.cls_data.x_data, self.cls_data.u_data, 
-
 
         ## Define optimizer
         params = self.params
@@ -169,14 +168,18 @@ class Regression:
                 batch_r2_val = np.mean(epoch_list_r2)
                 print(f"\tValidation loss: {batch_loss_val:.4e}")
                 print(f"\tValidation R2: {batch_r2_val:.4f}")
+
+                if self.cls_data.data_name == "IGAMapping2D" and batch_loss_val < 1e-3:
+                    # stopping criteria for the IGA inverse mapping; multi-CAD-patch C-IGA paper
+                    break
+            
             
         self.params = params
         print(f"INN training took {time.time() - start_time_train:.4f} seconds")
-        # if importlib.util.find_spec("humanize") is not None: # report GPU memory usage
+        # if importlib.util.find_spec("GPUtil") is not None: # report GPU memory usage
         #     mem_report('After training', gpu_idx)
 
         ## Test 
-        
         start_time_test = time.time()
         epoch_list_loss, epoch_list_r2 = [], [] 
         for batch in test_dataloader:
@@ -185,12 +188,6 @@ class Regression:
             r2_test = r2_score(u_test, u_pred_test)
             epoch_list_loss.append(loss_test)
             epoch_list_r2.append(r2_test)
-
-             
-            # U_pred = v_forward(self.params, self.x_dms_nds, x_test) # (ndata,var)
-            # U_exact = v_fun_2D_1D_sine(x_test) # (ndata,var)
-
-
         
         batch_loss_test = np.mean(epoch_list_loss)
         batch_r2_test = np.mean(epoch_list_r2)
@@ -201,3 +198,48 @@ class Regression:
 
 
 
+class Regression_MLP(Regression_INN):
+    def __init__(self, interp_method, cls_data, cfg_model_param):
+        super().__init__(interp_method, cls_data, cfg_model_param) # prob being dropout probability
+        
+        self.v_forward = v_forward_MLP
+        self.vv_forward = vv_forward_MLP
+        self.nlayers = cfg_model_param["nlayers"]
+        self.nneurons = cfg_model_param["nneurons"]
+        self.activation = cfg_model_param["activation"]
+
+        ### initialization of trainable parameters
+        layer_sizes = [cls_data.dim] + self.nlayers * [self.nneurons] + [cls_data.var]
+        self.params = self.init_network_params(layer_sizes, jax.random.PRNGKey(self.key))
+        weights, biases = 0,0
+        for layer in self.params:
+            w, b = layer[0], layer[1]
+            weights += w.shape[0]*w.shape[1]
+            biases += b.shape[0]
+        print("------------MLP-------------")
+        print(f"# of training parameters: {weights+biases}")
+
+        
+    def random_layer_params(self, m, n, key, scale=1e-2): # m input / n output neurons
+      w_key, b_key = jax.random.split(key)
+      return scale * jax.random.normal(w_key, (n, m)), scale * jax.random.normal(b_key, (n,))
+    
+    def init_network_params(self, sizes, key):
+        keys = jax.random.split(key, len(sizes))
+        return [self.random_layer_params(m, n, k) for m, n, k in zip(sizes[:-1], sizes[1:], keys)]
+    
+    @partial(jax.jit, static_argnames=['self']) # jit necessary
+    def get_loss_MSE(self, params, x_data, u_data):
+        ''' Compute loss value at (m)th mode given upto (m-1)th mode solution, which is u_pred_old
+        --- input ---
+        u_p_modes: (nmode, dim, nnode, var)
+        u_data: exact u from the data. (ndata_train, var)
+        shape_vals_data, patch_nodes_data: defined in "get_HiDeNN_shape_fun"
+        '''
+        
+        u_pred = self.v_forward(params, self.activation, x_data) # (ndata_train, var)
+        loss = ((u_pred- u_data)**2).mean()
+        return loss, u_pred
+    Grad_get_loss_MSE = jax.jit(jax.value_and_grad(get_loss_MSE, argnums=1, has_aux=True), static_argnames=['self'])
+    
+    

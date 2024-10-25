@@ -34,19 +34,6 @@ def get_Ju_idata_imd_idm_ivar(x_idata_idm, x_idm_nds, u_imd_idm_ivar_nds):
 get_Ju_idata_imd_idm_vars = jax.vmap(get_Ju_idata_imd_idm_ivar, in_axes = (None,None,0)) # output: (var,)
 get_Ju_idata_imd_dms_vars = jax.vmap(get_Ju_idata_imd_idm_vars, in_axes = (0,0,0)) # output: (dim,var)
 
-# x_idata_idm = jnp.array(0.5, dtype=jnp.float64)
-# x_idm_nds = jnp.array([0,1,2], dtype=jnp.float64)
-# u_imd_idm_ivar_nds = jnp.array([0,1,2], dtype=jnp.float64)
-# Ju_idata_imd_idm_ivar = get_Ju_idata_imd_idm_ivar(x_idata_idm, x_idm_nds, u_imd_idm_ivar_nds)
-# print(Ju_idata_imd_idm_ivar)
-# # a=aa
-
-# u_imd_idm_vars_nds = jnp.array([[0,1,2], [0,2,4]], dtype=jnp.float64)
-# Ju_idata_imd_idm_vars = get_Ju_idata_imd_idm_vars(x_idata_idm, x_idm_nds, u_imd_idm_vars_nds)
-# print(Ju_idata_imd_idm_vars)
-# # a=aa
-
-
 def get_Ju_idata_imd(x_idata_dms, x_dms_nds, u_imd_dms_vars_nds):
     # x_idata_dms: (dim,)
     # x_dms_nds: (dim, nnode)
@@ -57,34 +44,13 @@ def get_Ju_idata_imd(x_idata_dms, x_dms_nds, u_imd_dms_vars_nds):
     return Ju_idata_imd # (var,)
 get_Ju_idata_mds = jax.vmap(get_Ju_idata_imd, in_axes = (None,None,0)) # output: (mds,var)
 
-
-# x_idata_dms = jnp.array([0.5,1.0], dtype=jnp.float64) # (2,)
-# x_dms_nds = jnp.array([[0,1,2], [0,2,4]], dtype=jnp.float64) # (2,3)
-# u_imd_dms_vars_nds = jnp.ones((2,4,3), dtype=jnp.float64) # (2,4,3)
-# Ju_idata_imd = get_Ju_idata_imd(x_idata_dms, x_dms_nds, u_imd_dms_vars_nds)
-# # print(Ju_idata_imd)
-# # a=aa
-
 def get_Ju_idata(x_idata_dms, x_dms_nds, u_mds_dms_vars_nds):
     Ju_idata_mds = get_Ju_idata_mds(x_idata_dms, x_dms_nds, u_mds_dms_vars_nds) # (mds,var)
     Ju_idata = jnp.sum(Ju_idata_mds, axis=0) # returns (var,)
     return Ju_idata
-# get_Ju_datas = jax.vmap(get_Ju_idata, in_axes = (0,None,None)) # output: (ndata,var)
-
-# x_dms_nds = jnp.array([[0,1,2], [0,2,4]], dtype=jnp.float64) # (2,3)
-# u_mds_dms_vars_nds = jnp.ones((5,2,4,3), dtype=jnp.float64) # (5,2,4,3)
-# Ju_idata = get_Ju_idata(x_idata_dms, x_dms_nds, u_mds_dms_vars_nds)
-# print(Ju_idata)
-
-# x_datas_dms = jnp.array([[0.5,1.0], [0.5,1.0]], dtype=jnp.float64) # (2,)
-# x_dms_nds = jnp.array([[0,1,2], [0,2,4]], dtype=jnp.float64) # (2,3)
-# u_mds_dms_vars_nds = jnp.ones((5,2,4,3), dtype=jnp.float64) # (5,2,4,3)
-# Ju_datas = get_Ju_datas(x_datas_dms, x_dms_nds, u_mds_dms_vars_nds)
-# print(Ju_datas)
-# a=aa
 
 @partial(jax.jit, static_argnames=[]) # jit necessary
-def forward(params, x_dms_nds, x_idata):
+def forward_INN(params, x_dms_nds, x_idata):
     """ Prediction function
         run one forward pass on given input data
         --- input ---
@@ -96,13 +62,26 @@ def forward(params, x_dms_nds, x_idata):
     """
     pred = get_Ju_idata(x_idata, x_dms_nds, params)
     return pred
-v_forward = jax.vmap(forward, in_axes=(None,None, 0)) # returns (ndata,)
-vv_forward = jax.vmap(v_forward, in_axes=(None,None, 0)) # returns (ndata,)
+v_forward_INN = jax.vmap(forward_INN, in_axes=(None,None, 0)) # returns (ndata,)
+vv_forward_INN = jax.vmap(v_forward_INN, in_axes=(None,None, 0)) # returns (ndata,)
 
 
-# x_idata_dms = jnp.array([0.5,1.0], dtype=jnp.float64) # (2,)
-# x_dms_nds = jnp.array([[0,1,2], [0,2,4]], dtype=jnp.float64) # (2,3)
-# u_mds_dms_vars_nds = jnp.ones((5,2,4,3), dtype=jnp.float64) # (5,2,4,3)
-# Ju_idata = forward(u_mds_dms_vars_nds,  x_dms_nds, x_idata_dms)
-# print(Ju_idata)
-# a=aa
+## MLP
+
+def relu(x):
+    return jnp.maximum(0, x)
+
+# @partial(jax.jit, static_argnames=['self'])
+def forward_MLP(params, activation, x_idata):
+    # per-example predictions
+    activations = x_idata
+    for w, b in params[:-1]:
+        outputs = jnp.dot(w, activations) + b
+        if activation == 'relu':
+            activations = relu(outputs)
+        elif activation == 'sigmoid':
+            activations = jax.nn.sigmoid(outputs)
+    final_w, final_b = params[-1]
+    return jnp.dot(final_w, activations) + final_b
+v_forward_MLP = jax.vmap(forward_MLP, in_axes=(None,None, 0)) # returns (ndata,)
+vv_forward_MLP = jax.vmap(v_forward_MLP, in_axes=(None,None, 0)) # returns (ndata,)

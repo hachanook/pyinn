@@ -101,7 +101,7 @@ def data_generation(data_name: str, data_size: int, input_col: Sequence[int]):
 
         x_min = jnp.array([0.05,    100,  63_070,  990, 63.1, 700, 1120,  9_855], dtype=jnp.double)
         x_max = jnp.array([0.15, 50_000, 115_600, 1110,  116, 820, 1680, 12_045], dtype=jnp.double)
-        x_data_org = jnp.array(x_data_org) * (x_max-x_min) + x_min
+        x_data_org = x_data_org * (x_max-x_min) + x_min
         
         u_data_org = jax.vmap(fun_8D_1D_physics)(x_data_org)
         cols = ['x1','x2','x3','x4','x5','x6','x7','x8','u']
@@ -111,31 +111,44 @@ def data_generation(data_name: str, data_size: int, input_col: Sequence[int]):
         ## u1: Borehole function
         x_min = jnp.array([0.05,    100,  63_070,  990, 63.1, 700, 1120,  9_855], dtype=jnp.double)
         x_max = jnp.array([0.15, 50_000, 115_600, 1110,  116, 820, 1680, 12_045], dtype=jnp.double)
-        x1_data_org = jnp.array(x_data_org[:,:8]) * (x_max-x_min) + x_min
+        x1_data_org = x_data_org[:,:8] * (x_max-x_min) + x_min
         
         ## u2: Piston simulation function
         x_min = jnp.array([30, 0.005, 0.002, 1000, 90_000, 290, 340], dtype=jnp.double)
         x_max = jnp.array([60, 0.020, 0.010, 5000,110_000, 296, 360], dtype=jnp.double)
-        x2_data_org = jnp.array(x_data_org[:,:7]) * (x_max-x_min) + x_min
+        x2_data_org = x_data_org[:,:7] * (x_max-x_min) + x_min
         
         ## u3: OTL circuit function
         x_min = jnp.array([50, 25, 0.5, 1.2, 0.25, 50], dtype=jnp.double)
         x_max = jnp.array([150,70, 3.0, 2.5, 1.20,300], dtype=jnp.double)
-        x3_data_org = jnp.array(x_data_org[:,:6]) * (x_max-x_min) + x_min
+        x3_data_org = x_data_org[:,:6] * (x_max-x_min) + x_min
         
         ## u4: Robot arm function
         x_min = jnp.array([     0.0,      0.0,      0.0,      0.0, 0.0, 0.0, 0.0, 0.0], dtype=jnp.double)
         x_max = jnp.array([2*jnp.pi, 2*jnp.pi, 2*jnp.pi, 2*jnp.pi, 1.0, 1.0, 1.0, 1.0], dtype=jnp.double)
-        x4_data_org = jnp.array(x_data_org[:,:8]) * (x_max-x_min) + x_min
+        x4_data_org = x_data_org[:,:8] * (x_max-x_min) + x_min
         
         ## u5: Wing weight function
         x_min = jnp.array([150, 220, 6,-10*jnp.pi/180, 16, 0.5, 0.08, 2.5, 1700, 0.025], dtype=jnp.double)
         x_max = jnp.array([200, 300,10, 10*jnp.pi/180, 45, 1.0, 0.18, 6.0, 2500, 0.080], dtype=jnp.double)
-        x5_data_org = jnp.array(x_data_org[:,:10]) * (x_max-x_min) + x_min
+        x5_data_org = x_data_org[:,:10] * (x_max-x_min) + x_min
         
 
         u_data_org = jax.vmap(fun_10D_5D_physics, in_axes=(0,0,0,0,0))(x1_data_org, x2_data_org, x3_data_org, x4_data_org, x5_data_org)
         cols=['x1', 'x2', 'x3', 'x4', 'x5', 'x6', 'x7', 'x8', 'x9', 'x10', 'u1', 'u2', 'u3', 'u4', 'u5']
+
+    
+    elif data_name == "IGAMapping2D":
+
+        ## define IGA parameters
+        
+        x_min = jnp.array([0, 0], dtype=jnp.double)
+        x_max = jnp.array([10, 10], dtype=jnp.double)
+        
+        x_data_org = x_data_org * (x_max-x_min) + x_min
+        u_data_org = v_fun_IGAMapping2D(x_data_org)
+        cols = ['x1','x2','u1','u2']
+
 
     data = np.concatenate((x_data_org, u_data_org), axis=1)
     df = pd.DataFrame(data, columns=cols)
@@ -230,3 +243,65 @@ def fun_10D_5D_physics(x1,x2,x3,x4,x5):
         * (p8*p9)**0.49 + p1*p10 )
     
     return jnp.array([u1,u2,u3,u4,u5], dtype=jnp.double)
+
+
+## IGA mapping
+
+def in_range(xi, lb, ub):
+    # lb: lower bound, floating number
+    # ub: upper bound, floating number
+    return jnp.heaviside(xi-lb,1) * jnp.heaviside(ub-xi, 0)
+
+def NBasis(xi, L):
+    xi /= L
+    N1 = (1-xi)**2
+    N2 = 2*xi*(1-xi)
+    N3 = xi**2
+    N_all = jnp.array([N1, N2, N3], dtype=jnp.float64)
+    return N_all
+
+def MBasis(eta, L):
+    eta /= L
+    M1 = (1-eta)**2
+    M2 = 2*eta*(1-eta)
+    M3 = eta**2
+    M_all = jnp.array([M1, M2, M3], dtype=jnp.float64)
+    return M_all
+
+def Sum_fun(xieta, L, weights):
+    xi, eta = xieta[0], xieta[1]
+    N_all = NBasis(xi, L)
+    M_all = MBasis(eta, L)
+    NM_all = jnp.tensordot(N_all, M_all, axes=0) # (4,3)
+    Sum = jnp.sum(NM_all * weights)
+    return Sum
+
+def fun_IGAMapping2D(xieta):
+    # This basic mapping is nothing but the identity mapping
+    # R_all * controlPts returns xi itselt.
+
+    ## IGA parameters
+    L = 10
+    controlPts = np.zeros((3,3,2), dtype=np.double)
+                
+    controlPts[:,:,0] = np.array([[0,   0,  0],
+                                    [10, 15, 20],
+                                    [10, 15, 20]], dtype=np.float64)
+    controlPts[:,:,1]= np.array([[10, 15, 20],
+                                    [10, 15, 20],
+                                    [0,   0,  0]], dtype=np.float64)
+    controlPts = jnp.array(controlPts)
+    weights = jnp.array([[1, 1, 1],
+                        [0.5*jnp.sqrt(2), 0.5*jnp.sqrt(2), 0.5*jnp.sqrt(2)],
+                        [1, 1, 1]], dtype=jnp.float64)
+
+    xi, eta = xieta[0], xieta[1]
+    N_all = NBasis(xi, L)
+    M_all = MBasis(eta, L)
+    NM_all = jnp.tensordot(N_all, M_all, axes=0) # (4,3)
+    Sum = Sum_fun(xieta, L, weights)
+    R_all = NM_all * weights / Sum # (4,3)
+    xy = jnp.sum(R_all[:,:,None] * controlPts[:,:,:], axis=(0,1))
+    return xy
+v_fun_IGAMapping2D = jax.vmap(fun_IGAMapping2D, in_axes = (0))
+vv_fun_IGAMapping2D = jax.vmap(v_fun_IGAMapping2D, in_axes = (0))

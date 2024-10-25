@@ -4,8 +4,9 @@ GPU:
 PROBLEM:
   run_type: "regression" 
   # run_type: "classification" 
-  interp_method: "linear"
-  # interp_method: "nonlinear"
+  interp_method: "linear" # INN
+  # interp_method: "nonlinear" # INN
+  # interp_method: "MLP"
 
 DATA:
   # data_name : "1D_1D_sine"  
@@ -14,7 +15,9 @@ DATA:
   # data_name : '2D_1D_sine'
   # data_name : '2D_1D_exp'
   # data_name : '8D_1D_physics' # borehole equation
-  data_name : '10D_5D_physics' # five physics equations
+  # data_name : '10D_5D_physics' # five physics equations
+
+  data_name : 'IGAMapping2D' # for IGA inverse mapping; multi-CAD-patch C-IGA paper
 
 
   
