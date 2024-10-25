@@ -3,9 +3,15 @@ MODEL_PARAM:
   nelem : 10
   input_col : [0]
   output_col : [1,2]
-  bool_normalize: False
+  bool_normalize: True
   data_size: 10_000
   split_ratio: [0.7,0.15,0.15]
+
+  ## MLP
+  nlayers : 2
+  nneurons : 40
+  # activation : "relu"
+  activation : "sigmoid"
 
 TRAIN_PARAM:
   num_epochs : 50

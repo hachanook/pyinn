@@ -1,0 +1,21 @@
+MODEL_PARAM: 
+  nmode : 100
+  nelem : 2
+  bool_normalize : False
+  nclass : 10
+  split_ratio : [60000,10000]
+
+  ## MLP
+  nlayers : 3
+  nneurons : 100
+  # activation : "relu"
+  activation : "sigmoid"
+
+TRAIN_PARAM:
+  num_epochs : 50
+  batch_size : 200
+  learning_rate : 1e-3
+
+PLOT:
+  bool_plot: False
+  

@@ -7,6 +7,12 @@ MODEL_PARAM:
   data_size: 100_000
   split_ratio: [0.7,0.15,0.15]
 
+  ## MLP
+  nlayers : 3
+  nneurons : 20
+  # activation : "relu"
+  activation : "sigmoid"
+
 TRAIN_PARAM:
   num_epochs : 50
   batch_size : 200

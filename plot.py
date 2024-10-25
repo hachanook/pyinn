@@ -4,19 +4,24 @@ import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 import os
 from model import *
-from dataset import *
+from dataset_regression import *
+from dataset_classification import *
 
 
-def plot_regression(bool_plot, model, plot_in_axis, plot_out_axis, cls_data, color_map="viridis", vmin=0, vmax=1, marker_size=20):
-    
+def plot_regression(model, cls_data, config):
+    bool_plot = config['PLOT']['bool_plot']
+    plot_in_axis = config['PLOT']['plot_in_axis']
+    plot_out_axis = config['PLOT']['plot_out_axis']
 
-    if len(plot_in_axis)==2 and  bool_plot and cls_data.bool_normalize == False:
+    if bool_plot and len(plot_in_axis)==2 and  cls_data.bool_normalize == False:
         # we will plot the error only when there is no normalization on the original data.
-        plot_2D_1D(model, plot_in_axis, plot_out_axis, cls_data, color_map, vmin, vmax, marker_size)
-    # else:
-        # print("\n[Warning] plotting should not be conducted on normalized data\n")
+        plot_2D_1D(model, cls_data, plot_in_axis, plot_out_axis)
+    else:
+        print("\nPlotting deactivated\n")
+        import sys
+        sys.exit()
 
-def plot_2D_1D(model, plot_in_axis, plot_out_axis, cls_data, color_map="viridis", vmin=0, vmax=1, marker_size=20):
+def plot_2D_1D(model, cls_data, plot_in_axis, plot_out_axis, color_map="viridis", vmin=0, vmax=1, marker_size=20):
     """ This function plots 2D input and 1D output data. By default, this function should work on original data only
     plot_in_axis: [axis1, axis2]
     plot_out_axis: [axis1]

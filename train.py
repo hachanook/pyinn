@@ -49,17 +49,17 @@ def get_linspace(xmin, xmax, nnode):
     return jnp.linspace(xmin,xmax,nnode, dtype=jnp.float64)
 
 class Regression_INN:
-    def __init__(self, interp_method, cls_data, cfg_model_param):
+    def __init__(self, interp_method, cls_data, config):
 
         self.interp_method = interp_method
         self.cls_data = cls_data
-        self.cfg_model_param = cfg_model_param
+        self.config = config
         self.key = 3264
 
         self.v_forward = v_forward_INN
         self.vv_forward = vv_forward_INN
-        self.nmode = cfg_model_param['nmode']
-        self.nelem = cfg_model_param['nelem']
+        self.nmode = int(config['MODEL_PARAM']['nmode'])
+        self.nelem = int(config['MODEL_PARAM']['nelem'])
         self.nnode = self.nelem+1
 
         ## initialization of trainable parameters
@@ -97,10 +97,10 @@ class Regression_INN:
         params = optax.apply_updates(params, updates)
         return params, opt_state, loss, u_pred    
     
-    def train(self, num_epochs, batch_size, learning_rate):
-        self.num_epochs = num_epochs
-        self.batch_size = batch_size
-        self.learning_rate = learning_rate
+    def train(self):
+        self.num_epochs = int(self.config['TRAIN_PARAM']['num_epochs'])
+        self.batch_size = int(self.config['TRAIN_PARAM']['batch_size'])
+        self.learning_rate = float(self.config['TRAIN_PARAM']['learning_rate'])
         
         ## Split data and create dataloader
         generator = torch.Generator().manual_seed(42)
@@ -116,12 +116,12 @@ class Regression_INN:
             val_data = split_data[1]
             test_data = split_data[2]
             val_dataloader = DataLoader(test_data, batch_size=self.batch_size, shuffle=True)
-        train_dataloader = DataLoader(train_data, batch_size=batch_size, shuffle=True)
-        test_dataloader = DataLoader(test_data, batch_size=batch_size, shuffle=True)
+        train_dataloader = DataLoader(train_data, batch_size=self.batch_size, shuffle=True)
+        test_dataloader = DataLoader(test_data, batch_size=self.batch_size, shuffle=True)
 
         ## Define optimizer
         params = self.params
-        self.optimizer = optax.adam(learning_rate)
+        self.optimizer = optax.adam(self.learning_rate)
         # self.optimizer = optax.rmsprop(start_learning_rate)
         opt_state = self.optimizer.init(params)
         
@@ -132,7 +132,7 @@ class Regression_INN:
         
         ## Train
         start_time_train = time.time()
-        for epoch in range(num_epochs):
+        for epoch in range(self.num_epochs):
             epoch_list_loss, epoch_list_r2 = [], [] 
             start_time_epoch = time.time()    
             for batch in train_dataloader:
@@ -199,14 +199,14 @@ class Regression_INN:
 
 
 class Regression_MLP(Regression_INN):
-    def __init__(self, interp_method, cls_data, cfg_model_param):
-        super().__init__(interp_method, cls_data, cfg_model_param) # prob being dropout probability
+    def __init__(self, interp_method, cls_data, config):
+        super().__init__(interp_method, cls_data, config) # prob being dropout probability
         
         self.v_forward = v_forward_MLP
         self.vv_forward = vv_forward_MLP
-        self.nlayers = cfg_model_param["nlayers"]
-        self.nneurons = cfg_model_param["nneurons"]
-        self.activation = cfg_model_param["activation"]
+        self.nlayers = config['MODEL_PARAM']["nlayers"]
+        self.nneurons = config['MODEL_PARAM']["nneurons"]
+        self.activation = config['MODEL_PARAM']["activation"]
 
         ### initialization of trainable parameters
         layer_sizes = [cls_data.dim] + self.nlayers * [self.nneurons] + [cls_data.var]

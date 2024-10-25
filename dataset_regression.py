@@ -17,32 +17,31 @@ import torch
 
 
 class Data_regression(Dataset):
-    def __init__(self, data_name: str, data_size: int, input_col: Sequence[int], output_col: Sequence[int], 
-                 split_ratio: Sequence[int | float]=[0.7,0.15,0.15], bool_normalize=True) -> None:
+    def __init__(self, data_name: str, config) -> None:
         if not os.path.exists('data'):
             os.makedirs('data')
-        self.root_dir = 'data/'
+        self.data_dir = 'data/'
         self.data_name = data_name
-        self.data_size = data_size
-        self.dim = len(input_col) # size of input
-        self.var = len(output_col) # size of output
-        self.split_ratio = split_ratio
-        # self.bool_shuffle = bool_shuffle
-        self.bool_normalize = bool_normalize
-        # self.transform = transform
+        self.data_size = config['MODEL_PARAM']['data_size']
+        self.input_col = config['MODEL_PARAM']['input_col']
+        self.output_col = config['MODEL_PARAM']['output_col']
+        self.dim = len(self.input_col) # size of input
+        self.var = len(self.output_col) # size of output
+        self.split_ratio = config['MODEL_PARAM']['split_ratio']
+        self.bool_normalize = config['MODEL_PARAM']['bool_normalize']
         
-        data_file = self.root_dir + data_name + '_' + str(data_size) + '.csv'
+        data_file = self.data_dir + data_name + '_' + str(self.data_size) + '.csv'
         try:
             data = np.loadtxt(data_file, delimiter=",", dtype=np.float64, skiprows=1)
         except: 
             print(F"Data file {data_file} dose not exist. We will create the data.")
-            data_generation(data_name, data_size, input_col)
+            data_generation_regression(data_name, self.data_size, self.input_col)
             data = np.loadtxt(data_file, delimiter=",", dtype=np.float64, skiprows=1)
         
-        self.x_data_org = data[:, input_col]
-        self.u_data_org = data[:, output_col]
+        self.x_data_org = data[:, self.input_col]
+        self.u_data_org = data[:, self.output_col]
         
-        if bool_normalize:    
+        if self.bool_normalize:    
             self.x_data_minmax = {"min" : self.x_data_org.min(axis=0), "max" : self.x_data_org.max(axis=0)}
             self.u_data_minmax = {"min" : self.u_data_org.min(axis=0), "max" : self.u_data_org.max(axis=0)}
             self.x_data = (self.x_data_org - self.x_data_minmax["min"]) / (self.x_data_minmax["max"] - self.x_data_minmax["min"])
@@ -73,7 +72,7 @@ class Data_regression(Dataset):
         return x_data, u_data
     
 
-def data_generation(data_name: str, data_size: int, input_col: Sequence[int]):
+def data_generation_regression(data_name: str, data_size: int, input_col: Sequence[int]):
 
     x_data_org = jnp.array(np.random.rand(data_size, len(input_col)))
         

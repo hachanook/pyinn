@@ -14,7 +14,8 @@ import importlib.util
 
 # from flax.training import train_state
 
-from dataset import Data_regression
+from dataset_regression import Data_regression
+from dataset_classification import Data_classification
 from model import *
 from train import *
 from plot import *
@@ -24,34 +25,19 @@ import yaml
 
 # %% User Set up
 with open('settings.yaml','r') as file:
-    config = yaml.safe_load(file)
+    settings = yaml.safe_load(file)
 
-cfg_gpu = config['GPU']
-gpu_idx = cfg_gpu['gpu_idx']  # set which GPU to run on Athena
+gpu_idx = settings['GPU']['gpu_idx']  # set which GPU to run on Athena
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # GPU indexing
 os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_idx)  # GPU indexing
 
-run_type = config['PROBLEM']["run_type"]
-interp_method = config['PROBLEM']["interp_method"]
-data_name = config['DATA']["data_name"]
+run_type = settings['PROBLEM']["run_type"]
+interp_method = settings['PROBLEM']["interp_method"]
+data_name = settings['DATA']["data_name"]
 
 
 with open(f'./config/{data_name}.yaml','r') as file_dataConfig:
-    config_dataConfig = yaml.safe_load(file_dataConfig)
-
-cfg_model_param = config_dataConfig['MODEL_PARAM']
-
-input_col = cfg_model_param['input_col']
-output_col = cfg_model_param['output_col']
-bool_normalize = cfg_model_param["bool_normalize"]
-data_size = cfg_model_param["data_size"]
-split_ratio = cfg_model_param["split_ratio"]
-
-cfg_train_param = config_dataConfig['TRAIN_PARAM']
-num_epochs = int(cfg_train_param['num_epochs'])
-batch_size = int(cfg_train_param['batch_size'])
-learning_rate = float(cfg_train_param['learning_rate'])
-
+    config = yaml.safe_load(file_dataConfig)
 
 # # --------------------- data setup for classification --------------------------
 # elif run_type == "classification":
@@ -62,19 +48,39 @@ learning_rate = float(cfg_train_param['learning_rate'])
 #     noise_level = 3  # 0, 1, 2, 3
 #     split_ratio = [0.7,0.15]  # [training ratio, validation ratio], default: [0.7, 0.15] / Gamma: [0.8,0.2]
 
-## data import
-data = Data_regression(data_name, data_size, input_col=input_col, output_col=output_col,
-                        split_ratio=split_ratio, bool_normalize=bool_normalize)
+# --------------------- Regression --------------------------
+if run_type == "regression":
+    
+    ## data import
+    data = Data_regression(data_name, config)
 
-## train
-if interp_method == "linear" or interp_method == "nonlinear":
-    regressor = Regression_INN(interp_method, data, cfg_model_param)  # HiDeNN-TD regressor class
-elif interp_method == "MLP":
-    regressor = Regression_MLP(interp_method, data, cfg_model_param)  # HiDeNN-TD regressor class
-regressor.train(num_epochs, batch_size, learning_rate)  # Train module
+    ## train
+    if interp_method == "linear" or interp_method == "nonlinear":
+        regressor = Regression_INN(interp_method, data, config)  # HiDeNN-TD regressor class
+    elif interp_method == "MLP":
+        regressor = Regression_MLP(interp_method, data, config)  # HiDeNN-TD regressor class
+    regressor.train()  # Train module
 
-## plot
-plot_regression(config_dataConfig['PLOT']['bool_plot'], regressor, config_dataConfig['PLOT']['plot_in_axis'], 
-                config_dataConfig['PLOT']['plot_out_axis'], data)
+    ## plot
+    plot_regression(regressor, data, config)
+
+# --------------------- Classification --------------------------
+elif run_type == "classification":
+
+    ## data import
+    data = Data_classification(data_name, config)
+    
+#     ## train
+#     if interp_method == "linear" or interp_method == "nonlinear":
+#         regressor = Regression_INN(interp_method, data, config)  # HiDeNN-TD regressor class
+#     elif interp_method == "MLP":
+#         regressor = Regression_MLP(interp_method, data, config)  # HiDeNN-TD regressor class
+#     regressor.train()  # Train module
+
+#     ## plot
+#     plot_regression(regressor, data, config)
+
+
+    
 
 
