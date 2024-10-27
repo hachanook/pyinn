@@ -3,7 +3,9 @@ MODEL_PARAM:
   nelem : 2
   bool_normalize : False
   nclass : 10
+  bool_random_split : False
   split_ratio : [60000,10000]
+  
 
   ## MLP
   nlayers : 3
@@ -13,7 +15,7 @@ MODEL_PARAM:
 
 TRAIN_PARAM:
   num_epochs : 50
-  batch_size : 200
+  batch_size : 128
   learning_rate : 1e-3
 
 PLOT:

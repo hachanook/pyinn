@@ -5,8 +5,8 @@ Copyright (C) 2024  Chanwook Park
  Northwestern University, Evanston, Illinois, US, chanwookpark2024@u.northwestern.edu
 """
 
-import jax
-import jax.numpy as jnp
+# import jax
+# import jax.numpy as jnp
 import numpy as np
 import os, sys, csv
 import pandas as pd
@@ -16,9 +16,15 @@ from torchvision import datasets, transforms
 from torchvision.transforms import v2
 import torch
 
-# # Create a one-hot encoding of x of size k
-# def one_hot(x, k) -> np.ndarray:
-#     return np.array(np.arange(k)==x, dtype=np.double)
+def one_hot(labels, num_classes):
+    # Initialize a zero array with shape (ndata, nclass)
+    one_hot = np.zeros((len(labels), num_classes), dtype=int)
+    
+    # Set the appropriate elements to 1 using numpy indexing
+    one_hot[np.arange(len(labels)), labels] = 1
+    
+    return one_hot
+
 
 class Data_classification(Dataset):
     def __init__(self, data_name: str, config) -> None:
@@ -27,6 +33,7 @@ class Data_classification(Dataset):
         self.data_dir = 'data/'
         self.data_name = data_name
         self.nclass = config['MODEL_PARAM']['nclass']
+        self.var = self.nclass
         self.split_ratio = config['MODEL_PARAM']['split_ratio']
         self.bool_normalize = config['MODEL_PARAM']['bool_normalize']
 
@@ -40,11 +47,13 @@ class Data_classification(Dataset):
 
         if 'mnist' in self.data_name:
             self.x_data_org = data[:, 1:]
-            self.u_data_org = data[:, 0]
+            self.u_data_org = data[:, 0].astype(np.int32)
         else:
             self.x_data_org = data[:, config['MODEL_PARAM']['input_col']]
-            self.u_data_org = data[:, config['MODEL_PARAM']['output_col']]
-        self.u_data = jax.nn.one_hot(self.u_data_org, self.nclass) # u_data is the one-hot vector (ndata, nclass)
+            self.u_data_org = data[:, config['MODEL_PARAM']['output_col']].astype(np.int32)
+        self.u_data = one_hot(self.u_data_org, self.nclass) # u_data is the one-hot vector (ndata, nclass)
+        self.dim = self.x_data_org.shape[1]
+        
         
         if self.bool_normalize:    
             self.x_data_minmax = {"min" : self.x_data_org.min(axis=0), "max" : self.x_data_org.max(axis=0)}

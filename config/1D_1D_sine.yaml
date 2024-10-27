@@ -4,6 +4,7 @@ MODEL_PARAM:
   input_col : [0]
   output_col : [1]
   bool_normalize: False
+  bool_random_split : True
   data_size: 10_000
   split_ratio: [0.7,0.15,0.15]
 

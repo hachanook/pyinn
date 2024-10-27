@@ -12,10 +12,10 @@ config.update("jax_enable_x64", True)
 import optax
 from functools import partial
 import numpy as np
-from torch.utils.data import DataLoader, random_split
+from torch.utils.data import DataLoader, random_split, Subset
 import time
 import torch
-from sklearn.metrics import r2_score
+from sklearn.metrics import r2_score, classification_report
 import importlib.util
 import sys
 
@@ -76,8 +76,8 @@ class Regression_INN:
             print(f"# of training parameters: {numParam}")
 
     @partial(jax.jit, static_argnames=['self']) # jit necessary
-    def get_loss_MSE(self, params, x_data, u_data):
-        ''' Compute loss value at (m)th mode given upto (m-1)th mode solution, which is u_pred_old
+    def get_loss(self, params, x_data, u_data):
+        ''' Compute MSE loss value at (m)th mode given upto (m-1)th mode solution, which is u_pred_old
         --- input ---
         u_p_modes: (nmode, dim, nnode, var)
         u_data: exact u from the data. (ndata_train, var)
@@ -88,86 +88,112 @@ class Regression_INN:
         loss = ((u_pred- u_data)**2).mean()
         return loss, u_pred
     
-    Grad_get_loss_MSE = jax.jit(jax.value_and_grad(get_loss_MSE, argnums=1, has_aux=True), static_argnames=['self'])
+    Grad_get_loss = jax.jit(jax.value_and_grad(get_loss, argnums=1, has_aux=True), static_argnames=['self'])
     
     @partial(jax.jit, static_argnames=['self']) # This will slower the function
     def update_optax(self, params, opt_state, x_data, u_data):
-        ((loss, u_pred), grads) = self.Grad_get_loss_MSE(params, x_data, u_data)
+        ((loss, u_pred), grads) = self.Grad_get_loss(params, x_data, u_data)
         updates, opt_state = self.optimizer.update(grads, opt_state)
         params = optax.apply_updates(params, updates)
         return params, opt_state, loss, u_pred    
     
+    def data_split(self):
+        split_ratio = self.cls_data.split_ratio
+        if self.config['MODEL_PARAM']['bool_random_split'] == True and all(isinstance(item, float) for item in split_ratio):
+            # random split with a split ratio
+            generator = torch.Generator().manual_seed(42)
+            split_data = random_split(dataset=self.cls_data,lengths=self.cls_data.split_ratio, generator=generator)
+            if len(split_ratio) == 2:
+                self.split_type="TT" # train and test
+                train_data = split_data[0]
+                test_data = split_data[1]
+            elif len(split_ratio) == 3:
+                self.split_type="TVT" # train, validation, test
+                train_data = split_data[0]
+                val_data = split_data[1]
+                test_data = split_data[2]
+                self.val_dataloader = DataLoader(test_data, batch_size=self.batch_size, shuffle=True)
+            
+        elif self.config['MODEL_PARAM']['bool_random_split'] == False and all(isinstance(item, int) for item in split_ratio):
+            # non-random split with a fixed number of data
+            if len(split_ratio) == 2:
+                self.split_type="TT" # train and test
+                train_data = Subset(self.cls_data, list(range(split_ratio[0])))
+                test_data = Subset(self.cls_data, list(range(split_ratio[0], split_ratio[0]+split_ratio[1])))
+            elif len(split_ratio) == 3:
+                self.split_type="TVT" # train, validation, test
+                train_data = Subset(self.cls_data, list(range(split_ratio[0])))
+                test_data = Subset(self.cls_data, list(range(split_ratio[0], split_ratio[0]+split_ratio[1])))
+                val_data = Subset(self.cls_data, list(range(split_ratio[0]+split_ratio[1], split_ratio[0]+split_ratio[1]+split_ratio[2])))
+                self.val_dataloader = DataLoader(test_data, batch_size=self.batch_size, shuffle=True)
+        self.train_dataloader = DataLoader(train_data, batch_size=self.batch_size, shuffle=True)
+        self.test_dataloader = DataLoader(test_data, batch_size=self.batch_size, shuffle=True)
+
+    def get_acc_metrics(self, u, u_pred):
+        """ Get accuracy metrics. For regression, R2 will be returned.
+        """
+        acc_metrics = "R2"
+        r2 = r2_score(u, u_pred)
+        return r2, acc_metrics
+                
+
     def train(self):
         self.num_epochs = int(self.config['TRAIN_PARAM']['num_epochs'])
         self.batch_size = int(self.config['TRAIN_PARAM']['batch_size'])
         self.learning_rate = float(self.config['TRAIN_PARAM']['learning_rate'])
         
         ## Split data and create dataloader
-        generator = torch.Generator().manual_seed(42)
-        split_data = random_split(dataset=self.cls_data,lengths=self.cls_data.split_ratio, generator=generator)
+        self.data_split()
         
-        if len(split_data) == 2:
-            self.split_type="TT" # train and test
-            train_data = split_data[0]
-            test_data = split_data[1]
-        elif len(split_data) == 3:
-            self.split_type="TVT" # train, validation, test
-            train_data = split_data[0]
-            val_data = split_data[1]
-            test_data = split_data[2]
-            val_dataloader = DataLoader(test_data, batch_size=self.batch_size, shuffle=True)
-        train_dataloader = DataLoader(train_data, batch_size=self.batch_size, shuffle=True)
-        test_dataloader = DataLoader(test_data, batch_size=self.batch_size, shuffle=True)
-
         ## Define optimizer
         params = self.params
         self.optimizer = optax.adam(self.learning_rate)
-        # self.optimizer = optax.rmsprop(start_learning_rate)
         opt_state = self.optimizer.init(params)
         
         loss_train_list, loss_test_list = [], []
-        r2_train_list, r2_test_list = [], []
+        acc_train_list, acc_test_list = [], []
         if self.split_type == "TVT":
-            loss_val_list, r2_val_list = [], []
+            loss_val_list, acc_val_list = [], []
         
         ## Train
         start_time_train = time.time()
         for epoch in range(self.num_epochs):
-            epoch_list_loss, epoch_list_r2 = [], [] 
+            epoch_list_loss, epoch_list_acc = [], [] 
             start_time_epoch = time.time()    
-            for batch in train_dataloader:
+            for batch in self.train_dataloader:
                 x_train, u_train = jnp.array(batch[0]), jnp.array(batch[1])
                 
                 ## Optimization step (or update)
                 params, opt_state, loss_train, u_pred_train = self.update_optax(params, opt_state, x_train, u_train)
-                r2_train = r2_score(u_train, u_pred_train)
+                    
+                acc_train, acc_metrics = self.get_acc_metrics(u_train, u_pred_train)
                 epoch_list_loss.append(loss_train)
-                epoch_list_r2.append(r2_train)
+                epoch_list_acc.append(acc_train)
                 
             batch_loss_train = np.mean(epoch_list_loss)
-            batch_r2_train = np.mean(epoch_list_r2)
+            batch_acc_train = np.mean(epoch_list_acc)
                 
             print(f"Epoch {epoch}")
             print(f"\tTraining loss: {batch_loss_train:.4e}")
-            print(f"\tTraining R2: {batch_r2_train:.4f}")
+            print(f"\tTraining {acc_metrics}: {batch_acc_train:.4f}")
             print(f"\tEpoch {epoch} training took {time.time() - start_time_epoch:.4f} seconds")
 
             ## Validation
             if (epoch+1)%1 == 0:
-                epoch_list_loss, epoch_list_r2 = [], [] 
+                epoch_list_loss, epoch_list_acc = [], [] 
                 if self.split_type == "TT": # when there are only train & test data
-                    val_dataloader = test_dataloader # deal test data as validation data
-                for batch in val_dataloader:
+                    self.val_dataloader = self.test_dataloader # deal test data as validation data
+                for batch in self.val_dataloader:
                     x_val, u_val = jnp.array(batch[0]), jnp.array(batch[1])
                     _, _, loss_val, u_pred_val = self.update_optax(params, opt_state, x_val, u_val)
-                    r2_val = r2_score(u_val, u_pred_val)
+                    acc_val, acc_metrics = self.get_acc_metrics(u_val, u_pred_val)
                     epoch_list_loss.append(loss_val)
-                    epoch_list_r2.append(r2_val)
+                    epoch_list_acc.append(acc_val)
                 
                 batch_loss_val = np.mean(epoch_list_loss)
-                batch_r2_val = np.mean(epoch_list_r2)
+                batch_acc_val = np.mean(epoch_list_acc)
                 print(f"\tValidation loss: {batch_loss_val:.4e}")
-                print(f"\tValidation R2: {batch_r2_val:.4f}")
+                print(f"\tValidation {acc_metrics}: {batch_acc_val:.4f}")
 
                 if self.cls_data.data_name == "IGAMapping2D" and batch_loss_val < 1e-3:
                     # stopping criteria for the IGA inverse mapping; multi-CAD-patch C-IGA paper
@@ -181,19 +207,19 @@ class Regression_INN:
 
         ## Test 
         start_time_test = time.time()
-        epoch_list_loss, epoch_list_r2 = [], [] 
-        for batch in test_dataloader:
+        epoch_list_loss, epoch_list_acc = [], [] 
+        for batch in self.test_dataloader:
             x_test, u_test = jnp.array(batch[0]), jnp.array(batch[1])
             _, _, loss_test, u_pred_test = self.update_optax(params, opt_state, x_test, u_test)
-            r2_test = r2_score(u_test, u_pred_test)
+            acc_test, acc_metrics = self.get_acc_metrics(u_test, u_pred_test)
             epoch_list_loss.append(loss_test)
-            epoch_list_r2.append(r2_test)
+            epoch_list_acc.append(acc_test)
         
         batch_loss_test = np.mean(epoch_list_loss)
-        batch_r2_test = np.mean(epoch_list_r2)
+        batch_acc_test = np.mean(epoch_list_acc)
         print("Test")
         print(f"\tTest loss: {batch_loss_test:.4e}")
-        print(f"\tTest R2: {batch_r2_test:.4f}")
+        print(f"\tTest {acc_metrics}: {batch_acc_test:.4f}")
         print(f"\tTest took {time.time() - start_time_test:.4f} seconds")
 
 
@@ -229,7 +255,7 @@ class Regression_MLP(Regression_INN):
         return [self.random_layer_params(m, n, k) for m, n, k in zip(sizes[:-1], sizes[1:], keys)]
     
     @partial(jax.jit, static_argnames=['self']) # jit necessary
-    def get_loss_MSE(self, params, x_data, u_data):
+    def get_loss(self, params, x_data, u_data):
         ''' Compute loss value at (m)th mode given upto (m-1)th mode solution, which is u_pred_old
         --- input ---
         u_p_modes: (nmode, dim, nnode, var)
@@ -240,6 +266,43 @@ class Regression_MLP(Regression_INN):
         u_pred = self.v_forward(params, self.activation, x_data) # (ndata_train, var)
         loss = ((u_pred- u_data)**2).mean()
         return loss, u_pred
-    Grad_get_loss_MSE = jax.jit(jax.value_and_grad(get_loss_MSE, argnums=1, has_aux=True), static_argnames=['self'])
+    Grad_get_loss = jax.jit(jax.value_and_grad(get_loss, argnums=1, has_aux=True), static_argnames=['self'])
     
-    
+
+class Classification_INN(Regression_INN):
+    def __init__(self, interp_method, cls_data, config):
+        super().__init__(interp_method, cls_data, config) # prob being dropout probability
+
+        self.params = jax.random.uniform(jax.random.PRNGKey(self.key), (self.nmode, self.cls_data.dim, 
+                                                self.cls_data.var, self.nnode), dtype=jnp.double,
+                                                minval=0.9, maxval=1.1) # for classification, we sould confine the params range
+        numParam = self.nmode*self.cls_data.dim*self.cls_data.var*self.nnode
+        if interp_method == "linear" or interp_method == "nonlinear":
+            print("------------INN-------------")
+            print(f"# of training parameters: {numParam}")
+
+    @partial(jax.jit, static_argnames=['self']) # jit necessary
+    def get_loss(self, params, x_data, u_data):
+        ''' Compute Cross Entropy loss value at (m)th mode given upto (m-1)th mode solution, which is u_pred_old
+        --- input ---
+        u_p_modes: (nmode, dim, nnode, var)
+        u_data: exact u from the data. (ndata_train, var)
+        shape_vals_data, patch_nodes_data: defined in "get_HiDeNN_shape_fun"
+        '''
+        
+        u_pred = self.v_forward(params, self.x_dms_nds, x_data) # (ndata_train, var)
+        prediction = u_pred - jax.scipy.special.logsumexp(u_pred, axis=1)[:,None] # (ndata, var = nclass)
+        loss = -jnp.mean(jnp.sum(prediction * u_data, axis=1))
+        return loss, u_pred
+    Grad_get_loss = jax.jit(jax.value_and_grad(get_loss, argnums=1, has_aux=True), static_argnames=['self'])
+
+
+    def get_acc_metrics(self, u, u_pred):
+        """ Get accuracy metrics. For regression, R2 will be returned.
+        --- input ---
+        u: (ndata,) integer vector that indicates class of the data
+        u_train: (ndata,) integer vector that indicates predicted class
+        """
+        acc_metrics = "Accuracy"
+        report = classification_report(u, u_pred, output_dict=True)     
+        return report["accuracy"], acc_metrics
