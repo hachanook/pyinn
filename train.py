@@ -293,6 +293,7 @@ class Classification_INN(Regression_INN):
         u_pred = self.v_forward(params, self.x_dms_nds, x_data) # (ndata_train, var)
         prediction = u_pred - jax.scipy.special.logsumexp(u_pred, axis=1)[:,None] # (ndata, var = nclass)
         loss = -jnp.mean(jnp.sum(prediction * u_data, axis=1))
+        jax.debug.print("haha {}", u_pred)
         return loss, u_pred
     Grad_get_loss = jax.jit(jax.value_and_grad(get_loss, argnums=1, has_aux=True), static_argnames=['self'])
 
