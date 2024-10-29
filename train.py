@@ -55,7 +55,8 @@ class Regression_INN:
         self.cls_data = cls_data
         self.config = config
         self.key = 3264
-
+        
+        self.forward = forward_INN
         self.v_forward = v_forward_INN
         self.vv_forward = vv_forward_INN
         self.nmode = int(config['MODEL_PARAM']['nmode'])
@@ -161,14 +162,22 @@ class Regression_INN:
             epoch_list_loss, epoch_list_acc = [], [] 
             start_time_epoch = time.time()    
             for batch in self.train_dataloader:
-                x_train, u_train = jnp.array(batch[0]), jnp.array(batch[1])
                 
+                time_batch = time.time()
+                
+                x_train, u_train = jnp.array(batch[0]), jnp.array(batch[1])
+
                 ## Optimization step (or update)
                 params, opt_state, loss_train, u_pred_train = self.update_optax(params, opt_state, x_train, u_train)
-                    
+                
+                print(f"\t update {time.time() - time_batch:.4f} seconds")
+                
                 acc_train, acc_metrics = self.get_acc_metrics(u_train, u_pred_train)
                 epoch_list_loss.append(loss_train)
                 epoch_list_acc.append(acc_train)
+                
+                print(f"\tB acc {time.time() - time_batch:.4f} seconds")
+
                 
             batch_loss_train = np.mean(epoch_list_loss)
             batch_acc_train = np.mean(epoch_list_acc)
@@ -199,7 +208,6 @@ class Regression_INN:
                     # stopping criteria for the IGA inverse mapping; multi-CAD-patch C-IGA paper
                     break
             
-            
         self.params = params
         print(f"INN training took {time.time() - start_time_train:.4f} seconds")
         # if importlib.util.find_spec("GPUtil") is not None: # report GPU memory usage
@@ -228,6 +236,7 @@ class Regression_MLP(Regression_INN):
     def __init__(self, interp_method, cls_data, config):
         super().__init__(interp_method, cls_data, config) # prob being dropout probability
         
+        self.forward = forward_MLP
         self.v_forward = v_forward_MLP
         self.vv_forward = vv_forward_MLP
         self.nlayers = config['MODEL_PARAM']["nlayers"]
@@ -272,14 +281,16 @@ class Regression_MLP(Regression_INN):
 class Classification_INN(Regression_INN):
     def __init__(self, interp_method, cls_data, config):
         super().__init__(interp_method, cls_data, config) # prob being dropout probability
-
+        
+        ## classification problem always normalize inputs between 0 and 1
+        self.x_dms_nds = jnp.tile(jnp.linspace(0,1,self.nnode, dtype=jnp.float64), (self.cls_data.dim,1)) # (dim,nnode)
+        
+        ## initialization of trainable parameters
         self.params = jax.random.uniform(jax.random.PRNGKey(self.key), (self.nmode, self.cls_data.dim, 
                                                 self.cls_data.var, self.nnode), dtype=jnp.double,
-                                                minval=0.9, maxval=1.1) # for classification, we sould confine the params range
+                                                minval=0.98, maxval=1.02) # for classification, we sould confine the params range
         numParam = self.nmode*self.cls_data.dim*self.cls_data.var*self.nnode
-        if interp_method == "linear" or interp_method == "nonlinear":
-            print("------------INN-------------")
-            print(f"# of training parameters: {numParam}")
+        
 
     @partial(jax.jit, static_argnames=['self']) # jit necessary
     def get_loss(self, params, x_data, u_data):
@@ -293,17 +304,19 @@ class Classification_INN(Regression_INN):
         u_pred = self.v_forward(params, self.x_dms_nds, x_data) # (ndata_train, var)
         prediction = u_pred - jax.scipy.special.logsumexp(u_pred, axis=1)[:,None] # (ndata, var = nclass)
         loss = -jnp.mean(jnp.sum(prediction * u_data, axis=1))
-        jax.debug.print("haha {}", u_pred)
         return loss, u_pred
     Grad_get_loss = jax.jit(jax.value_and_grad(get_loss, argnums=1, has_aux=True), static_argnames=['self'])
 
-
+    
     def get_acc_metrics(self, u, u_pred):
         """ Get accuracy metrics. For regression, R2 will be returned.
+            This function cannot be jitted because it uses scipy library
         --- input ---
-        u: (ndata,) integer vector that indicates class of the data
-        u_train: (ndata,) integer vector that indicates predicted class
+        u: (ndata, nclass) integer vector that indicates class of the data
+        u_train: (ndata, nclass) integer vector that indicates predicted class
         """
+        u_single = jnp.argmax(u, axis=1)
+        u_pred_single = jnp.argmax(u_pred, axis=1)
+        report = classification_report(u_single, u_pred_single, output_dict=True, zero_division=1)
         acc_metrics = "Accuracy"
-        report = classification_report(u, u_pred, output_dict=True)     
         return report["accuracy"], acc_metrics

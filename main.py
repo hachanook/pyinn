@@ -74,7 +74,7 @@ elif run_type == "classification":
     if interp_method == "linear" or interp_method == "nonlinear":
         classifier = Classification_INN(interp_method, data, config)  # HiDeNN-TD regressor class
     elif interp_method == "MLP":
-        classifier = Classification_MLP(interp_method, data, config)  # HiDeNN-TD regressor class
+        classifier = Classification_MLP(interp_method, data, config)  # HiDeNN-TD regressor class    
     classifier.train()  # Train module
 
 #     ## plot

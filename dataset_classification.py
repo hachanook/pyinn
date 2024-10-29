@@ -36,6 +36,7 @@ class Data_classification(Dataset):
         self.var = self.nclass
         self.split_ratio = config['MODEL_PARAM']['split_ratio']
         self.bool_normalize = config['MODEL_PARAM']['bool_normalize']
+        self.bool_image = config['MODEL_PARAM']['bool_image']
 
         data_file = self.data_dir + data_name + '.csv'
         try:
@@ -55,12 +56,25 @@ class Data_classification(Dataset):
         self.dim = self.x_data_org.shape[1]
         
         
-        if self.bool_normalize:    
-            self.x_data_minmax = {"min" : self.x_data_org.min(axis=0), "max" : self.x_data_org.max(axis=0)}
-            self.x_data = (self.x_data_org - self.x_data_minmax["min"]) / (self.x_data_minmax["max"] - self.x_data_minmax["min"])
+        if self.bool_normalize:
+            if self.bool_image: # when image is provided with 0~255 integer pixel values
+                self.x_data_minmax = {"min" : np.zeros(self.x_data_org.shape[1], dtype=np.int32), 
+                                      "max" : np.ones(self.x_data_org.shape[1], dtype=np.int32) * 255}
+                self.x_data = (self.x_data_org - self.x_data_minmax["min"]) / (self.x_data_minmax["max"] - self.x_data_minmax["min"])
+
+            elif self.bool_image == False: # spiral classification
+                self.x_data_minmax = {"min" : self.x_data_org.min(axis=0), "max" : self.x_data_org.max(axis=0)}
+                self.x_data = (self.x_data_org - self.x_data_minmax["min"]) / (self.x_data_minmax["max"] - self.x_data_minmax["min"])
+        
         else:
-            self.x_data_minmax = {"min" : self.x_data_org.min(axis=0), "max" : self.x_data_org.max(axis=0)}
-            self.x_data = self.x_data_org
+            if self.bool_image: # when image is provided with 0~1 floating pixel values; our MNIST dataset
+                self.x_data_minmax = {"min" : np.zeros(self.x_data_org.shape[1], dtype=np.float64), 
+                                      "max" : np.ones(self.x_data_org.shape[1], dtype=np.float64)}
+                self.x_data = self.x_data_org
+                
+            elif self.bool_image == False: # 
+                self.x_data_minmax = {"min" : self.x_data_org.min(axis=0), "max" : self.x_data_org.max(axis=0)}
+                self.x_data = self.x_data_org
             
         print('loaded ',len(self.x_data_org),'datapoints from',data_name,'dataset')
 

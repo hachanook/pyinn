@@ -1,12 +1,12 @@
 MODEL_PARAM: 
   nmode : 100
   nelem : 2
-  bool_normalize : False
+  bool_normalize : False 
+  bool_image : True
   nclass : 10
   bool_random_split : False
   split_ratio : [60000,10000]
   
-
   ## MLP
   nlayers : 3
   nneurons : 100
