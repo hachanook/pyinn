@@ -142,6 +142,7 @@ class Regression_INN:
         self.num_epochs = int(self.config['TRAIN_PARAM']['num_epochs'])
         self.batch_size = int(self.config['TRAIN_PARAM']['batch_size'])
         self.learning_rate = float(self.config['TRAIN_PARAM']['learning_rate'])
+        self.validation_period = int(self.config['TRAIN_PARAM']['validation_period'])
         
         ## Split data and create dataloader
         self.data_split()
@@ -163,20 +164,25 @@ class Regression_INN:
             start_time_epoch = time.time()    
             for batch in self.train_dataloader:
                 
-                time_batch = time.time()
+                
                 
                 x_train, u_train = jnp.array(batch[0]), jnp.array(batch[1])
 
+                # print(params.shape, x_train.shape, u_train.shape)
                 ## Optimization step (or update)
+                time_batch = time.time()
                 params, opt_state, loss_train, u_pred_train = self.update_optax(params, opt_state, x_train, u_train)
                 
                 print(f"\t update {time.time() - time_batch:.4f} seconds")
                 
+
                 acc_train, acc_metrics = self.get_acc_metrics(u_train, u_pred_train, "train")
+                # print(f"\t acc {time.time() - time_batch:.4f} seconds", acc_train, acc_metrics)
+
                 epoch_list_loss.append(loss_train)
                 epoch_list_acc.append(acc_train)
                 
-                print(f"\t acc {time.time() - time_batch:.4f} seconds")
+                # print(f"\t append {time.time() - time_batch:.4f} seconds")
 
                 
             batch_loss_train = np.mean(epoch_list_loss)
@@ -188,7 +194,7 @@ class Regression_INN:
             print(f"\tEpoch {epoch} training took {time.time() - start_time_epoch:.4f} seconds")
 
             ## Validation
-            if (epoch+1)%1 == 0:
+            if (epoch+1)%self.validation_period == 0:
                 epoch_list_loss, epoch_list_acc = [], [] 
                 if self.split_type == "TT": # when there are only train & test data
                     self.val_dataloader = self.test_dataloader # deal test data as validation data
@@ -292,7 +298,7 @@ class Classification_INN(Regression_INN):
         numParam = self.nmode*self.cls_data.dim*self.cls_data.var*self.nnode
         
 
-    @partial(jax.jit, static_argnames=['self']) # jit necessary
+    # @partial(jax.jit, static_argnames=['self']) # jit necessary
     def get_loss(self, params, x_data, u_data):
         ''' Compute Cross Entropy loss value at (m)th mode given upto (m-1)th mode solution, which is u_pred_old
         --- input ---
@@ -305,7 +311,8 @@ class Classification_INN(Regression_INN):
         prediction = u_pred - jax.scipy.special.logsumexp(u_pred, axis=1)[:,None] # (ndata, var = nclass)
         loss = -jnp.mean(jnp.sum(prediction * u_data, axis=1))
         return loss, u_pred
-    Grad_get_loss = jax.jit(jax.value_and_grad(get_loss, argnums=1, has_aux=True), static_argnames=['self'])
+    # Grad_get_loss = jax.jit(jax.value_and_grad(get_loss, argnums=1, has_aux=True), static_argnames=['self'])
+    Grad_get_loss = jax.value_and_grad(get_loss, argnums=1, has_aux=True)
 
     
     def get_acc_metrics(self, u, u_pred, type="test"):
@@ -318,13 +325,14 @@ class Classification_INN(Regression_INN):
         if type == "train":
             bool_train_acc = self.config['TRAIN_PARAM']['bool_train_acc']
             if bool_train_acc:
-                acc, acc_metrics = 0,"Accuracy"
-            else:
                 u_single = jnp.argmax(u, axis=1)
                 u_pred_single = jnp.argmax(u_pred, axis=1)
                 report = classification_report(u_single, u_pred_single, output_dict=True, zero_division=1)
                 acc = report["accuracy"]
                 acc_metrics = "Accuracy"
+            else:
+                acc, acc_metrics = 0,"Accuracy"
+                
         elif type == "val" or type == "test":
             u_single = jnp.argmax(u, axis=1)
             u_pred_single = jnp.argmax(u_pred, axis=1)

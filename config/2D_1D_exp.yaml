@@ -18,6 +18,7 @@ TRAIN_PARAM:
   num_epochs : 50
   batch_size : 50
   learning_rate : 1e-3
+  validation_period : 1
 
 PLOT:
   bool_plot: True

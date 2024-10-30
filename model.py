@@ -14,13 +14,13 @@ from functools import partial
 from typing import (Any, Callable, Iterable, List, Optional, Sequence, Tuple,
                     Union)
 from jax import lax
-from flax import linen as nn
-from flax.linen.dtypes import promote_dtype
+# from flax import linen as nn
+# from flax.linen.dtypes import promote_dtype
 from jax.scipy.interpolate import RegularGridInterpolator
 
 
 
-# @jax.jit
+@jax.jit
 def get_Ju_idata_imd_idm_ivar(x_idata_idm, x_idm_nds, u_imd_idm_ivar_nds):
     """ compute interpolation for a single mode, 1D function
     --- input ---
@@ -52,7 +52,8 @@ def get_Ju_idata(x_idata_dms, x_dms_nds, u_mds_dms_vars_nds):
     Ju_idata = jnp.sum(Ju_idata_mds, axis=0) # returns (var,)
     return Ju_idata
 
-@partial(jax.jit, static_argnames=[]) # jit necessary
+# @partial(jax.jit, static_argnames=[]) # jit necessary
+@jax.jit
 def forward_INN(params, x_dms_nds, x_idata):
     """ Prediction function
         run one forward pass on given input data
@@ -78,6 +79,7 @@ def relu(x):
     return jnp.maximum(0, x)
 
 # @partial(jax.jit, static_argnames=['self'])
+@jax.jit
 def forward_MLP(params, activation, x_idata):
     # per-example predictions
     activations = x_idata
