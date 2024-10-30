@@ -17,6 +17,7 @@ TRAIN_PARAM:
   num_epochs : 50
   batch_size : 128
   learning_rate : 1e-3
+  bool_train_acc : False
 
 PLOT:
   bool_plot: False

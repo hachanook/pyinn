@@ -130,7 +130,7 @@ class Regression_INN:
         self.train_dataloader = DataLoader(train_data, batch_size=self.batch_size, shuffle=True)
         self.test_dataloader = DataLoader(test_data, batch_size=self.batch_size, shuffle=True)
 
-    def get_acc_metrics(self, u, u_pred):
+    def get_acc_metrics(self, u, u_pred, type="test"):
         """ Get accuracy metrics. For regression, R2 will be returned.
         """
         acc_metrics = "R2"
@@ -172,11 +172,11 @@ class Regression_INN:
                 
                 print(f"\t update {time.time() - time_batch:.4f} seconds")
                 
-                acc_train, acc_metrics = self.get_acc_metrics(u_train, u_pred_train)
+                acc_train, acc_metrics = self.get_acc_metrics(u_train, u_pred_train, "train")
                 epoch_list_loss.append(loss_train)
                 epoch_list_acc.append(acc_train)
                 
-                print(f"\tB acc {time.time() - time_batch:.4f} seconds")
+                print(f"\t acc {time.time() - time_batch:.4f} seconds")
 
                 
             batch_loss_train = np.mean(epoch_list_loss)
@@ -308,15 +308,27 @@ class Classification_INN(Regression_INN):
     Grad_get_loss = jax.jit(jax.value_and_grad(get_loss, argnums=1, has_aux=True), static_argnames=['self'])
 
     
-    def get_acc_metrics(self, u, u_pred):
+    def get_acc_metrics(self, u, u_pred, type="test"):
         """ Get accuracy metrics. For regression, R2 will be returned.
             This function cannot be jitted because it uses scipy library
         --- input ---
         u: (ndata, nclass) integer vector that indicates class of the data
         u_train: (ndata, nclass) integer vector that indicates predicted class
         """
-        u_single = jnp.argmax(u, axis=1)
-        u_pred_single = jnp.argmax(u_pred, axis=1)
-        report = classification_report(u_single, u_pred_single, output_dict=True, zero_division=1)
-        acc_metrics = "Accuracy"
-        return report["accuracy"], acc_metrics
+        if type == "train":
+            bool_train_acc = self.config['TRAIN_PARAM']['bool_train_acc']
+            if bool_train_acc:
+                acc, acc_metrics = 0,"Accuracy"
+            else:
+                u_single = jnp.argmax(u, axis=1)
+                u_pred_single = jnp.argmax(u_pred, axis=1)
+                report = classification_report(u_single, u_pred_single, output_dict=True, zero_division=1)
+                acc = report["accuracy"]
+                acc_metrics = "Accuracy"
+        elif type == "val" or type == "test":
+            u_single = jnp.argmax(u, axis=1)
+            u_pred_single = jnp.argmax(u_pred, axis=1)
+            report = classification_report(u_single, u_pred_single, output_dict=True, zero_division=1)
+            acc = report["accuracy"]
+            acc_metrics = "Accuracy"
+        return acc, acc_metrics
