@@ -35,7 +35,6 @@ run_type = settings['PROBLEM']["run_type"]
 interp_method = settings['PROBLEM']["interp_method"]
 data_name = settings['DATA']["data_name"]
 
-
 with open(f'./config/{data_name}.yaml','r') as file_dataConfig:
     config = yaml.safe_load(file_dataConfig)
 
@@ -69,6 +68,7 @@ elif run_type == "classification":
 
     ## data import
     data = Data_classification(data_name, config)
+    
     
     ## train
     if interp_method == "linear" or interp_method == "nonlinear":

@@ -1,0 +1,27 @@
+MODEL_PARAM: 
+  nmode : 10
+  nelem : 20
+  input_col : [0,1]
+  output_col : [2]
+  bool_normalize : True # whether we normalize the input data or not
+  bool_image : False # this is not an image data
+  nclass : 2
+  bool_random_split : True
+  split_ratio : [0.7,0.15,0.15]
+
+  ## MLP
+  nlayers : 3
+  nneurons : 20
+  # activation : "relu"
+  activation : "sigmoid"
+
+TRAIN_PARAM:
+  num_epochs : 50
+  batch_size : 10000
+  learning_rate : 2e-4
+  bool_train_acc : True # measure train accuracy
+  validation_period : 1
+
+PLOT:
+  bool_plot: False
+  

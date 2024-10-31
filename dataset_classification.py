@@ -21,10 +21,9 @@ def one_hot(labels, num_classes):
     one_hot = np.zeros((len(labels), num_classes), dtype=int)
     
     # Set the appropriate elements to 1 using numpy indexing
-    one_hot[np.arange(len(labels)), labels] = 1
+    one_hot[np.arange(len(labels)), np.squeeze(labels)] = 1
     
     return one_hot
-
 
 class Data_classification(Dataset):
     def __init__(self, data_name: str, config) -> None:
@@ -116,4 +115,32 @@ def data_generation_classification(data_name: str, config):
         # Convert to DataFrame and save as CSV
         combined_df = pd.DataFrame(combined_data, columns=columns)
         combined_df.to_csv(os.path.join(data_dir, f'{data_name}.csv'), index=False, header=True)
+
+    elif data_name == 'spiral':
+        halfSamples = 5000 # number of data points in each class, 5,000 -> total 10,000 data
+        noise = 0
+        N_SAMPLES = halfSamples * 2
+        def genSpiral(deltaT, label, halfSamples, noise):
+            points = np.zeros((halfSamples, 3), dtype=np.double)
+            for i in range(halfSamples):
+                r = i / halfSamples * 5 # radius
+                # t = 1.75 * i / halfSamples * 2 * np.pi + deltaT # theta
+                t = 3.43 * i / halfSamples * 2 * np.pi + deltaT # theta
+                x = r * np.sin(t) + np.random.uniform(-0.1,0.1) * noise
+                y = r * np.cos(t) + np.random.uniform(-0.1,0.1) * noise
+                points[i] = np.array([x, y, label])
+            return points
+
+        points1 =genSpiral(0, 1, halfSamples, noise) # Positive examples
+        points2 =genSpiral(np.pi, 0, halfSamples, noise) # Negative examples
+        points = np.concatenate((points1, points2), axis=0)
+        # shuffle
+        indices = np.arange(N_SAMPLES)
+        np.random.shuffle(indices)
+        points = points[indices,:]
+        df = pd.DataFrame(points, columns=['x1', 'x2', 'u'])
+
+        # Save the DataFrame to a CSV file
+        df.to_csv(os.path.join(data_dir, f'{data_name}.csv'), index=False)
+
         

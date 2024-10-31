@@ -47,6 +47,7 @@ if importlib.util.find_spec("GPUtil") is not None: # for linux & GPU
 
 def get_linspace(xmin, xmax, nnode):
     return jnp.linspace(xmin,xmax,nnode, dtype=jnp.float64)
+v_get_linspace = jax.vmap(get_linspace, in_axes=(0,0,None))
 
 class Regression_INN:
     def __init__(self, interp_method, cls_data, config):
@@ -62,16 +63,18 @@ class Regression_INN:
         self.nmode = int(config['MODEL_PARAM']['nmode'])
         self.nelem = int(config['MODEL_PARAM']['nelem'])
         self.nnode = self.nelem+1
+        
 
         ## initialization of trainable parameters
         if cls_data.bool_normalize: # when the data is normalized
             self.x_dms_nds = jnp.tile(jnp.linspace(0,1,self.nnode, dtype=jnp.float64), (self.cls_data.dim,1)) # (dim,nnode)
         else: # when the data is not normalized
-            self.x_dms_nds = jax.vmap(get_linspace, in_axes=(0,0,None))(cls_data.x_data_minmax["min"], cls_data.x_data_minmax["max"], self.nnode)
-
+            self.x_dms_nds = v_get_linspace(cls_data.x_data_minmax["min"], cls_data.x_data_minmax["max"], self.nnode)
+        
         self.params = jax.random.uniform(jax.random.PRNGKey(self.key), (self.nmode, self.cls_data.dim, 
                                                 self.cls_data.var, self.nnode), dtype=jnp.double)       
         numParam = self.nmode*self.cls_data.dim*self.cls_data.var*self.nnode
+        
         if interp_method == "linear" or interp_method == "nonlinear":
             print("------------INN-------------")
             print(f"# of training parameters: {numParam}")
@@ -91,7 +94,7 @@ class Regression_INN:
     
     Grad_get_loss = jax.jit(jax.value_and_grad(get_loss, argnums=1, has_aux=True), static_argnames=['self'])
     
-    @partial(jax.jit, static_argnames=['self']) # This will slower the function
+    @partial(jax.jit, static_argnames=['self']) 
     def update_optax(self, params, opt_state, x_data, u_data):
         ((loss, u_pred), grads) = self.Grad_get_loss(params, x_data, u_data)
         updates, opt_state = self.optimizer.update(grads, opt_state)
@@ -165,23 +168,20 @@ class Regression_INN:
             for batch in self.train_dataloader:
                 
                 
-                
+                # time_batch = time.time()
                 x_train, u_train = jnp.array(batch[0]), jnp.array(batch[1])
+                # print(f"\t data transfer {time.time() - time_batch:.4f} seconds")
 
-                # print(params.shape, x_train.shape, u_train.shape)
                 ## Optimization step (or update)
-                time_batch = time.time()
+                # time_batch = time.time()
                 params, opt_state, loss_train, u_pred_train = self.update_optax(params, opt_state, x_train, u_train)
-                
-                print(f"\t update {time.time() - time_batch:.4f} seconds")
+                # print(f"\t update {time.time() - time_batch:.4f} seconds")
                 
 
+                # time_batch = time.time()
                 acc_train, acc_metrics = self.get_acc_metrics(u_train, u_pred_train, "train")
-                # print(f"\t acc {time.time() - time_batch:.4f} seconds", acc_train, acc_metrics)
-
                 epoch_list_loss.append(loss_train)
                 epoch_list_acc.append(acc_train)
-                
                 # print(f"\t append {time.time() - time_batch:.4f} seconds")
 
                 
@@ -189,9 +189,12 @@ class Regression_INN:
             batch_acc_train = np.mean(epoch_list_acc)
                 
             print(f"Epoch {epoch}")
-            print(f"\tTraining loss: {batch_loss_train:.4e}")
-            print(f"\tTraining {acc_metrics}: {batch_acc_train:.4f}")
-            print(f"\tEpoch {epoch} training took {time.time() - start_time_epoch:.4f} seconds")
+            if self.config['TRAIN_PARAM']['bool_train_acc']:
+                print(f"\tTraining loss: {batch_loss_train:.4e}")
+                print(f"\tTraining {acc_metrics}: {batch_acc_train:.4f}")
+                print(f"\tEpoch {epoch} training took {time.time() - start_time_epoch:.4f} seconds")
+            else:
+                pass
 
             ## Validation
             if (epoch+1)%self.validation_period == 0:
@@ -297,8 +300,9 @@ class Classification_INN(Regression_INN):
                                                 minval=0.98, maxval=1.02) # for classification, we sould confine the params range
         numParam = self.nmode*self.cls_data.dim*self.cls_data.var*self.nnode
         
+        
 
-    # @partial(jax.jit, static_argnames=['self']) # jit necessary
+    @partial(jax.jit, static_argnames=['self']) # jit necessary
     def get_loss(self, params, x_data, u_data):
         ''' Compute Cross Entropy loss value at (m)th mode given upto (m-1)th mode solution, which is u_pred_old
         --- input ---
@@ -311,8 +315,8 @@ class Classification_INN(Regression_INN):
         prediction = u_pred - jax.scipy.special.logsumexp(u_pred, axis=1)[:,None] # (ndata, var = nclass)
         loss = -jnp.mean(jnp.sum(prediction * u_data, axis=1))
         return loss, u_pred
-    # Grad_get_loss = jax.jit(jax.value_and_grad(get_loss, argnums=1, has_aux=True), static_argnames=['self'])
-    Grad_get_loss = jax.value_and_grad(get_loss, argnums=1, has_aux=True)
+    Grad_get_loss = jax.jit(jax.value_and_grad(get_loss, argnums=1, has_aux=True), static_argnames=['self'])
+    # Grad_get_loss = jax.value_and_grad(get_loss, argnums=1, has_aux=True)
 
     
     def get_acc_metrics(self, u, u_pred, type="test"):

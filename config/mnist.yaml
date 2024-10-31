@@ -1,12 +1,12 @@
 MODEL_PARAM: 
-  nmode : 100
-  nelem : 2
+  nmode : 30
+  nelem : 1
   bool_normalize : False 
   bool_image : True
   nclass : 10
   bool_random_split : False
   split_ratio : [60000,10000]
-  
+
   ## MLP
   nlayers : 3
   nneurons : 100
@@ -14,9 +14,9 @@ MODEL_PARAM:
   activation : "sigmoid"
 
 TRAIN_PARAM:
-  num_epochs : 50
+  num_epochs : 20
   batch_size : 128
-  learning_rate : 1e-3
+  learning_rate : 2e-4
   bool_train_acc : False
   validation_period : 5
 

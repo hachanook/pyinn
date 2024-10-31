@@ -13,9 +13,14 @@ def plot_regression(model, cls_data, config):
     plot_in_axis = config['PLOT']['plot_in_axis']
     plot_out_axis = config['PLOT']['plot_out_axis']
 
-    if bool_plot and len(plot_in_axis)==2 and  cls_data.bool_normalize == False:
-        # we will plot the error only when there is no normalization on the original data.
-        plot_2D_1D(model, cls_data, plot_in_axis, plot_out_axis)
+    if bool_plot:
+        if not os.path.exists('plots'):
+            os.makedirs('plots')
+        
+        if len(plot_in_axis)==2 and  cls_data.bool_normalize == False:
+        
+            # we will plot the error only when there is no normalization on the original data.
+            plot_2D_1D(model, cls_data, plot_in_axis, plot_out_axis)
     else:
         print("\nPlotting deactivated\n")
         import sys

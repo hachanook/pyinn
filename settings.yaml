@@ -1,12 +1,12 @@
 GPU: 
-  gpu_idx: 0
+  gpu_idx: 6
 
 PROBLEM:
   # run_type: "regression" 
   run_type: "classification" 
 
   interp_method: "linear" # INN
-  # interp_method: "nonlinear" # INN
+  # interp_method: "nonlinear" # INN; to be updated
   # interp_method: "MLP"
 
 DATA:
@@ -21,8 +21,10 @@ DATA:
   # data_name : 'IGAMapping2D' # for IGA inverse mapping; multi-CAD-patch C-IGA paper
 
   ## ----------- classification data -------------
-  data_name : 'mnist'
+  data_name : 'spiral'
+  # data_name : 'mnist'
   # data_name : 'fashion_mnist'
+
 
 
 

@@ -3,8 +3,8 @@ MODEL_PARAM:
   nelem : 10
   input_col : [0]
   output_col : [1,2]
-  bool_normalize: True
-  bool_random_split : True
+  bool_normalize: True # whether we normalize the input data or not
+  bool_random_split : True # whether we randomly split the data or not
   data_size: 10_000
   split_ratio: [0.7,0.15,0.15]
 
@@ -18,6 +18,7 @@ TRAIN_PARAM:
   num_epochs : 50
   batch_size : 50
   learning_rate : 1e-3
+  bool_train_acc : True
   validation_period : 1
 
 PLOT:
