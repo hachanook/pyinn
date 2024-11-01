@@ -16,12 +16,12 @@ MODEL_PARAM:
 
 TRAIN_PARAM:
   num_epochs : 50
-  batch_size : 50
+  batch_size : 128
   learning_rate : 1e-3
   bool_train_acc : True
   validation_period : 1
 
 PLOT:
-  bool_plot: False
+  bool_plot: True
   plot_in_axis: [0] # plot input axis
   plot_out_axis: [0] # plot output axis

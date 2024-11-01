@@ -136,9 +136,20 @@ class Regression_INN:
     def get_acc_metrics(self, u, u_pred, type="test"):
         """ Get accuracy metrics. For regression, R2 will be returned.
         """
-        acc_metrics = "R2"
-        r2 = r2_score(u, u_pred)
-        return r2, acc_metrics
+        
+
+        if type == "train":
+            bool_train_acc = self.config['TRAIN_PARAM']['bool_train_acc']
+            if bool_train_acc:
+                acc_metrics = "R2"
+                acc = r2_score(u, u_pred)
+            else:
+                acc, acc_metrics = 0,"R2"
+                
+        elif type == "val" or type == "test":
+            acc_metrics = "R2"
+            acc = r2_score(u, u_pred)
+        return acc, acc_metrics
                 
 
     def train(self):
@@ -188,13 +199,13 @@ class Regression_INN:
             batch_loss_train = np.mean(epoch_list_loss)
             batch_acc_train = np.mean(epoch_list_acc)
                 
-            print(f"Epoch {epoch}")
+            print(f"Epoch {epoch+1}")
+            print(f"\tTraining loss: {batch_loss_train:.4e}")
             if self.config['TRAIN_PARAM']['bool_train_acc']:
-                print(f"\tTraining loss: {batch_loss_train:.4e}")
                 print(f"\tTraining {acc_metrics}: {batch_acc_train:.4f}")
-                print(f"\tEpoch {epoch} training took {time.time() - start_time_epoch:.4f} seconds")
             else:
                 pass
+            print(f"\tEpoch {epoch} training took {time.time() - start_time_epoch:.4f} seconds")
 
             ## Validation
             if (epoch+1)%self.validation_period == 0:

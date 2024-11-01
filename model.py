@@ -78,8 +78,7 @@ vv_forward_INN = jax.vmap(v_forward_INN, in_axes=(None,None, 0)) # returns (ndat
 def relu(x):
     return jnp.maximum(0, x)
 
-# @partial(jax.jit, static_argnames=['self'])
-@jax.jit
+@partial(jax.jit, static_argnames=['activation'])
 def forward_MLP(params, activation, x_idata):
     # per-example predictions
     activations = x_idata

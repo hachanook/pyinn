@@ -161,11 +161,9 @@ def data_generation_regression(data_name: str, data_size: int, input_col: Sequen
 
 
 
-
-
 ## define functions
 def fun_1D_1D_exp(x_data_org):
-    u_data_org =  jnp.sin(2*jnp.pi*x_data_org)
+    u_data_org =  jnp.exp(4*x_data_org**2 - 2*x_data_org - 1)
     return u_data_org.reshape(1,)
 v_fun_1D_1D_exp = jax.vmap(fun_1D_1D_exp, in_axes = (0)) # output: (ndata, )
 vv_fun_1D_1D_exp = jax.vmap(v_fun_1D_1D_exp, in_axes = (0)) # output: (ndata, ndata)
@@ -178,8 +176,8 @@ v_fun_1D_1D_sine = jax.vmap(fun_1D_1D_sine, in_axes = (0)) # output: (ndata, )
 vv_fun_1D_1D_sine = jax.vmap(v_fun_1D_1D_sine, in_axes = (0)) # output: (ndata, ndata)
 
 def fun_1D_2D_sine_exp(x_data_org):
-    u1 = jnp.sin(jnp.pi* x_data_org)
-    u2 = jnp.exp(x_data_org**2 - x_data_org -1)
+    u1 = jnp.sin(2*jnp.pi*x_data_org)
+    u2 = jnp.exp(4*x_data_org**2 - 2*x_data_org - 1)
     return jnp.array([u1,u2], dtype=jnp.double).reshape(-1)
 v_fun_1D_2D_sine_exp = jax.vmap(fun_1D_2D_sine_exp, in_axes = (0)) # output: (ndata, )
 vv_fun_1D_2D_sine_exp = jax.vmap(v_fun_1D_2D_sine_exp, in_axes = (0)) # output: (ndata, ndata)

@@ -14,17 +14,110 @@ def plot_regression(model, cls_data, config):
     plot_out_axis = config['PLOT']['plot_out_axis']
 
     if bool_plot:
+
+        # make a directory if there isn't any
         if not os.path.exists('plots'):
             os.makedirs('plots')
         
         if len(plot_in_axis)==2 and  cls_data.bool_normalize == False:
-        
             # we will plot the error only when there is no normalization on the original data.
             plot_2D_1D(model, cls_data, plot_in_axis, plot_out_axis)
+        
+        elif len(plot_in_axis)==1 and len(plot_out_axis)==1 and  cls_data.bool_normalize == False:
+            # we will plot the error only when there is no normalization on the original data.
+            plot_1D_1D(model, cls_data, plot_in_axis, plot_out_axis)
+
+        elif len(plot_in_axis)==1 and len(plot_out_axis)==2 and  cls_data.bool_normalize == False:
+            # we will plot the error only when there is no normalization on the original data.
+            plot_1D_2D(model, cls_data, plot_in_axis, plot_out_axis)
     else:
         print("\nPlotting deactivated\n")
         import sys
         sys.exit()
+
+
+def plot_1D_1D(model, cls_data, plot_in_axis, plot_out_axis):
+    """ This function plots 2D input and 1D output data. By default, this function should work on original data only
+    plot_in_axis: [axis1, axis2]
+    plot_out_axis: [axis1]
+    """
+    ## create mesh and data
+    ### in normalized space, create prediction
+    xmin, xmax = cls_data.x_data_minmax["min"][plot_in_axis[0]], cls_data.x_data_minmax["max"][plot_in_axis[0]]
+    
+    x_nds = jnp.linspace(xmin, xmax, 101, dtype=jnp.float64).reshape(-1,1) # (101,1)
+    if model.interp_method == "linear" or model.interp_method == "nonlinear":
+        U_pred = model.v_forward(model.params, model.x_dms_nds, x_nds) # (101,L)
+    elif model.interp_method == "MLP":
+        U_pred = model.v_forward(model.params, model.activation, x_nds) # (101,L)
+    
+    U_exact = globals()["v_fun_"+cls_data.data_name](x_nds) # (101,L)    
+
+    fig = plt.figure(figsize=(6,5))
+    gs = gridspec.GridSpec(1, 1)
+    ax1 = fig.add_subplot(gs[0])
+    # plt.subplots_adjust(wspace=0.4)  # Increase the width space between subplots
+
+    ax1.plot(x_nds, U_exact, '-', color='k', linewidth = 4,  label='Training data')
+    ax1.plot(x_nds, U_pred, '-', color='g', linewidth = 4,  label='INN regression')
+    ax1.set_xlabel(fr"$x_{str(plot_in_axis[0]+1)}$", fontsize=16)
+    ax1.set_ylabel(fr"$u_{str(plot_out_axis[0]+1)}$", fontsize=16)
+    ax1.tick_params(axis='both', labelsize=12)
+    # ax1.set_title('INN prediction', fontsize=16)
+    ax1.legend(shadow=True, borderpad=1, fontsize=14, loc='best')
+    plt.tight_layout()
+
+    parent_dir = os.path.abspath(os.getcwd())
+    path_figure = os.path.join(parent_dir, 'plots')
+    fig.savefig(os.path.join(path_figure, cls_data.data_name + "_" + model.interp_method) , dpi=300)
+    plt.close()
+
+def plot_1D_2D(model, cls_data, plot_in_axis, plot_out_axis, color_map="viridis", vmin=0, vmax=1, marker_size=20):
+    """ This function plots 2D input and 1D output data. By default, this function should work on original data only
+    plot_in_axis: [axis1, axis2]
+    plot_out_axis: [axis1]
+    """
+    ## create mesh and data
+    ### in normalized space, create prediction
+    xmin, xmax = cls_data.x_data_minmax["min"][plot_in_axis[0]], cls_data.x_data_minmax["max"][plot_in_axis[0]]
+    
+    x_nds = jnp.linspace(xmin, xmax, 101, dtype=jnp.float64).reshape(-1,1) # (101,1)
+    if model.interp_method == "linear" or model.interp_method == "nonlinear":
+        U_pred = model.v_forward(model.params, model.x_dms_nds, x_nds) # (101,L)
+    elif model.interp_method == "MLP":
+        U_pred = model.v_forward(model.params, model.activation, x_nds) # (101,L)
+    
+    U_exact = globals()["v_fun_"+cls_data.data_name](x_nds) # (101,L)    
+
+    fig = plt.figure(figsize=(10,5))
+    gs = gridspec.GridSpec(1, 2)
+    ax1 = fig.add_subplot(gs[0])
+    ax2 = fig.add_subplot(gs[1])
+    plt.subplots_adjust(wspace=0.4)  # Increase the width space between subplots
+
+    ax1.plot(x_nds, U_exact[:,[plot_out_axis[0]]], '-', color='k', linewidth = 4,  label='Training data')
+    ax1.plot(x_nds, U_pred[:,[plot_out_axis[0]]], '-', color='g', linewidth = 4,  label='INN regression')
+    ax1.set_xlabel(fr"$x_{str(plot_in_axis[0]+1)}$", fontsize=16)
+    ax1.set_ylabel(fr"$u_{str(plot_out_axis[0]+1)}$", fontsize=16)
+    ax1.tick_params(axis='both', labelsize=12)
+    # ax1.set_title('INN prediction', fontsize=16)
+    ax1.legend(shadow=True, borderpad=1, fontsize=14, loc='best')
+    
+    ax2.plot(x_nds, U_exact[:,[plot_out_axis[1]]], '-', color='k', linewidth = 4,  label='Training data')
+    ax2.plot(x_nds, U_pred[:,[plot_out_axis[1]]], '-', color='g', linewidth = 4,  label='INN regression')
+    ax2.set_xlabel(fr"$x_{str(plot_in_axis[0]+1)}$", fontsize=16)
+    ax2.set_ylabel(fr"$u_{str(plot_out_axis[1]+1)}$", fontsize=16)
+    ax2.tick_params(axis='both', labelsize=12)
+    # ax1.set_title('INN prediction', fontsize=16)
+    ax2.legend(shadow=True, borderpad=1, fontsize=14, loc='best')
+    plt.tight_layout()
+
+
+    parent_dir = os.path.abspath(os.getcwd())
+    path_figure = os.path.join(parent_dir, 'plots')
+    fig.savefig(os.path.join(path_figure, cls_data.data_name + "_" + model.interp_method) , dpi=300)
+    plt.close()
+
 
 def plot_2D_1D(model, cls_data, plot_in_axis, plot_out_axis, color_map="viridis", vmin=0, vmax=1, marker_size=20):
     """ This function plots 2D input and 1D output data. By default, this function should work on original data only
