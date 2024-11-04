@@ -17,6 +17,7 @@ from jax import lax
 # from flax import linen as nn
 # from flax.linen.dtypes import promote_dtype
 from jax.scipy.interpolate import RegularGridInterpolator
+from Interpolator import RegularGridInterpolator_inhouse
 
 
 
@@ -30,7 +31,8 @@ def get_Ju_idata_imd_idm_ivar(x_idata_idm, x_idm_nds, u_imd_idm_ivar_nds):
     --- output ---
     Ju_idata_imd_idm_ivar: scalar
     """
-    interpolate = jax.scipy.interpolate.RegularGridInterpolator((x_idm_nds,), u_imd_idm_ivar_nds, method='linear') # reformat x_nds
+    # interpolate = RegularGridInterpolator((x_idm_nds,), u_imd_idm_ivar_nds, method='linear') # reformat x_nds
+    interpolate = RegularGridInterpolator_inhouse((x_idm_nds,), u_imd_idm_ivar_nds) # reformat x_nds
     Ju_idata_imd_idm_ivar = interpolate(x_idata_idm.reshape(1))[0]
     return Ju_idata_imd_idm_ivar
 
