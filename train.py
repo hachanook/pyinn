@@ -63,6 +63,8 @@ class Regression_INN:
         self.nmode = int(config['MODEL_PARAM']['nmode'])
         self.nelem = int(config['MODEL_PARAM']['nelem'])
         self.nnode = self.nelem+1
+        self.num_epochs = int(self.config['TRAIN_PARAM']['num_epochs_INN'])
+        
         
 
         ## initialization of trainable parameters
@@ -150,10 +152,16 @@ class Regression_INN:
             acc_metrics = "R2"
             acc = r2_score(u, u_pred)
         return acc, acc_metrics
-                
+
+    def inference(self, x_test):
+            u_pred = self.forward(self.params, self.x_dms_nds, x_test[0]) # (ndata_train, var)
+            u_pred = self.forward(self.params, self.x_dms_nds, x_test[0]) # (ndata_train, var)
+            u_pred = self.forward(self.params, self.x_dms_nds, x_test[0]) # (ndata_train, var)
+            start_time_inference = time.time()
+            u_pred = self.forward(self.params, self.x_dms_nds, x_test[0]) # (ndata_train, var)
+            print(f"\tInference time: {time.time() - start_time_inference:.4f} seconds")       
 
     def train(self):
-        self.num_epochs = int(self.config['TRAIN_PARAM']['num_epochs'])
         self.batch_size = int(self.config['TRAIN_PARAM']['batch_size'])
         self.learning_rate = float(self.config['TRAIN_PARAM']['learning_rate'])
         self.validation_period = int(self.config['TRAIN_PARAM']['validation_period'])
@@ -250,6 +258,9 @@ class Regression_INN:
         print(f"\tTest {acc_metrics}: {batch_acc_test:.4f}")
         print(f"\tTest took {time.time() - start_time_test:.4f} seconds")
 
+        ## Inference
+        self.inference(x_test)
+        
 
 
 class Regression_MLP(Regression_INN):
@@ -262,6 +273,7 @@ class Regression_MLP(Regression_INN):
         self.nlayers = config['MODEL_PARAM']["nlayers"]
         self.nneurons = config['MODEL_PARAM']["nneurons"]
         self.activation = config['MODEL_PARAM']["activation"]
+        self.num_epochs = int(self.config['TRAIN_PARAM']['num_epochs_MLP'])
 
         ### initialization of trainable parameters
         layer_sizes = [cls_data.dim] + self.nlayers * [self.nneurons] + [cls_data.var]
@@ -296,6 +308,14 @@ class Regression_MLP(Regression_INN):
         loss = ((u_pred- u_data)**2).mean()
         return loss, u_pred
     Grad_get_loss = jax.jit(jax.value_and_grad(get_loss, argnums=1, has_aux=True), static_argnames=['self'])
+
+    def inference(self, x_test):
+        u_pred = self.forward(self.params, self.activation, x_test[0]) # (ndata_train, var)
+        u_pred = self.forward(self.params, self.activation, x_test[0]) # (ndata_train, var)
+        u_pred = self.forward(self.params, self.activation, x_test[0]) # (ndata_train, var)
+        start_time_inference = time.time()
+        u_pred = self.forward(self.params, self.activation, x_test[0]) # (ndata_train, var)
+        print(f"\tInference time: {time.time() - start_time_inference:.4f} seconds")    
     
 
 class Classification_INN(Regression_INN):
@@ -330,6 +350,54 @@ class Classification_INN(Regression_INN):
     # Grad_get_loss = jax.value_and_grad(get_loss, argnums=1, has_aux=True)
 
     
+    def get_acc_metrics(self, u, u_pred, type="test"):
+        """ Get accuracy metrics. For regression, R2 will be returned.
+            This function cannot be jitted because it uses scipy library
+        --- input ---
+        u: (ndata, nclass) integer vector that indicates class of the data
+        u_train: (ndata, nclass) integer vector that indicates predicted class
+        """
+        if type == "train":
+            bool_train_acc = self.config['TRAIN_PARAM']['bool_train_acc']
+            if bool_train_acc:
+                u_single = jnp.argmax(u, axis=1)
+                u_pred_single = jnp.argmax(u_pred, axis=1)
+                report = classification_report(u_single, u_pred_single, output_dict=True, zero_division=1)
+                acc = report["accuracy"]
+                acc_metrics = "Accuracy"
+            else:
+                acc, acc_metrics = 0,"Accuracy"
+                
+        elif type == "val" or type == "test":
+            u_single = jnp.argmax(u, axis=1)
+            u_pred_single = jnp.argmax(u_pred, axis=1)
+            report = classification_report(u_single, u_pred_single, output_dict=True, zero_division=1)
+            acc = report["accuracy"]
+            acc_metrics = "Accuracy"
+        return acc, acc_metrics
+
+
+class Classification_MLP(Regression_MLP):
+
+    def __init__(self, interp_method, cls_data, config):
+        super().__init__(interp_method, cls_data, config) # prob being dropout probability
+
+    @partial(jax.jit, static_argnames=['self']) # jit necessary
+    def get_loss(self, params, x_data, u_data):
+        ''' Compute Cross Entropy loss value at (m)th mode given upto (m-1)th mode solution, which is u_pred_old
+        --- input ---
+        u_p_modes: (nmode, dim, nnode, var)
+        u_data: exact u from the data. (ndata_train, var)
+        shape_vals_data, patch_nodes_data: defined in "get_HiDeNN_shape_fun"
+        '''
+        
+        u_pred = self.v_forward(params, self.activation, x_data) # (ndata_train, var)
+        prediction = u_pred - jax.scipy.special.logsumexp(u_pred, axis=1)[:,None] # (ndata, var = nclass)
+        loss = -jnp.mean(jnp.sum(prediction * u_data, axis=1))
+        return loss, u_pred
+    Grad_get_loss = jax.jit(jax.value_and_grad(get_loss, argnums=1, has_aux=True), static_argnames=['self'])
+    # Grad_get_loss = jax.value_and_grad(get_loss, argnums=1, has_aux=True)
+
     def get_acc_metrics(self, u, u_pred, type="test"):
         """ Get accuracy metrics. For regression, R2 will be returned.
             This function cannot be jitted because it uses scipy library

@@ -14,7 +14,8 @@ MODEL_PARAM:
   activation : "sigmoid"
 
 TRAIN_PARAM:
-  num_epochs : 20
+  num_epochs_INN : 20
+  num_epochs_MLP : 40
   batch_size : 128
   learning_rate : 2e-4
   bool_train_acc : False

@@ -11,17 +11,20 @@ MODEL_PARAM:
 
   ## MLP
   nlayers : 3
-  nneurons : 20
+  nneurons : 100
   # activation : "relu"
   activation : "sigmoid"
 
 TRAIN_PARAM:
-  num_epochs : 50
-  batch_size : 10000
-  learning_rate : 2e-4
-  bool_train_acc : True # measure train accuracy
-  validation_period : 1
+  num_epochs_INN : 100
+  num_epochs_MLP : 1000
+  batch_size : 128
+  learning_rate : 1e-2
+  bool_train_acc : False # measure train accuracy
+  validation_period : 100
 
 PLOT:
-  bool_plot: False
+  bool_plot: True
+  plot_in_axis: [0,1] # plot input axis
+  plot_out_axis: [2] # plot output axis
   

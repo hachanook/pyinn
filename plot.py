@@ -30,6 +30,29 @@ def plot_regression(model, cls_data, config):
         elif len(plot_in_axis)==1 and len(plot_out_axis)==2 and  cls_data.bool_normalize == False:
             # we will plot the error only when there is no normalization on the original data.
             plot_1D_2D(model, cls_data, plot_in_axis, plot_out_axis)
+
+        elif len(plot_in_axis)==2 and len(plot_out_axis)==1 and  cls_data.bool_normalize == False:
+            # for spiral classification
+            plot_2D_classification(model, cls_data, plot_in_axis, plot_out_axis)
+    else:
+        print("\nPlotting deactivated\n")
+        import sys
+        sys.exit()
+
+def plot_classification(model, cls_data, config):
+    bool_plot = config['PLOT']['bool_plot']
+    plot_in_axis = config['PLOT']['plot_in_axis']
+    plot_out_axis = config['PLOT']['plot_out_axis']
+
+    if bool_plot:
+
+        # make a directory if there isn't any
+        if not os.path.exists('plots'):
+            os.makedirs('plots')
+        
+        if len(plot_in_axis)==2 and len(plot_out_axis)==1:
+            # for spiral classification
+            plot_2D_classification(model, cls_data, plot_in_axis, plot_out_axis)
     else:
         print("\nPlotting deactivated\n")
         import sys
@@ -58,8 +81,8 @@ def plot_1D_1D(model, cls_data, plot_in_axis, plot_out_axis):
     ax1 = fig.add_subplot(gs[0])
     # plt.subplots_adjust(wspace=0.4)  # Increase the width space between subplots
 
-    ax1.plot(x_nds, U_exact, '-', color='k', linewidth = 4,  label='Training data')
-    ax1.plot(x_nds, U_pred, '-', color='g', linewidth = 4,  label='INN regression')
+    ax1.plot(x_nds, U_exact, '-', color='k', linewidth = 4,  label='Original function')
+    ax1.plot(x_nds, U_pred, '-', color='g', linewidth = 4,  label='Prediction')
     ax1.set_xlabel(fr"$x_{str(plot_in_axis[0]+1)}$", fontsize=16)
     ax1.set_ylabel(fr"$u_{str(plot_out_axis[0]+1)}$", fontsize=16)
     ax1.tick_params(axis='both', labelsize=12)
@@ -95,16 +118,16 @@ def plot_1D_2D(model, cls_data, plot_in_axis, plot_out_axis, color_map="viridis"
     ax2 = fig.add_subplot(gs[1])
     plt.subplots_adjust(wspace=0.4)  # Increase the width space between subplots
 
-    ax1.plot(x_nds, U_exact[:,[plot_out_axis[0]]], '-', color='k', linewidth = 4,  label='Training data')
-    ax1.plot(x_nds, U_pred[:,[plot_out_axis[0]]], '-', color='g', linewidth = 4,  label='INN regression')
+    ax1.plot(x_nds, U_exact[:,[plot_out_axis[0]]], '-', color='k', linewidth = 4,  label='Original function')
+    ax1.plot(x_nds, U_pred[:,[plot_out_axis[0]]], '-', color='g', linewidth = 4,  label='Prediction')
     ax1.set_xlabel(fr"$x_{str(plot_in_axis[0]+1)}$", fontsize=16)
     ax1.set_ylabel(fr"$u_{str(plot_out_axis[0]+1)}$", fontsize=16)
     ax1.tick_params(axis='both', labelsize=12)
     # ax1.set_title('INN prediction', fontsize=16)
     ax1.legend(shadow=True, borderpad=1, fontsize=14, loc='best')
     
-    ax2.plot(x_nds, U_exact[:,[plot_out_axis[1]]], '-', color='k', linewidth = 4,  label='Training data')
-    ax2.plot(x_nds, U_pred[:,[plot_out_axis[1]]], '-', color='g', linewidth = 4,  label='INN regression')
+    ax2.plot(x_nds, U_exact[:,[plot_out_axis[1]]], '-', color='k', linewidth = 4,  label='Original function')
+    ax2.plot(x_nds, U_pred[:,[plot_out_axis[1]]], '-', color='g', linewidth = 4,  label='Prediction')
     ax2.set_xlabel(fr"$x_{str(plot_in_axis[0]+1)}$", fontsize=16)
     ax2.set_ylabel(fr"$u_{str(plot_out_axis[1]+1)}$", fontsize=16)
     ax2.tick_params(axis='both', labelsize=12)
@@ -156,7 +179,7 @@ def plot_2D_1D(model, cls_data, plot_in_axis, plot_out_axis, color_map="viridis"
     cbar1 = fig.colorbar(surf1, shrink=0.8, aspect=20, pad=0.02)
     cbar1.set_label(f'u', fontsize=14)
     cbar1.ax.tick_params(labelsize=12)
-    ax1.set_title('INN prediction', fontsize=16)
+    ax1.set_title('Prediction', fontsize=16)
 
     surf2 = ax2.pcolormesh(X, Y, U_exact[:,:,plot_out_axis[0]], cmap=color_map, vmin=umin, vmax=umax)
     ax2.set_xlabel(f"x_{str(plot_in_axis[0]+1)}", fontsize=16)
@@ -173,10 +196,59 @@ def plot_2D_1D(model, cls_data, plot_in_axis, plot_out_axis, color_map="viridis"
     plt.close()
 
 
+def plot_2D_classification(model, cls_data, plot_in_axis, plot_out_axis):
+
+    xmin, xmax = 0, 1
+    ymin, ymax = 0, 1
+    
+    x_nds = jnp.linspace(xmin, xmax, 101, dtype=jnp.float64)
+    y_nds = jnp.linspace(ymin, ymax, 101, dtype=jnp.float64)
+    X,Y = jnp.meshgrid(x_nds, y_nds) # (101,101) each
+    XY = jnp.dstack((X, Y)) # (101,101,2)
+    if model.interp_method == "linear" or model.interp_method == "nonlinear":
+        U_pred = model.vv_forward(model.params, model.x_dms_nds, XY) # (101,101,L)
+    elif model.interp_method == "MLP":
+        U_pred = model.vv_forward(model.params, model.activation, XY) # (101,101,L)
+    U_pred_single = jnp.argmax(U_pred, axis=2)
+
+    plt.figure(figsize=(6, 5))
+    plt.set_cmap(plt.cm.Paired)
+    plt.pcolormesh(X, Y, U_pred_single)
 
 
+    ## debug
+    all_inputs, all_labels = [], []
 
+    for inputs, labels in model.test_dataloader:
+        # Move data to CPU if it’s on GPU
+        inputs = inputs.cpu().numpy()
+        labels = labels.cpu().numpy()
         
+        all_inputs.append(inputs)
+        all_labels.append(labels)
+
+    # Concatenate along the batch dimension
+    x_data = np.concatenate(all_inputs, axis=0)
+    u_data = np.concatenate(all_labels, axis=0)
+    u_data_single = jnp.argmax(u_data, axis=1)
+    
+    plt.scatter(x_data[:,0], x_data[:,1], c=u_data_single, edgecolors='black')
+    
+    plt.xlabel(rf"$p_{plot_in_axis[0]+1}$", fontsize = 20)
+    plt.ylabel(rf"$p_{plot_in_axis[1]+1}$", fontsize = 20)
+    plt.xticks(fontsize=14)
+    plt.yticks(fontsize=14)
+    plt.xlim((0, 1))
+    plt.ylim((0, 1))
+    plt.tight_layout()
+    
+    ## Save plot
+    parent_dir = os.path.abspath(os.getcwd())
+    path_figure = os.path.join(parent_dir, 'plots')
+    plt.savefig(os.path.join(path_figure, cls_data.data_name + "_" + model.interp_method) , dpi=300)
+    plt.close()
+
+    
 
 
     

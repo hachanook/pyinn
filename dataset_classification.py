@@ -118,7 +118,7 @@ def data_generation_classification(data_name: str, config):
 
     elif data_name == 'spiral':
         halfSamples = 5000 # number of data points in each class, 5,000 -> total 10,000 data
-        noise = 0
+        noise = 3
         N_SAMPLES = halfSamples * 2
         def genSpiral(deltaT, label, halfSamples, noise):
             points = np.zeros((halfSamples, 3), dtype=np.double)
@@ -139,6 +139,25 @@ def data_generation_classification(data_name: str, config):
         np.random.shuffle(indices)
         points = points[indices,:]
         df = pd.DataFrame(points, columns=['x1', 'x2', 'u'])
+        
+        # ## Plot ##
+        # import matplotlib.pyplot as plt
+
+        # plt.figure(figsize=(6, 5))
+        # plt.set_cmap(plt.cm.Paired)
+        # # plt.pcolormesh(xx, yy, ynew)
+        # plt.scatter(points[:,0], points[:,1], c=points[:,2], edgecolors='black')
+
+        # plt.xlabel(r'$p_1$', fontsize = 20)
+        # plt.ylabel(r'$p_2$', fontsize = 20)
+        # plt.xticks(fontsize=14)
+        # plt.yticks(fontsize=14)
+        
+        # parent_dir = os.path.abspath(os.getcwd())
+        # path_figure = os.path.join(parent_dir, 'plots')
+        # plt.savefig(os.path.join(path_figure, 'dataset_spiral') , dpi=300)
+        # plt.close()
+
 
         # Save the DataFrame to a CSV file
         df.to_csv(os.path.join(data_dir, f'{data_name}.csv'), index=False)
