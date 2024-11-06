@@ -14,6 +14,7 @@ from Interpolator import LinearInterpolator
 
 
 
+
 @jax.jit
 def get_Ju_idata_imd_idm_ivar(x_idata_idm, x_idm_nds, u_imd_idm_ivar_nds):
     """ compute interpolation for a single mode, 1D function
@@ -25,7 +26,7 @@ def get_Ju_idata_imd_idm_ivar(x_idata_idm, x_idm_nds, u_imd_idm_ivar_nds):
     Ju_idata_imd_idm_ivar: scalar
     """
     # interpolate = RegularGridInterpolator((x_idm_nds,), u_imd_idm_ivar_nds, method='linear') # reformat x_nds
-    Ju_idata_imd_idm_ivar = interpolate(x_idata_idm)
+    Ju_idata_imd_idm_ivar = interpolate(x_idata_idm, u_imd_idm_ivar_nds)
     return Ju_idata_imd_idm_ivar
 
 get_Ju_idata_imd_idm_vars = jax.vmap(get_Ju_idata_imd_idm_ivar, in_axes = (None,None,0)) # output: (var,)
@@ -63,9 +64,9 @@ print(Ju_idata_imd_idm_ivar)
 # Ju_idata_imd_idm_ivar = interpolate(x_idata_idm.reshape(1))[0]
 # print(Ju_idata_imd_idm_ivar)
 
-interpolate = LinearInterpolator(x_idm_nds, u_imd_idm_ivar_nds)
+interpolate = LinearInterpolator(x_idm_nds)
 
-Ju_idata_imd_idm_ivar = interpolate(x_idata_idm)
+Ju_idata_imd_idm_ivar = interpolate(x_idata_idm, u_imd_idm_ivar_nds)
 print(Ju_idata_imd_idm_ivar)
 
 Ju_idata_imd_idm_ivar = get_Ju_idata_imd_idm_ivar(x_idata_idm, x_idm_nds, u_imd_idm_ivar_nds)

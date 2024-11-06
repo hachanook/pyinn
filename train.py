@@ -56,22 +56,23 @@ class Regression_INN:
         self.cls_data = cls_data
         self.config = config
         self.key = 3264
-        
-        self.forward = forward_INN
-        self.v_forward = v_forward_INN
-        self.vv_forward = vv_forward_INN
+
         self.nmode = int(config['MODEL_PARAM']['nmode'])
         self.nelem = int(config['MODEL_PARAM']['nelem'])
         self.nnode = self.nelem+1
         self.num_epochs = int(self.config['TRAIN_PARAM']['num_epochs_INN'])
         
-        
-
         ## initialization of trainable parameters
         if cls_data.bool_normalize: # when the data is normalized
             self.x_dms_nds = jnp.tile(jnp.linspace(0,1,self.nnode, dtype=jnp.float64), (self.cls_data.dim,1)) # (dim,nnode)
         else: # when the data is not normalized
             self.x_dms_nds = v_get_linspace(cls_data.x_data_minmax["min"], cls_data.x_data_minmax["max"], self.nnode)
+
+        model = INN_linear(self.x_dms_nds[0,:])
+
+        self.forward = model.forward
+        self.v_forward = model.v_forward
+        self.vv_forward = model.vv_forward
         
         self.params = jax.random.uniform(jax.random.PRNGKey(self.key), (self.nmode, self.cls_data.dim, 
                                                 self.cls_data.var, self.nnode), dtype=jnp.double)       
@@ -90,10 +91,9 @@ class Regression_INN:
         shape_vals_data, patch_nodes_data: defined in "get_HiDeNN_shape_fun"
         '''
         
-        u_pred = self.v_forward(params, self.x_dms_nds, x_data) # (ndata_train, var)
+        u_pred = self.v_forward(params, x_data) # (ndata_train, var)
         loss = ((u_pred- u_data)**2).mean()
         return loss, u_pred
-    
     Grad_get_loss = jax.jit(jax.value_and_grad(get_loss, argnums=1, has_aux=True), static_argnames=['self'])
     
     @partial(jax.jit, static_argnames=['self']) 
@@ -154,11 +154,11 @@ class Regression_INN:
         return acc, acc_metrics
 
     def inference(self, x_test):
-            u_pred = self.forward(self.params, self.x_dms_nds, x_test[0]) # (ndata_train, var)
-            u_pred = self.forward(self.params, self.x_dms_nds, x_test[0]) # (ndata_train, var)
-            u_pred = self.forward(self.params, self.x_dms_nds, x_test[0]) # (ndata_train, var)
+            u_pred = self.forward(self.params, x_test[0]) # (ndata_train, var)
+            u_pred = self.forward(self.params, x_test[0]) # (ndata_train, var)
+            u_pred = self.forward(self.params, x_test[0]) # (ndata_train, var)
             start_time_inference = time.time()
-            u_pred = self.forward(self.params, self.x_dms_nds, x_test[0]) # (ndata_train, var)
+            u_pred = self.forward(self.params, x_test[0]) # (ndata_train, var)
             print(f"\tInference time: {time.time() - start_time_inference:.4f} seconds")       
 
     def train(self):
@@ -342,7 +342,7 @@ class Classification_INN(Regression_INN):
         shape_vals_data, patch_nodes_data: defined in "get_HiDeNN_shape_fun"
         '''
         
-        u_pred = self.v_forward(params, self.x_dms_nds, x_data) # (ndata_train, var)
+        u_pred = self.v_forward(params, x_data) # (ndata_train, var)
         prediction = u_pred - jax.scipy.special.logsumexp(u_pred, axis=1)[:,None] # (ndata, var = nclass)
         loss = -jnp.mean(jnp.sum(prediction * u_data, axis=1))
         return loss, u_pred

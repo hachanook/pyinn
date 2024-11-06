@@ -70,9 +70,9 @@ def plot_1D_1D(model, cls_data, plot_in_axis, plot_out_axis):
     
     x_nds = jnp.linspace(xmin, xmax, 101, dtype=jnp.float64).reshape(-1,1) # (101,1)
     if model.interp_method == "linear" or model.interp_method == "nonlinear":
-        U_pred = model.v_forward(model.params, model.x_dms_nds, x_nds) # (101,L)
+        U_pred = model.v_forward(model.params, x_nds) # (101,L)
     elif model.interp_method == "MLP":
-        U_pred = model.v_forward(model.params, model.activation, x_nds) # (101,L)
+        U_pred = model.v_forward(model.params, model.actiation, x_nds) # (101,L)
     
     U_exact = globals()["v_fun_"+cls_data.data_name](x_nds) # (101,L)    
 
@@ -106,7 +106,7 @@ def plot_1D_2D(model, cls_data, plot_in_axis, plot_out_axis, color_map="viridis"
     
     x_nds = jnp.linspace(xmin, xmax, 101, dtype=jnp.float64).reshape(-1,1) # (101,1)
     if model.interp_method == "linear" or model.interp_method == "nonlinear":
-        U_pred = model.v_forward(model.params, model.x_dms_nds, x_nds) # (101,L)
+        U_pred = model.v_forward(model.params, x_nds) # (101,L)
     elif model.interp_method == "MLP":
         U_pred = model.v_forward(model.params, model.activation, x_nds) # (101,L)
     
@@ -158,7 +158,7 @@ def plot_2D_1D(model, cls_data, plot_in_axis, plot_out_axis, color_map="viridis"
     X,Y = jnp.meshgrid(x_nds, y_nds) # (101,101) each
     XY = jnp.dstack((X, Y)) # (101,101,2)
     if model.interp_method == "linear" or model.interp_method == "nonlinear":
-        U_pred = model.vv_forward(model.params, model.x_dms_nds, XY) # (101,101,L)
+        U_pred = model.vv_forward(model.params, XY) # (101,101,L)
     elif model.interp_method == "MLP":
         U_pred = model.vv_forward(model.params, model.activation, XY) # (101,101,L)
         
@@ -206,7 +206,7 @@ def plot_2D_classification(model, cls_data, plot_in_axis, plot_out_axis):
     X,Y = jnp.meshgrid(x_nds, y_nds) # (101,101) each
     XY = jnp.dstack((X, Y)) # (101,101,2)
     if model.interp_method == "linear" or model.interp_method == "nonlinear":
-        U_pred = model.vv_forward(model.params, model.x_dms_nds, XY) # (101,101,L)
+        U_pred = model.vv_forward(model.params, XY) # (101,101,L)
     elif model.interp_method == "MLP":
         U_pred = model.vv_forward(model.params, model.activation, XY) # (101,101,L)
     U_pred_single = jnp.argmax(U_pred, axis=2)
