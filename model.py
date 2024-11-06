@@ -17,7 +17,25 @@ from jax import lax
 # from flax import linen as nn
 # from flax.linen.dtypes import promote_dtype
 from jax.scipy.interpolate import RegularGridInterpolator
-from Interpolator import RegularGridInterpolator_inhouse
+from Interpolator import LinearInterpolator
+
+
+
+# @jax.jit
+# def get_Ju_idata_imd_idm_ivar(x_idata_idm, x_idm_nds, u_imd_idm_ivar_nds):
+#     """ compute interpolation for a single mode, 1D function
+#     --- input ---
+#     x_idata_ivar: scalar, jnp value / this can be any input
+#     x_idm_nds: (J,) tuple with one jnp element
+#     u_imd_idm_ivar_nds: (J,) 1 modal solution
+#     --- output ---
+#     Ju_idata_imd_idm_ivar: scalar
+#     """
+#     # interpolate = RegularGridInterpolator((x_idm_nds,), u_imd_idm_ivar_nds, method='linear') # reformat x_nds
+#     # interpolate = RegularGridInterpolator_inhouse((x_idm_nds,), u_imd_idm_ivar_nds) # reformat x_nds
+#     interpolate = RegularGridInterpolator_inhouse(x_idm_nds, u_imd_idm_ivar_nds) # reformat x_nds
+#     Ju_idata_imd_idm_ivar = interpolate(x_idata_idm)[0]
+#     return Ju_idata_imd_idm_ivar
 
 
 
@@ -25,15 +43,15 @@ from Interpolator import RegularGridInterpolator_inhouse
 def get_Ju_idata_imd_idm_ivar(x_idata_idm, x_idm_nds, u_imd_idm_ivar_nds):
     """ compute interpolation for a single mode, 1D function
     --- input ---
-    x_idata_ivar: scalar, jnp value / this can be any input
-    x_idm_nds: (J,) tuple with one jnp element
-    u_imd_idm_ivar_nds: (J,) 1 modal solution
+    x_idata_idm: scalar, jnp value / this can be any input
+    x_idm_nds: (J,) jnp 1D array
+    u_imd_idm_ivar_nds: (J,) jnp 1D array
     --- output ---
     Ju_idata_imd_idm_ivar: scalar
     """
     # interpolate = RegularGridInterpolator((x_idm_nds,), u_imd_idm_ivar_nds, method='linear') # reformat x_nds
-    interpolate = RegularGridInterpolator_inhouse((x_idm_nds,), u_imd_idm_ivar_nds) # reformat x_nds
-    Ju_idata_imd_idm_ivar = interpolate(x_idata_idm.reshape(1))[0]
+    interpolate = LinearInterpolator(x_idm_nds, u_imd_idm_ivar_nds)
+    Ju_idata_imd_idm_ivar = interpolate(x_idata_idm)
     return Ju_idata_imd_idm_ivar
 
 get_Ju_idata_imd_idm_vars = jax.vmap(get_Ju_idata_imd_idm_ivar, in_axes = (None,None,0)) # output: (var,)
