@@ -10,10 +10,12 @@ from dataset_classification import *
 
 def plot_regression(model, cls_data, config):
     bool_plot = config['PLOT']['bool_plot']
-    plot_in_axis = config['PLOT']['plot_in_axis']
-    plot_out_axis = config['PLOT']['plot_out_axis']
-
+    
     if bool_plot:
+
+        plot_in_axis = config['PLOT']['plot_in_axis']
+        plot_out_axis = config['PLOT']['plot_out_axis']
+
 
         # make a directory if there isn't any
         if not os.path.exists('plots'):
@@ -41,10 +43,11 @@ def plot_regression(model, cls_data, config):
 
 def plot_classification(model, cls_data, config):
     bool_plot = config['PLOT']['bool_plot']
-    plot_in_axis = config['PLOT']['plot_in_axis']
-    plot_out_axis = config['PLOT']['plot_out_axis']
-
+    
     if bool_plot:
+        plot_in_axis = config['PLOT']['plot_in_axis']
+        plot_out_axis = config['PLOT']['plot_out_axis']
+
 
         # make a directory if there isn't any
         if not os.path.exists('plots'):

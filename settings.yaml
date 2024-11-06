@@ -21,8 +21,8 @@ DATA:
 
   ## ----------- classification data -------------
   # data_name : 'spiral'
-  data_name : 'mnist'
-  # data_name : 'fashion_mnist'
+  # data_name : 'mnist'
+  data_name : 'fashion_mnist'
 
 
 
