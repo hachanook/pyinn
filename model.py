@@ -19,26 +19,6 @@ from jax import lax
 from jax.scipy.interpolate import RegularGridInterpolator
 from Interpolator import LinearInterpolator
 
-
-
-# @jax.jit
-# def get_Ju_idata_imd_idm_ivar(x_idata_idm, x_idm_nds, u_imd_idm_ivar_nds):
-#     """ compute interpolation for a single mode, 1D function
-#     --- input ---
-#     x_idata_ivar: scalar, jnp value / this can be any input
-#     x_idm_nds: (J,) tuple with one jnp element
-#     u_imd_idm_ivar_nds: (J,) 1 modal solution
-#     --- output ---
-#     Ju_idata_imd_idm_ivar: scalar
-#     """
-#     # interpolate = RegularGridInterpolator((x_idm_nds,), u_imd_idm_ivar_nds, method='linear') # reformat x_nds
-#     # interpolate = RegularGridInterpolator_inhouse((x_idm_nds,), u_imd_idm_ivar_nds) # reformat x_nds
-#     interpolate = RegularGridInterpolator_inhouse(x_idm_nds, u_imd_idm_ivar_nds) # reformat x_nds
-#     Ju_idata_imd_idm_ivar = interpolate(x_idata_idm)[0]
-#     return Ju_idata_imd_idm_ivar
-
-
-
 class INN_linear:
     def __init__(self,grid):
         """ 1D linear interpolation
