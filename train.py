@@ -95,7 +95,6 @@ class Regression_INN:
         u_data: exact u from the data. (ndata_train, var)
         shape_vals_data, patch_nodes_data: defined in "get_HiDeNN_shape_fun"
         '''
-        
         u_pred = self.v_forward(params, x_data) # (ndata_train, var)
         loss = ((u_pred- u_data)**2).mean()
         return loss, u_pred
