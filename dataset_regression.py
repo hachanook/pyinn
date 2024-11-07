@@ -22,13 +22,13 @@ class Data_regression(Dataset):
             os.makedirs('data')
         self.data_dir = 'data/'
         self.data_name = data_name
-        self.data_size = config['MODEL_PARAM']['data_size']
-        self.input_col = config['MODEL_PARAM']['input_col']
-        self.output_col = config['MODEL_PARAM']['output_col']
+        self.data_size = config['DATA_PARAM']['data_size']
+        self.input_col = config['DATA_PARAM']['input_col']
+        self.output_col = config['DATA_PARAM']['output_col']
         self.dim = len(self.input_col) # size of input
         self.var = len(self.output_col) # size of output
-        self.split_ratio = config['MODEL_PARAM']['split_ratio']
-        self.bool_normalize = config['MODEL_PARAM']['bool_normalize']
+        self.split_ratio = config['DATA_PARAM']['split_ratio']
+        self.bool_normalize = config['DATA_PARAM']['bool_normalize']
         
         data_file = self.data_dir + data_name + '_' + str(self.data_size) + '.csv'
         try:

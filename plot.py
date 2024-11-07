@@ -75,7 +75,7 @@ def plot_1D_1D(model, cls_data, plot_in_axis, plot_out_axis):
     if model.interp_method == "linear" or model.interp_method == "nonlinear":
         U_pred = model.v_forward(model.params, x_nds) # (101,L)
     elif model.interp_method == "MLP":
-        U_pred = model.v_forward(model.params, model.actiation, x_nds) # (101,L)
+        U_pred = model.v_forward(model.params, model.activation, x_nds) # (101,L)
     
     U_exact = globals()["v_fun_"+cls_data.data_name](x_nds) # (101,L)    
 

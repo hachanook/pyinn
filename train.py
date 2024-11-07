@@ -68,18 +68,23 @@ class Regression_INN:
         else: # when the data is not normalized
             self.x_dms_nds = v_get_linspace(cls_data.x_data_minmax["min"], cls_data.x_data_minmax["max"], self.nnode)
 
-        model = INN_linear(self.x_dms_nds[0,:])
-
-        self.forward = model.forward
-        self.v_forward = model.v_forward
-        self.vv_forward = model.vv_forward
+        if interp_method == "linear":
+            model = INN_linear(self.x_dms_nds[0,:])
+            self.forward = model.forward
+            self.v_forward = model.v_forward
+            self.vv_forward = model.vv_forward
+        elif interp_method == "nonlinear":
+            model = INN_nonlinear(self.x_dms_nds[0,:], config)
+            self.forward = model.forward
+            self.v_forward = model.v_forward
+            self.vv_forward = model.vv_forward
         
         self.params = jax.random.uniform(jax.random.PRNGKey(self.key), (self.nmode, self.cls_data.dim, 
                                                 self.cls_data.var, self.nnode), dtype=jnp.double)       
         numParam = self.nmode*self.cls_data.dim*self.cls_data.var*self.nnode
         
         if interp_method == "linear" or interp_method == "nonlinear":
-            print("------------INN-------------")
+            print(f"------------INN {interp_method}-------------")
             print(f"# of training parameters: {numParam}")
 
     @partial(jax.jit, static_argnames=['self']) # jit necessary
@@ -105,7 +110,7 @@ class Regression_INN:
     
     def data_split(self):
         split_ratio = self.cls_data.split_ratio
-        if self.config['MODEL_PARAM']['bool_random_split'] == True and all(isinstance(item, float) for item in split_ratio):
+        if self.config['DATA_PARAM']['bool_random_split'] == True and all(isinstance(item, float) for item in split_ratio):
             # random split with a split ratio
             generator = torch.Generator().manual_seed(42)
             split_data = random_split(dataset=self.cls_data,lengths=self.cls_data.split_ratio, generator=generator)
@@ -120,7 +125,7 @@ class Regression_INN:
                 test_data = split_data[2]
                 self.val_dataloader = DataLoader(test_data, batch_size=self.batch_size, shuffle=True)
             
-        elif self.config['MODEL_PARAM']['bool_random_split'] == False and all(isinstance(item, int) for item in split_ratio):
+        elif self.config['DATA_PARAM']['bool_random_split'] == False and all(isinstance(item, int) for item in split_ratio):
             # non-random split with a fixed number of data
             if len(split_ratio) == 2:
                 self.split_type="TT" # train and test

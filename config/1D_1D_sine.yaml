@@ -1,6 +1,29 @@
 MODEL_PARAM: 
+  
+  ## INN linear
   nmode : 1
   nelem : 10
+
+  ## INN nonlinear
+  s_patch : 2
+  alpha_dil: 20
+  p_order: 2
+  radial_basis : "cubicSpline" # Activataion functions
+  # radial_basis : 'gaussian1'
+  INNactivation : 'polynomial'
+  # INNactivation : 'sinusoidal'
+  # INNactivation : 'exponential'
+  # INNactivation : 'sigmoid'
+  # INNactivation : 'tanh'
+  # INNactivation : 'gelu'
+  
+  ## MLP
+  nlayers : 2
+  nneurons : 10
+  # activation : "relu"
+  activation : "sigmoid"
+
+DATA_PARAM:
   input_col : [0]
   output_col : [1]
   bool_normalize: False # whether we normalize the input data or not
@@ -8,11 +31,6 @@ MODEL_PARAM:
   data_size: 10_000
   split_ratio: [0.7,0.15,0.15]
 
-  ## MLP
-  nlayers : 2
-  nneurons : 10
-  # activation : "relu"
-  activation : "sigmoid"
 
 TRAIN_PARAM:
   num_epochs_INN : 50

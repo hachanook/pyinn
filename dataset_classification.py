@@ -31,11 +31,11 @@ class Data_classification(Dataset):
             os.makedirs('data')
         self.data_dir = 'data/'
         self.data_name = data_name
-        self.nclass = config['MODEL_PARAM']['nclass']
+        self.nclass = config['DATA_PARAM']['nclass']
         self.var = self.nclass
-        self.split_ratio = config['MODEL_PARAM']['split_ratio']
-        self.bool_normalize = config['MODEL_PARAM']['bool_normalize']
-        self.bool_image = config['MODEL_PARAM']['bool_image']
+        self.split_ratio = config['DATA_PARAM']['split_ratio']
+        self.bool_normalize = config['DATA_PARAM']['bool_normalize']
+        self.bool_image = config['DATA_PARAM']['bool_image']
 
         data_file = self.data_dir + data_name + '.csv'
         try:
@@ -49,8 +49,8 @@ class Data_classification(Dataset):
             self.x_data_org = data[:, 1:]
             self.u_data_org = data[:, 0].astype(np.int32)
         else:
-            self.x_data_org = data[:, config['MODEL_PARAM']['input_col']]
-            self.u_data_org = data[:, config['MODEL_PARAM']['output_col']].astype(np.int32)
+            self.x_data_org = data[:, config['DATA_PARAM']['input_col']]
+            self.u_data_org = data[:, config['DATA_PARAM']['output_col']].astype(np.int32)
         self.u_data = one_hot(self.u_data_org, self.nclass) # u_data is the one-hot vector (ndata, nclass)
         self.dim = self.x_data_org.shape[1]
         
