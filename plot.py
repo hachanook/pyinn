@@ -237,8 +237,8 @@ def plot_2D_classification(model, cls_data, plot_in_axis, plot_out_axis):
     
     plt.scatter(x_data[:,0], x_data[:,1], c=u_data_single, edgecolors='black')
     
-    plt.xlabel(rf"$p_{plot_in_axis[0]+1}$", fontsize = 20)
-    plt.ylabel(rf"$p_{plot_in_axis[1]+1}$", fontsize = 20)
+    plt.xlabel(rf"$x_{plot_in_axis[0]+1}$", fontsize = 20)
+    plt.ylabel(rf"$x_{plot_in_axis[1]+1}$", fontsize = 20)
     plt.xticks(fontsize=14)
     plt.yticks(fontsize=14)
     plt.xlim((0, 1))

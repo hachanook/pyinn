@@ -18,8 +18,8 @@ MODEL_PARAM:
   # INNactivation : 'gelu'
 
   ## MLP
-  nlayers : 2
-  nneurons : 128
+  nlayers : 3
+  nneurons : 100
   # activation : "relu"
   activation : "sigmoid"
 
@@ -33,7 +33,7 @@ DATA_PARAM:
   
 TRAIN_PARAM:
   num_epochs_INN : 10
-  num_epochs_MLP : 30
+  num_epochs_MLP : 10
   batch_size : 128
   learning_rate : 1e-3
   bool_train_acc : False
