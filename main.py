@@ -22,7 +22,6 @@ from plot import *
 
 import yaml
 
-
 # %% User Set up
 with open('settings.yaml','r') as file:
     settings = yaml.safe_load(file)
