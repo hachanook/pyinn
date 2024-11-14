@@ -13,7 +13,7 @@ import pandas as pd
 from typing import Sequence
 from torch.utils.data import Dataset
 from torchvision import datasets, transforms
-from torchvision.transforms import v2
+# from torchvision.transforms import v2
 import torch
 
 def one_hot(labels, num_classes):

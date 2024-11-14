@@ -1,17 +1,19 @@
 MODEL_PARAM: 
   nmode : 30
   nelem : 1
-  bool_normalize : False 
-  bool_image : True
-  nclass : 10
-  bool_random_split : False
-  split_ratio : [60000,10000]
-
+  
   ## MLP
   nlayers : 3
   nneurons : 100
   # activation : "relu"
   activation : "sigmoid"
+
+DATA_PARAM:
+  nclass : 10
+  bool_normalize : False 
+  bool_image : True
+  bool_random_split : False
+  split_ratio : [60000,10000]
 
 TRAIN_PARAM:
   num_epochs_INN : 20
