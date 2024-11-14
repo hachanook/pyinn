@@ -188,7 +188,9 @@ class Regression_INN:
         for epoch in range(self.num_epochs):
             epoch_list_loss, epoch_list_acc = [], [] 
             start_time_epoch = time.time()    
+            count = 0
             for batch in self.train_dataloader:
+                
                 
                 
                 # time_batch = time.time()
@@ -200,7 +202,6 @@ class Regression_INN:
                 params, opt_state, loss_train, u_pred_train = self.update_optax(params, opt_state, x_train, u_train)
                 # print(f"\t update {time.time() - time_batch:.4f} seconds")
                 
-
                 # time_batch = time.time()
                 acc_train, acc_metrics = self.get_acc_metrics(u_train, u_pred_train, "train")
                 epoch_list_loss.append(loss_train)
