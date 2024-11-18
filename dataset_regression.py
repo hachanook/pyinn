@@ -14,6 +14,7 @@ from typing import Sequence
 from torch.utils.data import Dataset
 # from torchvision.transforms import v2
 # import torch
+from scipy.stats import qmc
 
 
 class Data_regression(Dataset):
@@ -74,7 +75,12 @@ class Data_regression(Dataset):
 
 def data_generation_regression(data_name: str, data_size: int, input_col: Sequence[int]):
 
-    x_data_org = jnp.array(np.random.rand(data_size, len(input_col)))
+    ## random sampling
+    # x_data_org = jnp.array(np.random.rand(data_size, len(input_col)))
+
+    ## Latin Hypercube sampling
+    x_data_sampler = qmc.LatinHypercube(d=len(input_col))
+    x_data_org = x_data_sampler.random(n=data_size)
         
     if data_name == "1D_1D_sine":
         u_data_org = v_fun_1D_1D_sine(x_data_org)

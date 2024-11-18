@@ -178,10 +178,10 @@ class Regression_INN:
         self.optimizer = optax.adam(self.learning_rate)
         opt_state = self.optimizer.init(params)
         
-        loss_train_list, loss_test_list = [], []
-        acc_train_list, acc_test_list = [], []
-        if self.split_type == "TVT":
-            loss_val_list, acc_val_list = [], []
+        # loss_train_list, loss_test_list = [], []
+        # acc_train_list, acc_test_list = [], []
+        # if self.split_type == "TVT":
+        #     loss_val_list, acc_val_list = [], []
         
         ## Train
         start_time_train = time.time()
@@ -218,7 +218,7 @@ class Regression_INN:
                 print(f"\tTraining {acc_metrics}: {batch_acc_train:.4f}")
             else:
                 pass
-            print(f"\tEpoch {epoch} training took {time.time() - start_time_epoch:.4f} seconds")
+            print(f"\tEpoch {epoch+1} training took {time.time() - start_time_epoch:.4f} seconds")
 
             ## Validation
             if (epoch+1)%self.validation_period == 0:
@@ -239,6 +239,8 @@ class Regression_INN:
 
                 if self.cls_data.data_name == "IGAMapping2D" and batch_loss_val < 1e-3:
                     # stopping criteria for the IGA inverse mapping; multi-CAD-patch C-IGA paper
+                    break
+                elif self.cls_data.data_name == "8D_1D_physics" and batch_loss_train < 4e-6:
                     break
             
         self.params = params
