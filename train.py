@@ -240,8 +240,8 @@ class Regression_INN:
                 if self.cls_data.data_name == "IGAMapping2D" and batch_loss_val < 1e-3:
                     # stopping criteria for the IGA inverse mapping; multi-CAD-patch C-IGA paper
                     break
-                elif self.cls_data.data_name == "8D_1D_physics" and batch_loss_train < 4e-6:
-                    break
+            if self.cls_data.data_name == "8D_1D_physics" and batch_loss_train < 4e-8:
+                break
             
         self.params = params
         print(f"INN training took {time.time() - start_time_train:.4f} seconds")
