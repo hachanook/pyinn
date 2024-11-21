@@ -240,7 +240,7 @@ class Regression_INN:
                 if self.cls_data.data_name == "IGAMapping2D" and batch_loss_val < 1e-3:
                     # stopping criteria for the IGA inverse mapping; multi-CAD-patch C-IGA paper
                     break
-            if self.cls_data.data_name == "8D_1D_physics" and batch_loss_train < 4e-8:
+            if (self.cls_data.data_name == "8D_1D_physics" or self.cls_data.data_name == "10D_5D_physics") and batch_loss_train < 4e-4:
                 break
             
         self.params = params
