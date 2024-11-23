@@ -7,7 +7,6 @@ Copyright (C) 2024  Chanwook Park
 
 import jax.numpy as jnp
 from jax import config
-
 config.update("jax_enable_x64", True)
 import os, sys
 import importlib.util
