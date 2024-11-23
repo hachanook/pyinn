@@ -622,14 +622,6 @@ class PINN:
         keys = random.split(key, len(sizes))
         return [self.random_layer_params(m, n, k) for m, n, k in zip(sizes[:-1], sizes[1:], keys)]
 
-    @partial(jax.jit, static_argnames=["self"])
-    def relu(self, x):
-        return jnp.maximum(0, x)
-
-    @partial(jax.jit, static_argnames=["self"])
-    def sigmoid(self, x):
-        return 1 / (1 + jnp.exp(-x))
-
     ## networkion functions
     @partial(jax.jit, static_argnames=["self"])
     def network(self, params, x):
@@ -643,7 +635,6 @@ class PINN:
         activations = (x - self.x_min) / (self.x_max - self.x_min)
         for w, b in params[:-1]:
             outputs = jnp.sum(w * activations[None, :], axis=1) + b  # (#, ), vector
-            # activations = self.relu(outputs)
             activations = jax.nn.sigmoid(outputs)
             # activations = jax.nn.selu(outputs)
 
@@ -655,6 +646,8 @@ class PINN:
     vv_network = jax.vmap(v_network, in_axes=(None, None, 0))
     # dx_network = jax.jit(jax.grad(network, argnums=1), static_argnames=['self'])
     dx_network = jax.grad(network, argnums=2)
+    v_dx_network = jax.vmap(dx_network, in_axes=(None, None, 0))
+    vv_dx_network = jax.vmap(v_dx_network, in_axes=(None, None, 0))
     dxdx_network = jax.grad(dx_network, argnums=2)
     hessian_network = jacfwd(jacrev(network, argnums=2), argnums=2)
 
@@ -676,7 +669,7 @@ class PINN:
         laplacian = jnp.diagonal(self.hessian_network(params, x))[0]  # [d2udx2]
         # laplacian = self.dxdx_network(params, x)
         b = self.rhs_function(x)
-        return laplacian - b  # scalar
+        return laplacian + b  # scalar
 
     v_pde_residuum = jax.vmap(pde_residuum, in_axes=(None, None, 0))  # returns vector
 
@@ -771,7 +764,7 @@ class PINN:
                 print(f"Epoch: {epoch+1}, loss: {batch_loss_train:.4e}")
                 break
 
-            if epoch % 10 == 0:
+            if epoch % 100 == 0:
                 print(f"Epoch: {epoch+1}, loss: {batch_loss_train:.4e}")
 
         print(f"PINN solver took {time.time()-start_time:0.4f} sec")
@@ -802,8 +795,8 @@ def get_FEM_norm(XY, Elem_nodes, u, Gauss_Num_norm, dim, elem_type):
 
     physical_coos = jnp.take(XY, Elem_nodes, axis=0) # (nelem, nodes_per_elem, dim)
     xy_norm = jnp.sum(shape_vals[None, :, :, None] * physical_coos[:, None, :, :], axis=2)
-    u_exact = vv_u_fun(xy_norm, L).reshape(nelem, quad_num_norm) # (nelem, quad_num)
-    Grad_u_exact = vv_Grad_u_fun(xy_norm, L)
+    u_exact = vv_u_fun(xy_norm).reshape(nelem, quad_num_norm) # (nelem, quad_num)
+    Grad_u_exact = vv_Grad_u_fun(xy_norm)
 
     u_coos = jnp.take(u, Elem_nodes, axis=0) # (nelem, nodes_per_elem)
     uh = jnp.sum(shape_vals[None, :, :] * u_coos[:, None, :], axis=2)
@@ -836,8 +829,8 @@ def get_CFEM_norm(u, XY, XY_host, Elem_nodes, Elem_nodes_host, Gauss_Num_norm, d
 
     physical_coos = jnp.take(XY, Elem_nodes, axis=0) # (nelem, nodes_per_elem, dim)
     xy_norm = jnp.sum(shape_vals[None, :, :, None] * physical_coos[:, None, :, :], axis=2)
-    u_exact = vv_u_fun(xy_norm, L).reshape(nelem, quad_num_norm)
-    Grad_u_exact = vv_Grad_u_fun(xy_norm, L)
+    u_exact = vv_u_fun(xy_norm).reshape(nelem, quad_num_norm)
+    Grad_u_exact = vv_Grad_u_fun(xy_norm)
 
     u_coos = jnp.take(u, Elemental_patch_nodes_st, axis=0) # (nelem, nodes_per_elem)
     uh = jnp.sum(N_til[:, :, :] * u_coos[:, None, :], axis=2)
@@ -854,6 +847,31 @@ def get_CFEM_norm(u, XY, XY_host, Elem_nodes, Elem_nodes_host, Gauss_Num_norm, d
     print(f'H1_norm_FEM: {H1_norm:.4e}')
     return L2_norm, H1_norm
 
+def get_PINN_norm(XY, Elem_nodes, pinn, Gauss_Num_norm, dim, elem_type):
+
+    quad_num_norm = Gauss_Num_norm**dim
+    # L2_nom, L2_denom, H1_nom, H1_denom = 0,0,0,0
+    shape_vals = get_shape_vals(Gauss_Num_norm, dim, elem_type) # (quad_num, nodes_per_elem)
+    shape_grads_physical, JxW = get_shape_grads(Gauss_Num_norm, dim, elem_type, XY, Elem_nodes)
+
+    physical_coos = jnp.take(XY, Elem_nodes, axis=0) # (nelem, nodes_per_elem, dim)
+    xy_norm = jnp.sum(shape_vals[None, :, :, None] * physical_coos[:, None, :, :], axis=2)
+    u_exact = vv_u_fun(xy_norm).reshape(nelem, quad_num_norm) # (nelem, quad_num)
+    Grad_u_exact = vv_Grad_u_fun(xy_norm).reshape(nelem, quad_num_norm)
+
+    uh = pinn.vv_network(pinn.params, xy_norm) # (nelem, quad_num)
+    Grad_uh = pinn.vv_dx_network(pinn.params, xy_norm).reshape(nelem, quad_num_norm) # (nelem, quad_num)
+
+    L2_nom = jnp.sum((u_exact-uh)**2 * JxW)
+    L2_denom = jnp.sum((u_exact)**2 * JxW)
+    H1_nom = jnp.sum(((u_exact-uh)**2 + (Grad_u_exact-Grad_uh)**2) * JxW)
+    H1_denom = jnp.sum(((u_exact)**2 + (Grad_u_exact)**2) * JxW)
+
+    L2_norm = (L2_nom/L2_denom)**0.5
+    H1_norm = (H1_nom/H1_denom)**0.5
+    print(f'L2_norm_FEM: {L2_norm:.4e}')
+    print(f'H1_norm_FEM: {H1_norm:.4e}')
+    return L2_norm, H1_norm
 
 
 """# Solver (conjugate gradient iterative solver)"""
@@ -925,14 +943,14 @@ def Solve(A_sp_scipy, b, dof_global, nodes_per_elem, disp_BC_idx, disp_BC):
 """# Main program""" ############################################################################################
 
 gpu_idx = 0
-os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_idx)
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # GPU indexing
+os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_idx)  # GPU indexing
 
 # Problem settings
 s_patches = [6]         # patch_size
 ps = [-1]               # reproducing polynomial order. [0, 1, 2, 3]. -1 means that p is equal to s.
 alpha_dils = [20]       # dilation parameter
-nelems = [16]         # [8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072]
+nelems = [32,64,128,256,512,1024]         # [8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072]
 elem_types = ['D1LN2N'] # 'D1LN2N'
 
 run_FEM = False
@@ -960,7 +978,7 @@ def Grad_u_fun_1D(x):
     dudx = (2*(-jnp.pi*jnp.exp(-jnp.pi*(x-2.5)**2) * (x-2.5)) 
            + 4*(-jnp.pi*jnp.exp(-jnp.pi*(x-7.5)**2) * (x-7.5))
            - (jnp.exp(-6.25**2*jnp.pi) - jnp.exp(-56.25**2*jnp.pi))/10)
-    # return dudx
+    return dudx
 
 @jax.jit
 def b_fun_1D(x):
@@ -1107,10 +1125,10 @@ for elem_type in elem_types:
                     if run_PINN == True:
                         nlayers = 1
                         nneurons = nelem  # 
-                        num_epochs = 100
-                        batch_size = 2000
-                        learning_rate = 2e-2
-                        stopping_criteria = 1e-3
+                        num_epochs = 1000
+                        batch_size = 128
+                        learning_rate = 1e-1
+                        stopping_criteria = 1e-4
                         bc_ic_loss_weight = 10
                         dim = 1
                         var = 1
@@ -1133,10 +1151,10 @@ for elem_type in elem_types:
                         ## Train PINN
                         cp = CollocationPoints(cp_PDE)
                         pinn = PINN(layer_sizes, cp, cp_BC_Dirichlet, bc_ic_loss_weight, jnp.array(x_min), jnp.array(x_max))
-
-                        ### debug
-                        # u = pinn.network(pinn.params, cp_PDE[0])
                         pinn.train(num_epochs, batch_size, learning_rate, stopping_criteria)
+
+                        # Compute Error
+                        L2_norm_PINN, H1_norm_PINN = get_PINN_norm(XY, Elem_nodes, pinn, Gauss_Num_norm, dim, elem_type)
 
                         if plot_bool:
                             shape_vals = get_shape_vals(Gauss_Num_norm, dim, elem_type) # [quad_num_ctr, nodes_per_elem]
@@ -1159,7 +1177,7 @@ for elem_type in elem_types:
                         if run_CFEM == True:
                             line, = ax.plot(x_space_CFEM, disp_CFEM, label=f"C-HiDeNN (s={s_patch}, p={p})\nError: {H1_norm_CFEM:.4e}", linewidth=1, color='red')
                         if run_PINN == True:
-                            line, = ax.plot(x_space_PINN, disp_PINN, label=f"PINN ({nlayers} layer, {nelem} neuron)", linewidth=1, color='green')
+                            line, = ax.plot(x_space_PINN, disp_PINN, label=f"PINN ({nlayers} layer, {nelem} neuron\nError: {H1_norm_PINN:.4e})", linewidth=1, color='green')
 
 
                         ax.set_xlabel("Position, x", fontsize=20, labelpad=12)
@@ -1171,12 +1189,13 @@ for elem_type in elem_types:
                         fig.tight_layout()
 
 
-                        parent_dir = os.path.abspath(os.getcwd())
-                        problem_type = 'Tutorial'
-                        path_figure = os.path.join(parent_dir, problem_type+'_figure')
-                        fig_name = f"tutorial_nelem{nelem}_s{s_patch}p{p}_disp.jpg"
-                        # fig.savefig(os.path.join(path_figure, fig_name) , dpi=600)
-                        plt.show()
+                        current_dir = os.getcwd()  # Current directory ("solver_benchmark")
+                        # upper_dir = os.path.dirname(current_dir)  # One level up
+                        plot_dir = os.path.join(current_dir, "plots")  # Path to "plot" directory
+                        fig_name = f"PINN_1D_{nlayers}layer_{nelem}neuron_disp.jpg"
+                        path_figure = os.path.join(plot_dir, fig_name)
+                        fig.savefig(path_figure, dpi=300)
+                        # plt.show()
                         # plt.close()
 
 
