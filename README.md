@@ -14,11 +14,9 @@ INN is a lightweight yet precise network architecture that can replace MLPs for 
 
 
 ## License
-
 This project is licensed under the GNU General Public License v3 - see the [LICENSE](https://www.gnu.org/licenses/) for details.
 
 ## Citations
-
 If you found this library useful in academic or industry work, we appreciate your support if you consider 1) starring the project on Github, and 2) citing relevant papers:
 
 ```bibtex
