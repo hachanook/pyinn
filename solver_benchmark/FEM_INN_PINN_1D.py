@@ -950,7 +950,7 @@ os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_idx)  # GPU indexing
 s_patches = [6]         # patch_size
 ps = [-1]               # reproducing polynomial order. [0, 1, 2, 3]. -1 means that p is equal to s.
 alpha_dils = [20]       # dilation parameter
-nelems = [32,64,128,256,512,1024]         # [8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072]
+nelems = [16,32,64,128,256,512,1024]         # [8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072]
 elem_types = ['D1LN2N'] # 'D1LN2N'
 
 run_FEM = False
@@ -1125,7 +1125,7 @@ for elem_type in elem_types:
                     if run_PINN == True:
                         nlayers = 1
                         nneurons = nelem  # 
-                        num_epochs = 1000
+                        num_epochs = 10_000
                         batch_size = 128
                         learning_rate = 1e-1
                         stopping_criteria = 1e-4
