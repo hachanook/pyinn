@@ -1,4 +1,4 @@
-![INN](/Figure1.png)
+![INN](assets/Figure1.png)
 
 
 ## Interpolating Neural Network
