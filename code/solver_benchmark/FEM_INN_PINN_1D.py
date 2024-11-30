@@ -235,7 +235,7 @@ def get_A_b_FEM(XY, Elem_nodes, E, A, Gauss_Num_FEM, dim, elem_type, nodes_per_e
     # b vector ~ force vector
     physical_coos = jnp.take(XY, Elem_nodes, axis=0) # (nelem, nodes_per_elem, dim)
     XYs = jnp.sum(shape_vals[None, :, :, None] * physical_coos[:, None, :, :], axis=2) # (nelem, quad_num, dim)
-    body_force = A[:,None] * vv_b_fun(XYs, L).reshape(nelem, quad_num_FEM) # (nelem, quad_num)
+    body_force = A[:,None] * vv_b_fun(XYs).reshape(nelem, quad_num_FEM) # (nelem, quad_num)
     v_vals = jnp.repeat(shape_vals[None, :, :], nelem, axis=0) # (nelem, quad_num, nodes_per_elem)
     rhs_vals = jnp.sum(v_vals * body_force[:,:,None] * JxW[:, :, None], axis=1).reshape(-1) # (nelem, nodes_per_elem) -> (nelem*nodes_per_elem)
     rhs = jnp.zeros(dof_global, dtype=jnp.double)
@@ -573,7 +573,7 @@ def get_A_b_CFEM(XY, XY_host, Elem_nodes, Elem_nodes_host, E, A, Gauss_Num_CFEM,
     # b vector ~ force vector
     physical_coos = jnp.take(XY, Elem_nodes, axis=0) # (nelem, nodes_per_elem, dim)
     XYs = jnp.sum(shape_vals[None, :, :, None] * physical_coos[:, None, :, :], axis=2)
-    body_force = A[:,None] * vv_b_fun(XYs, L).reshape(nelem, quad_num_CFEM)
+    body_force = A[:,None] * vv_b_fun(XYs).reshape(nelem, quad_num_CFEM)
     rhs_vals = jnp.sum(N_til * body_force[:,:,None] * JxW[:, :, None], axis=1).reshape(-1) # (nelem, nodes_per_elem) -> (nelem*nodes_per_elem)
     rhs = jnp.zeros(dof_global, dtype=jnp.double)
     rhs = rhs.at[Elemental_patch_nodes_st.reshape(-1)].add(rhs_vals)  # assemble
@@ -947,14 +947,14 @@ os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # GPU indexing
 os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_idx)  # GPU indexing
 
 # Problem settings
-s_patches = [6]         # patch_size
+s_patches = [3]         # patch_size
 ps = [-1]               # reproducing polynomial order. [0, 1, 2, 3]. -1 means that p is equal to s.
 alpha_dils = [20]       # dilation parameter
-nelems = [16,32,64,128,256,512,1024]         # [8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072]
+nelems = [16]         # [8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072]
 elem_types = ['D1LN2N'] # 'D1LN2N'
 
-run_FEM = False
-run_CFEM = False
+run_FEM = True
+run_CFEM = True
 run_PINN = True
 
 plot_bool = True
@@ -1077,7 +1077,7 @@ for elem_type in elem_types:
                         if p > s_patch or p > alpha_dil: # polynomial order should be lower than s_patch
                             continue
                         # compute adjacency matrix - Serial
-                        print(f"\n- - - - - - CFEM {elem_type} DOFs: {dof_global}, nelem_x: {nelem_x} with s: {s_patch}, a: {alpha_dil}, p: {p} - - - - - -")
+                        print(f"\n-------------- CFEM {elem_type} DOFs: {dof_global}, nelem_x: {nelem_x} with s: {s_patch}, a: {alpha_dil}, p: {p} ------------")
 
                         start_time_org = time.time()
                         indices, indptr = get_adj_mat(Elem_nodes_host, nnode, s_patch)
@@ -1133,6 +1133,8 @@ for elem_type in elem_types:
                         dim = 1
                         var = 1
                         n_cp = 10_000
+
+                        print(f"\n-------------- PINN {nlayers} layers, {nneurons} neurons, {num_epochs} epoch, {learning_rate} learning rate ------------")
 
                         layer_sizes = [dim] + nlayers * [nneurons] + [var]
 

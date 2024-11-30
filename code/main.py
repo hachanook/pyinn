@@ -22,7 +22,7 @@ from plot import *
 import yaml
 
 # %% User Set up
-with open('settings.yaml','r') as file:
+with open('./code/settings.yaml','r') as file:
     settings = yaml.safe_load(file)
 
 gpu_idx = settings['GPU']['gpu_idx']  # set which GPU to run on Athena
@@ -35,15 +35,6 @@ data_name = settings['DATA']["data_name"]
 
 with open(f'./config/{data_name}.yaml','r') as file_dataConfig:
     config = yaml.safe_load(file_dataConfig)
-
-# # --------------------- data setup for classification --------------------------
-# elif run_type == "classification":
-#     # data_name  = 'spiral'
-#     # data_name = 'mnist'
-#     data_name = "fashion_mnist"
-#     data_size = 10_000  # 200, 1000, 10_000
-#     noise_level = 3  # 0, 1, 2, 3
-#     split_ratio = [0.7,0.15]  # [training ratio, validation ratio], default: [0.7, 0.15] / Gamma: [0.8,0.2]
 
 # --------------------- Regression --------------------------
 if run_type == "regression":
