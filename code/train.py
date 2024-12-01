@@ -50,9 +50,9 @@ def get_linspace(xmin, xmax, nnode):
 v_get_linspace = jax.vmap(get_linspace, in_axes=(0,0,None))
 
 class Regression_INN:
-    def __init__(self, interp_method, cls_data, config):
+    def __init__(self, cls_data, config):
 
-        self.interp_method = interp_method
+        self.interp_method = config['interp_method']
         self.cls_data = cls_data
         self.config = config
         self.key = 3264
@@ -68,24 +68,30 @@ class Regression_INN:
         else: # when the data is not normalized
             self.x_dms_nds = v_get_linspace(cls_data.x_data_minmax["min"], cls_data.x_data_minmax["max"], self.nnode)
 
-        if interp_method == "linear":
-            model = INN_linear(self.x_dms_nds[0,:])
+        if self.interp_method == "linear":
+            model = INN_linear(self.x_dms_nds[0,:], config)
             self.forward = model.forward
             self.v_forward = model.v_forward
             self.vv_forward = model.vv_forward
-        elif interp_method == "nonlinear":
+        elif self.interp_method == "nonlinear":
             model = INN_nonlinear(self.x_dms_nds[0,:], config)
             self.forward = model.forward
             self.v_forward = model.v_forward
             self.vv_forward = model.vv_forward
         
+        
         self.params = jax.random.uniform(jax.random.PRNGKey(self.key), (self.nmode, self.cls_data.dim, 
-                                                self.cls_data.var, self.nnode), dtype=jnp.double)       
+                                            self.cls_data.var, self.nnode), dtype=jnp.double)       
+        if config['TD_type'] == 'Tucker':
+            self.params = [jnp.ones([self.nmode]*self.cls_data.dim, dtype=jnp.double), 
+                           self.params] # core tensor and factor matrices
+        
         numParam = self.nmode*self.cls_data.dim*self.cls_data.var*self.nnode
         
-        if interp_method == "linear" or interp_method == "nonlinear":
-            print(f"------------INN {interp_method}-------------")
+        if self.interp_method == "linear" or self.interp_method == "nonlinear":
+            print(f"------------INN {self.interp_method}-------------")
             print(f"# of training parameters: {numParam}")
+
 
     @partial(jax.jit, static_argnames=['self']) # jit necessary
     def get_loss(self, params, x_data, u_data):

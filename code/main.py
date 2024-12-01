@@ -35,6 +35,9 @@ data_name = settings['DATA']["data_name"]
 
 with open(f'./config/{data_name}.yaml','r') as file_dataConfig:
     config = yaml.safe_load(file_dataConfig)
+    config['interp_method'] = settings['PROBLEM']["interp_method"]
+    config['TD_type'] = settings['PROBLEM']["TD_type"]
+    
 
 # --------------------- Regression --------------------------
 if run_type == "regression":
@@ -44,9 +47,9 @@ if run_type == "regression":
 
     ## train
     if interp_method == "linear" or interp_method == "nonlinear":
-        regressor = Regression_INN(interp_method, data, config)  # HiDeNN-TD regressor class
+        regressor = Regression_INN(data, config)  # HiDeNN-TD regressor class
     elif interp_method == "MLP":
-        regressor = Regression_MLP(interp_method, data, config)  # HiDeNN-TD regressor class
+        regressor = Regression_MLP(data, config)  # HiDeNN-TD regressor class
     regressor.train()  # Train module
 
     ## plot
@@ -60,9 +63,9 @@ elif run_type == "classification":
     
     ## train
     if interp_method == "linear" or interp_method == "nonlinear":
-        classifier = Classification_INN(interp_method, data, config)  # HiDeNN-TD regressor class
+        classifier = Classification_INN(data, config)  # HiDeNN-TD regressor class
     elif interp_method == "MLP":
-        classifier = Classification_MLP(interp_method, data, config)  # HiDeNN-TD regressor class    
+        classifier = Classification_MLP(data, config)  # HiDeNN-TD regressor class    
     classifier.train()  # Train module
 
     ## plot

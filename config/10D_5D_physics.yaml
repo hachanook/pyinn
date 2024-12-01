@@ -1,7 +1,7 @@
 MODEL_PARAM: 
 
   ## INN linear
-  nmode : 14
+  nmode : 3
   nelem : 10
 
   ## INN nonlinear
