@@ -1,8 +1,8 @@
 MODEL_PARAM: 
   
   ## INN linear
-  nmode : 3
-  nelem : 20
+  nmode : 20
+  nelem : 100
 
   ## INN nonlinear
   s_patch : 2
@@ -25,21 +25,21 @@ MODEL_PARAM:
 
 DATA_PARAM:
   input_col : [0,1,2]
-  output_col : [2]
+  output_col : [3]
   bool_normalize: True # whether we normalize the input data or not
   bool_random_split : True # whether we randomly split the data or not
   data_size: 10_000
   split_ratio: [0.7,0.15,0.15]
 
 TRAIN_PARAM:
-  num_epochs_INN : 100
+  num_epochs_INN : 500
   num_epochs_MLP : 200
-  batch_size : 50
+  batch_size : 128
   learning_rate : 1e-3
   bool_train_acc : True
-  validation_period : 1
+  validation_period : 10
 
 PLOT:
   bool_plot: True
-  plot_in_axis: [0,1] # plot input axis
+  plot_in_axis: [0,1,2] # plot input axis
   plot_out_axis: [0] # plot output axis

@@ -203,7 +203,7 @@ v_fun_2D_1D_exp = jax.vmap(fun_2D_1D_exp, in_axes = (0)) # output: (ndata, )
 vv_fun_2D_1D_exp = jax.vmap(v_fun_2D_1D_exp, in_axes = (0)) # output: (ndata, ndata)
 
 def fun_3D_1D_exp(x_data_org):
-    u_data_org =  (x_data_org[2]**2 * jnp.sin(x_data_org[1]) - 3*x_data_org[0]) / jnp.exp(x_data_org[0] - x_data_org[1]**2)
+    u_data_org =  (2*x_data_org[2]*jnp.sin(x_data_org[1]) - 3*x_data_org[0]) / jnp.exp(x_data_org[0] - x_data_org[1]**2)
     return u_data_org.reshape(1,)
 v_fun_3D_1D_exp = jax.vmap(fun_3D_1D_exp, in_axes = (0)) # output: (ndata, )
 vv_fun_3D_1D_exp = jax.vmap(v_fun_3D_1D_exp, in_axes = (0)) # output: (ndata, ndata)

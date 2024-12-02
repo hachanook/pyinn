@@ -24,6 +24,7 @@ def plot_regression(model, cls_data, config):
         if len(plot_in_axis)==2 and  cls_data.bool_normalize == False:
             # we will plot the error only when there is no normalization on the original data.
             plot_2D_1D(model, cls_data, plot_in_axis, plot_out_axis)
+            plot_modes(model, cls_data, plot_in_axis, plot_out_axis)
         
         elif len(plot_in_axis)==1 and len(plot_out_axis)==1 and  cls_data.bool_normalize == False:
             # we will plot the error only when there is no normalization on the original data.
@@ -36,6 +37,12 @@ def plot_regression(model, cls_data, config):
         elif len(plot_in_axis)==2 and len(plot_out_axis)==1 and  cls_data.bool_normalize == False:
             # for spiral classification
             plot_2D_classification(model, cls_data, plot_in_axis, plot_out_axis)
+
+        elif len(plot_in_axis)==3 and len(plot_out_axis)==1 and  cls_data.bool_normalize == True:
+            # we will plot the error only when there is no normalization on the original data.
+            # plot_2D_1D(model, cls_data, [0,1], plot_out_axis)
+            plot_modes(model, cls_data, plot_in_axis, plot_out_axis)
+
     else:
         print("\nPlotting deactivated\n")
         import sys
@@ -64,9 +71,10 @@ def plot_classification(model, cls_data, config):
 
 def plot_1D_1D(model, cls_data, plot_in_axis, plot_out_axis):
     """ This function plots 2D input and 1D output data. By default, this function should work on original data only
-    plot_in_axis: [axis1, axis2]
+    plot_in_axis: [axis1]
     plot_out_axis: [axis1]
     """
+
     ## create mesh and data
     ### in normalized space, create prediction
     xmin, xmax = cls_data.x_data_minmax["min"][plot_in_axis[0]], cls_data.x_data_minmax["max"][plot_in_axis[0]]
@@ -96,6 +104,44 @@ def plot_1D_1D(model, cls_data, plot_in_axis, plot_out_axis):
     parent_dir = os.path.abspath(os.getcwd())
     path_figure = os.path.join(parent_dir, 'plots')
     fig.savefig(os.path.join(path_figure, cls_data.data_name + "_" + model.interp_method) , dpi=300)
+    plt.close()
+
+def plot_modes(model, cls_data, plot_in_axis, plot_out_axis):
+    """ This function plots multiple subplots in a dimension of (M, I). Each subplot represents 1D plot of input i at mode m.
+    plot_in_axis: [axis1, axis2, ...]
+    plot_out_axis: [axis1]
+    """
+    ## create mesh and data
+    ### in normalized space, create prediction
+    TD_type = model.config["TD_type"]
+
+    if TD_type == "CP":
+        params = model.params
+    elif TD_type == "Tucker":
+        params = model.params[1]
+        print("Core tensor of Tucker product")
+        print(model.params[0]) # print out 
+
+    M = params.shape[0] # nmode
+    I = params.shape[1] # dim
+    J = params.shape[3] # nnode
+
+    fig, axes = plt.subplots(M, I) 
+    for idx, ax in enumerate(axes.flat):
+        m = idx // I # m-th mode
+        i = idx % I # i-th dimension
+
+        xmin, xmax = cls_data.x_data_minmax["min"][plot_in_axis[i]], cls_data.x_data_minmax["max"][plot_in_axis[i]]
+        x_nds = jnp.linspace(xmin, xmax, J, dtype=jnp.float64) # (J,)
+        u_nds = params[m,i,plot_out_axis[0],:] # (J,)
+        ax.plot(x_nds, u_nds, 'o')
+        ax.set_title(f"{m+1}-th mode, {i+1}-th dim")
+
+    plt.tight_layout()
+
+    parent_dir = os.path.abspath(os.getcwd())
+    path_figure = os.path.join(parent_dir, 'plots')
+    fig.savefig(os.path.join(path_figure, cls_data.data_name + f"_{model.config["TD_type"]}_" + model.interp_method + f"_{M}modes") , dpi=300)
     plt.close()
 
 def plot_1D_2D(model, cls_data, plot_in_axis, plot_out_axis, color_map="viridis", vmin=0, vmax=1, marker_size=20):
@@ -150,6 +196,9 @@ def plot_2D_1D(model, cls_data, plot_in_axis, plot_out_axis, color_map="viridis"
     plot_in_axis: [axis1, axis2]
     plot_out_axis: [axis1]
     """
+
+    TD_type = model.config["TD_type"]
+
     ## create mesh and data
     ### in normalized space, create prediction
     xmin, xmax = cls_data.x_data_minmax["min"][plot_in_axis[0]], cls_data.x_data_minmax["max"][plot_in_axis[0]]
@@ -195,11 +244,13 @@ def plot_2D_1D(model, cls_data, plot_in_axis, plot_out_axis, color_map="viridis"
 
     parent_dir = os.path.abspath(os.getcwd())
     path_figure = os.path.join(parent_dir, 'plots')
-    fig.savefig(os.path.join(path_figure, cls_data.data_name + "_" + model.interp_method) , dpi=300)
+    fig.savefig(os.path.join(path_figure, cls_data.data_name + f"_{model.config["TD_type"]}_" + model.interp_method) , dpi=300)
     plt.close()
 
 
 def plot_2D_classification(model, cls_data, plot_in_axis, plot_out_axis):
+
+    TD_type = model.config["TD_type"]
 
     xmin, xmax = 0, 1
     ymin, ymax = 0, 1
@@ -248,7 +299,7 @@ def plot_2D_classification(model, cls_data, plot_in_axis, plot_out_axis):
     ## Save plot
     parent_dir = os.path.abspath(os.getcwd())
     path_figure = os.path.join(parent_dir, 'plots')
-    plt.savefig(os.path.join(path_figure, cls_data.data_name + "_" + model.interp_method) , dpi=300)
+    plt.savefig(os.path.join(path_figure, cls_data.data_name + f"_{model.config["TD_type"]}_" + model.interp_method) , dpi=300)
     plt.close()
 
     

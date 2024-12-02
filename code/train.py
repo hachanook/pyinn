@@ -85,14 +85,28 @@ class Regression_INN:
         numParam = self.nmode*self.cls_data.dim*self.cls_data.var*self.nnode
 
         if config['TD_type'] == 'Tucker':
-            self.params = [jnp.ones([self.nmode]*self.cls_data.dim, dtype=jnp.double), 
-                           self.params] # core tensor and factor matrices
+            # Create a grid of indices for the tensor
+            indices = jnp.arange(self.nmode)
+
+            # Create a tensor of zeros
+            shape = (self.nmode,) * self.cls_data.dim
+            indices = jnp.arange(self.nmode)
+
+            # Use a boolean mask to set diagonal elements
+            core = jnp.zeros(shape, dtype=jnp.float64)
+            core = core.at[tuple([indices] * self.cls_data.dim)].set(1.0)
+            # diagonal_mask = jnp.stack([indices] * self.cls_data.dim, axis=0)
+            # diagonal_indices = jnp.all(diagonal_mask == diagonal_mask.T, axis=0)
+            # core = core.at[diagonal_indices].set(1)
+            self.params = [core, self.params] # core tensor and factor matrices
+            # self.params = [jnp.eye([self.nmode]*self.cls_data.dim, dtype=jnp.double), 
+            #                self.params] # core tensor and factor matrices
             numParam += len(self.params[0].reshape(-1))
         
         
         
         if self.interp_method == "linear" or self.interp_method == "nonlinear":
-            print(f"------------INN {self.interp_method} {config['TD_type']}-------------")
+            print(f"------------INN {config['TD_type']} {self.interp_method} -------------")
             print(f"# of training parameters: {numParam}")
 
 

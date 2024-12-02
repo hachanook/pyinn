@@ -5,8 +5,8 @@ PROBLEM:
   run_type: "regression" 
   # run_type: "classification" 
 
-  # TD_type: "CP"
-  TD_type: "Tucker"
+  TD_type: "CP"
+  # TD_type: "Tucker"
 
   # interp_method: "linear" # INN
   interp_method: "nonlinear" # INN
@@ -17,9 +17,9 @@ DATA:
   # data_name : '1D_1D_sine'  
   # data_name : '1D_1D_exp' 
   # data_name : "1D_2D_sine_exp"
-  # data_name : '2D_1D_sine'
+  data_name : '2D_1D_sine'
   # data_name : '2D_1D_exp'
-  data_name : '3D_1D_exp'
+  # data_name : '3D_1D_exp'
   # data_name : '8D_1D_physics' # borehole equation
   # data_name : '10D_5D_physics' # physcial equation
   # data_name : 'IGAMapping2D' # for IGA inverse mapping; multi-CAD-patch C-IGA paper
