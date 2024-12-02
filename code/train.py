@@ -82,14 +82,17 @@ class Regression_INN:
         
         self.params = jax.random.uniform(jax.random.PRNGKey(self.key), (self.nmode, self.cls_data.dim, 
                                             self.cls_data.var, self.nnode), dtype=jnp.double)       
+        numParam = self.nmode*self.cls_data.dim*self.cls_data.var*self.nnode
+
         if config['TD_type'] == 'Tucker':
             self.params = [jnp.ones([self.nmode]*self.cls_data.dim, dtype=jnp.double), 
                            self.params] # core tensor and factor matrices
+            numParam += len(self.params[0].reshape(-1))
         
-        numParam = self.nmode*self.cls_data.dim*self.cls_data.var*self.nnode
+        
         
         if self.interp_method == "linear" or self.interp_method == "nonlinear":
-            print(f"------------INN {self.interp_method}-------------")
+            print(f"------------INN {self.interp_method} {config['TD_type']}-------------")
             print(f"# of training parameters: {numParam}")
 
 
@@ -148,7 +151,9 @@ class Regression_INN:
     def get_acc_metrics(self, u, u_pred, type="test"):
         """ Get accuracy metrics. For regression, R2 will be returned.
         """
-        
+        if jnp.isnan(u_pred).any(): # if the prediction has nan value,
+            print(f"[Error] INN prediction has NaN components")
+            print(jnp.where(jnp.isnan(u_pred))[0])        
 
         if type == "train":
             bool_train_acc = self.config['TRAIN_PARAM']['bool_train_acc']
@@ -207,6 +212,9 @@ class Regression_INN:
                 # time_batch = time.time()
                 params, opt_state, loss_train, u_pred_train = self.update_optax(params, opt_state, x_train, u_train)
                 # print(f"\t update {time.time() - time_batch:.4f} seconds")
+
+                # print(f"\t\tbatch {count+1}")
+                # print("\t\t\t", jnp.where(jnp.isnan(u_pred_train))[0])
                 
                 # time_batch = time.time()
                 acc_train, acc_metrics = self.get_acc_metrics(u_train, u_pred_train, "train")
@@ -234,6 +242,13 @@ class Regression_INN:
                 for batch in self.val_dataloader:
                     x_val, u_val = jnp.array(batch[0]), jnp.array(batch[1])
                     _, _, loss_val, u_pred_val = self.update_optax(params, opt_state, x_val, u_val)
+                    
+                    # ## debug
+                    # if jnp.isnan(u_pred_val).any():
+                    #     idx = jnp.where(jnp.isnan(u_pred_val))[0][0]
+                    #     print(idx)   
+                    #     print(x_val[idx])
+                    
                     acc_val, acc_metrics = self.get_acc_metrics(u_val, u_pred_val)
                     epoch_list_loss.append(loss_val)
                     epoch_list_acc.append(acc_val)

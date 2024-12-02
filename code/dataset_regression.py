@@ -100,6 +100,10 @@ def data_generation_regression(data_name: str, data_size: int, input_col: Sequen
         u_data_org = v_fun_2D_1D_exp(x_data_org)
         cols = ['x1','x2','u']
 
+    elif data_name == "3D_1D_exp":
+        u_data_org = v_fun_3D_1D_exp(x_data_org)
+        cols = ['x1','x2','x3','u']
+
     elif data_name == "8D_1D_physics": # borehole function; use JAX to create data
 
         x_min = jnp.array([0.05,    100,  63_070,  990, 63.1, 700, 1120,  9_855], dtype=jnp.double)
@@ -197,6 +201,13 @@ def fun_2D_1D_exp(x_data_org):
     return u_data_org.reshape(1,)
 v_fun_2D_1D_exp = jax.vmap(fun_2D_1D_exp, in_axes = (0)) # output: (ndata, )
 vv_fun_2D_1D_exp = jax.vmap(v_fun_2D_1D_exp, in_axes = (0)) # output: (ndata, ndata)
+
+def fun_3D_1D_exp(x_data_org):
+    u_data_org =  (x_data_org[2]**2 * jnp.sin(x_data_org[1]) - 3*x_data_org[0]) / jnp.exp(x_data_org[0] - x_data_org[1]**2)
+    return u_data_org.reshape(1,)
+v_fun_3D_1D_exp = jax.vmap(fun_3D_1D_exp, in_axes = (0)) # output: (ndata, )
+vv_fun_3D_1D_exp = jax.vmap(v_fun_3D_1D_exp, in_axes = (0)) # output: (ndata, ndata)
+
 
 def fun_8D_1D_physics(p): 
     p1, p2, p3, p4, p5, p6, p7, p8 = p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7]

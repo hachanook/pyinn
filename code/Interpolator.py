@@ -18,6 +18,7 @@ class LinearInterpolator:
     """
 
     self.grid = grid
+    # self.grid_sort = grid.at[-1].add(0.0001)
 
   def __call__(self, xi, values):
     
