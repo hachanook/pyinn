@@ -17,7 +17,7 @@ INN is a lightweight yet precise network architecture that can replace MLPs for 
 Create a conda environment from the given [`environment.yaml`](https://github.com/hachanook/pyinn/blob/main/environment.yaml) file and activate it:
 
 ```bash
-conda env create -f environment.yml
+conda env create -f environment.yaml
 conda activate pyinn-env
 ```
 
