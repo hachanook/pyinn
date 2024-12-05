@@ -3,9 +3,9 @@ import jax.numpy as jnp
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 import os
-from model import *
-from dataset_regression import *
-from dataset_classification import *
+from .model import *
+from .dataset_regression import *
+from .dataset_classification import *
 
 
 def plot_regression(model, cls_data, config):

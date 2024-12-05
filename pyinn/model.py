@@ -13,11 +13,8 @@ config.update("jax_enable_x64", True)
 from functools import partial
 from typing import (Any, Callable, Iterable, List, Optional, Sequence, Tuple,
                     Union)
-from jax import lax
-# from flax import linen as nn
-# from flax.linen.dtypes import promote_dtype
 from jax.scipy.interpolate import RegularGridInterpolator
-from Interpolator import LinearInterpolator, NonlinearInterpolator
+from .Interpolator import LinearInterpolator, NonlinearInterpolator
 
 class INN_linear:
     def __init__(self, grid, config):

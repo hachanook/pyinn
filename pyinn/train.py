@@ -17,15 +17,8 @@ import time
 import torch
 from sklearn.metrics import r2_score, classification_report
 import importlib.util
-import sys
 
-# from flax.training import train_state
-
-# from dataset import *
-from model import *
-# from settings import *
-# from dataset import v_fun_2D_1D_sine, vv_fun_2D_1D_sine
-# from model import v_forward, vv_forward   
+from .model import *
 
 if importlib.util.find_spec("GPUtil") is not None: # for linux & GPU
     ''' If you are funning on GPU, please install the following libraries on your anaconda environment via 

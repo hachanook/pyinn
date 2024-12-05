@@ -12,6 +12,50 @@ INN is a lightweight yet precise network architecture that can replace MLPs for 
 * Fully differntiable and GPU-optimized
 
 
+## Installation
+
+Create a conda environment from the given [`environment.yaml`](https://github.com/hachanook/pyinn/blob/main/environment.yaml) file and activate it:
+
+```bash
+conda env create -f environment.yml
+conda activate pyinn-env
+```
+
+Install JAX
+- See jax installation [instructions](https://github.com/jax-ml/jax?tab=readme-ov-file#installation). Depending on your hardware, you may install the CPU or GPU version of JAX. Both will work, while GPU version usually gives better performance.
+
+
+Then there are two options to continue:
+
+### Option 1
+
+Clone the repository:
+
+```bash
+git clone https://github.com/hachanook/pyinn.git
+cd pyinn
+```
+
+and install the package locally:
+
+```bash
+
+pip install -e .
+```
+
+**Quick tests**: You can check [TBD]
+
+```bash
+python -m [TBD]
+```
+
+### Option 2
+
+Install the package from the [PyPI release](https://pypi.org/project/pyinn/0.1.0/) directly:
+
+```bash
+pip install pyinn
+```
 
 ## License
 This project is licensed under the GNU General Public License v3 - see the [LICENSE](https://www.gnu.org/licenses/) for details.
