@@ -23,6 +23,23 @@ conda activate pyinn-env
 
 Install JAX
 - See jax installation [instructions](https://github.com/jax-ml/jax?tab=readme-ov-file#installation). Depending on your hardware, you may install the CPU or GPU version of JAX. Both will work, while GPU version usually gives better performance.
+- For CPU only (Linux/macOS/Windows), one can simply install JAX using:
+```bash
+pip install -U jax
+```
+- For GPU (NVIDIA, CUDA 12)
+```bash
+pip install -U "jax[cuda12]"
+```
+- For TPU (Google Cloud TPU VM)
+```bash
+pip install -U "jax[tpu]" -f https://storage.googleapis.com/jax-releases/libtpu_releases.html
+```
+
+Install Optax (optimization library of JAX)
+```bash
+pip install optax
+```
 
 
 Then there are two options to continue:
@@ -43,18 +60,18 @@ and install the package locally:
 pip install -e .
 ```
 
-**Quick tests**: You can check [TBD]
-
-```bash
-python -m [TBD]
-```
-
 ### Option 2
 
 Install the package from the [PyPI release](https://pypi.org/project/pyinn/0.1.0/) directly:
 
 ```bash
 pip install pyinn
+```
+
+**Quick tests**
+
+```bash
+python -m ./pyinn/main.py
 ```
 
 ## License
