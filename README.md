@@ -71,7 +71,7 @@ pip install pyinn
 **Quick tests**
 
 ```bash
-python -m ./pyinn/main.py
+python ./pyinn/main.py
 ```
 
 ## License
