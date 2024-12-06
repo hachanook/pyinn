@@ -141,7 +141,8 @@ def plot_modes(model, cls_data, plot_in_axis, plot_out_axis):
 
     parent_dir = os.path.abspath(os.getcwd())
     path_figure = os.path.join(parent_dir, 'plots')
-    fig.savefig(os.path.join(path_figure, cls_data.data_name + f"_{model.config["TD_type"]}_" + model.interp_method + f"_{M}modes") , dpi=300)
+    TD_type = model.config['TD_type'] 
+    fig.savefig(os.path.join(path_figure, cls_data.data_name + f"_{TD_type}_" + model.interp_method + f"_{M}modes") , dpi=300)
     plt.close()
 
 def plot_1D_2D(model, cls_data, plot_in_axis, plot_out_axis, color_map="viridis", vmin=0, vmax=1, marker_size=20):
@@ -244,7 +245,7 @@ def plot_2D_1D(model, cls_data, plot_in_axis, plot_out_axis, color_map="viridis"
 
     parent_dir = os.path.abspath(os.getcwd())
     path_figure = os.path.join(parent_dir, 'plots')
-    fig.savefig(os.path.join(path_figure, cls_data.data_name + f"_{model.config["TD_type"]}_" + model.interp_method) , dpi=300)
+    fig.savefig(os.path.join(path_figure, cls_data.data_name + f"_{TD_type}_" + model.interp_method) , dpi=300)
     plt.close()
 
 
@@ -299,7 +300,7 @@ def plot_2D_classification(model, cls_data, plot_in_axis, plot_out_axis):
     ## Save plot
     parent_dir = os.path.abspath(os.getcwd())
     path_figure = os.path.join(parent_dir, 'plots')
-    plt.savefig(os.path.join(path_figure, cls_data.data_name + f"_{model.config["TD_type"]}_" + model.interp_method) , dpi=300)
+    plt.savefig(os.path.join(path_figure, cls_data.data_name + f"_{TD_type}_" + model.interp_method) , dpi=300)
     plt.close()
 
     
