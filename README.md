@@ -14,7 +14,15 @@ INN is a lightweight yet precise network architecture that can replace MLPs for 
 
 ## Installation
 
-Create a conda environment from the given [`environment.yaml`](https://github.com/hachanook/pyinn/blob/main/environment.yaml) file and activate it:
+
+Clone the repository:
+
+```bash
+git clone https://github.com/hachanook/pyinn.git
+cd pyinn
+```
+
+Create a conda environment:
 
 ```bash
 conda clean --all # [optional] to clear cache files in the base conda environment
@@ -51,14 +59,7 @@ Then there are two options to continue:
 
 ### Option 1
 
-Clone the repository:
-
-```bash
-git clone https://github.com/hachanook/pyinn.git
-cd pyinn
-```
-
-and install the package locally:
+Install the package locally:
 
 ```bash
 
@@ -73,7 +74,7 @@ Install the package from the [PyPI release](https://pypi.org/project/pyinn/0.1.0
 pip install pyinn
 ```
 
-**Quick tests**
+### Quick test
 
 ```bash
 python ./pyinn/main.py
