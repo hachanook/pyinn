@@ -57,7 +57,6 @@ for n in range(time_steps):
     T_tensor[:,:,n] = T_new
     T, T_new = T_new, T
 
-
     # # Visualization during simulation (optional)
     # if n % 50 == 0:  # Plot every 500 time steps
     #     plt.clf()
