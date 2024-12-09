@@ -5,5 +5,6 @@ assets/
 build/
 dist/
 pyinn.egg-info/
+tensorly/
 pip
 requirements.txt
