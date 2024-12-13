@@ -113,6 +113,7 @@ class INN_linear:
 
         return pred
 
+    grad_forward = jax.jacfwd(forward, argnums=2, has_aux=False)
     v_forward = jax.vmap(forward, in_axes=(None,None, 0)) # returns (ndata,)
     vv_forward = jax.vmap(v_forward, in_axes=(None,None, 0)) # returns (ndata,)
         
