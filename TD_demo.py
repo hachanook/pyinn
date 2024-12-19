@@ -83,7 +83,7 @@ n_org = T_tensor.size
 
 
 ### CP decomposition ###
-rank_CP = 25
+rank_CP = 50
 CP = parafac(T_tensor, rank=rank_CP)
 weights, factors_CP = CP[0], CP[1]
 # compute number of components in CP
@@ -97,7 +97,7 @@ err_CP = np.linalg.norm(T_tensor - T_recovered_CP) / np.linalg.norm(T_tensor)
 
 
 ### Tucker decomposition
-rank_Tucker = [25,25,10]
+rank_Tucker = [50,50,50]
 core, factors_Tucker = tucker(T_tensor, rank=rank_Tucker)
 # compute number of components in Tucker
 n_Tucker = core.size
