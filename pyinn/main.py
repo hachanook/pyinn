@@ -28,7 +28,7 @@ with open(f'./config/{data_name}.yaml','r') as file_dataConfig:
     config['TD_type'] = settings['PROBLEM']["TD_type"]
     
 
-# --------------------- Regression --------------------------3
+# --------------------- Regression --------------------------
 if run_type == "regression":
     
     ## data import

@@ -218,7 +218,7 @@ def fun_8D_1D_physics(p):
 
 def fun_10D_5D_physics(x1,x2,x3,x4,x5): 
     
-    ## u1: Borehole function
+    ## u1: Borehole function 
     p=x1
     p1, p2, p3, p4, p5, p6, p7, p8 = p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7]
     u1 = 2*jnp.pi* p1 * (p4-p6) * (jnp.log(p2/p3) * (1 + 2*(p7*p1) / (jnp.log(p2/p3)*p3**2*p8) + p1/p5))**(-1)

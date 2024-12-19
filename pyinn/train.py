@@ -299,8 +299,8 @@ class Regression_INN:
 
 
 class Regression_MLP(Regression_INN):
-    def __init__(self, interp_method, cls_data, config):
-        super().__init__(interp_method, cls_data, config) # prob being dropout probability
+    def __init__(self, cls_data, config):
+        super().__init__(cls_data, config) # prob being dropout probability
         
         self.forward = forward_MLP
         self.v_forward = v_forward_MLP
