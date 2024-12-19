@@ -10,11 +10,13 @@ np.set_printoptions(precision=4, suppress=True)
 ### Finite Difference Method for heat conduction
 
 # Parameters
-dx = 0.02  # Spatial step size in x direction
-dy = 0.02  # Spatial step size in y direction
+dx = 0.01  # Spatial step size in x direction
+dy = 0.01  # Spatial step size in y direction
 dt = 0.0001  # Time step size
-total_time = 1.0  # Total simulation time
-alpha = 0.01  # Thermal diffusivity (material property)
+total_time = 0.2  # Total simulation time
+alpha = 0.1  # 0.01 Thermal diffusivity (material property)
+CFL = alpha*dt/dx**2
+print(f"CFL number: {CFL:.2f} should be less than 0.5")
 
 # Grid setup
 nx = int(1 / dx) + 1  # Number of points in x
@@ -72,7 +74,7 @@ for n in range(time_steps):
 #     path_data = os.path.join(parent_dir, 'data')
 parent_dir = os.getcwd()
 save_dir = os.path.join(parent_dir, 'data')
-file_name = f"FDM_{nx}_{ny}_{time_steps}.npy"
+file_name = f"FDM_{nx}_{ny}_{time_steps}_alpha{alpha}.npy"
 file_path = os.path.join(save_dir, file_name)
 np.save(file_path, T_tensor)
 
