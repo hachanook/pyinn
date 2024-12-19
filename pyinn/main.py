@@ -36,9 +36,9 @@ if run_type == "regression":
 
     ## train
     if interp_method == "linear" or interp_method == "nonlinear":
-        regressor = train.Regression_INN(data, config)  # HiDeNN-TD regressor class
+        regressor = train.Regression_INN(data, config)  
     elif interp_method == "MLP":
-        regressor = train.Regression_MLP(data, config)  # HiDeNN-TD regressor class
+        regressor = train.Regression_MLP(data, config)  
     regressor.train()  # Train module
 
     ## plot

@@ -352,6 +352,7 @@ class Regression_MLP(Regression_INN):
         u_pred = self.forward(self.params, self.activation, x_test[0]) # (ndata_train, var)
         print(f"\tInference time: {time.time() - start_time_inference:.4f} seconds")    
     
+    
 
 class Classification_INN(Regression_INN):
     def __init__(self, interp_method, cls_data, config):
