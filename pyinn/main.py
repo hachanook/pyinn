@@ -45,7 +45,7 @@ if run_type == "regression":
     plot.plot_regression(regressor, data, config)
 
 # --------------------- Classification --------------------------
-elif run_type == "classification":
+elif run_type == "classification": 
 
     ## data import
     data = dataset_classification.Data_classification(data_name, config)

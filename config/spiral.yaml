@@ -34,7 +34,7 @@ DATA_PARAM:
   
 TRAIN_PARAM:
   num_epochs_INN : 10
-  num_epochs_MLP : 2000
+  num_epochs_MLP : 20
   batch_size : 128
   learning_rate : 1e-1
   bool_train_acc : False # measure train accuracy

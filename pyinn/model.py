@@ -112,7 +112,7 @@ class INN_linear:
         #     # print(factors.shape)
         #     pred = self.v_tucker(G, factors)
 
-        return pred
+        return pred 
 
     v_forward = jax.vmap(forward, in_axes=(None,None, 0)) # returns (ndata,)
     vv_forward = jax.vmap(v_forward, in_axes=(None,None, 0)) # returns (ndata,)
