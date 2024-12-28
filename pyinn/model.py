@@ -86,7 +86,7 @@ class INN_linear:
         return jnp.squeeze(G)
     v_tucker = jax.vmap(tucker, in_axes=(None,None,0)) # returns (var,)
 
-
+    @partial(jax.jit, static_argnames=['self'])
     def forward(self, params, x_idata):
         """ Prediction function
             run one forward pass on given input data
@@ -97,29 +97,26 @@ class INN_linear:
             --- return ---
             predicted output (var,)
         """
-        if self.config['TD_type']=='CP':
-            pred = self.get_Ju_idata_mds_dms_vars(x_idata, params) # output: (M,dim,var)
-            pred = jnp.prod(pred, axis=1) # output: (M,var)
-            pred = jnp.sum(pred, axis=0) # output: (var,)
-        if self.config['TD_type']=='Tucker':
+        # if self.config['TD_type']=='CP':
+        pred = self.get_Ju_idata_mds_dms_vars(x_idata, params) # output: (M,dim,var)
+        pred = jnp.prod(pred, axis=1) # output: (M,var)
+        pred = jnp.sum(pred, axis=0) # output: (var,)
+        
+        # if self.config['TD_type']=='Tucker':
             
-            G = params[0]
-            factors = self.get_Ju_idata_mds_dms_vars(x_idata, params[1]) # output: (M,dim,var)
-            # for factor in pred.transpose(1,0,2): # factor: (M,var)
-            #     G = jnp.tensordot(G, factor, axes=[0,0])
-            factors = factors.transpose(2,1,0) # (var,dim,M)
-            # print(factors.shape)
-            pred = self.v_tucker(G, factors)
+        #     G = params[0]
+        #     factors = self.get_Ju_idata_mds_dms_vars(x_idata, params[1]) # output: (M,dim,var)
+        #     # for factor in pred.transpose(1,0,2): # factor: (M,var)
+        #     #     G = jnp.tensordot(G, factor, axes=[0,0])
+        #     factors = factors.transpose(2,1,0) # (var,dim,M)
+        #     # print(factors.shape)
+        #     pred = self.v_tucker(G, factors)
 
         return pred
 
     v_forward = jax.vmap(forward, in_axes=(None,None, 0)) # returns (ndata,)
     vv_forward = jax.vmap(v_forward, in_axes=(None,None, 0)) # returns (ndata,)
         
-
-
-
-
 
 class INN_nonlinear(INN_linear):
     def __init__(self, grid, config):
@@ -128,7 +125,6 @@ class INN_nonlinear(INN_linear):
         self.interpolate = NonlinearInterpolator(grid, self.config)
 
 ## MLP
-
 def relu(x):
     return jnp.maximum(0, x)
 

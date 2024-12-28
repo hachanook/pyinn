@@ -88,14 +88,8 @@ class Regression_INN:
             # Use a boolean mask to set diagonal elements
             core = jnp.zeros(shape, dtype=jnp.float64)
             core = core.at[tuple([indices] * self.cls_data.dim)].set(1.0)
-            # diagonal_mask = jnp.stack([indices] * self.cls_data.dim, axis=0)
-            # diagonal_indices = jnp.all(diagonal_mask == diagonal_mask.T, axis=0)
-            # core = core.at[diagonal_indices].set(1)
             self.params = [core, self.params] # core tensor and factor matrices
-            # self.params = [jnp.eye([self.nmode]*self.cls_data.dim, dtype=jnp.double), 
-            #                self.params] # core tensor and factor matrices
             numParam += len(self.params[0].reshape(-1))
-        
         
         
         if self.interp_method == "linear" or self.interp_method == "nonlinear":
@@ -299,8 +293,8 @@ class Regression_INN:
 
 
 class Regression_MLP(Regression_INN):
-    def __init__(self, interp_method, cls_data, config):
-        super().__init__(interp_method, cls_data, config) # prob being dropout probability
+    def __init__(self, cls_data, config):
+        super().__init__(cls_data, config) # prob being dropout probability
         
         self.forward = forward_MLP
         self.v_forward = v_forward_MLP
