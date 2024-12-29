@@ -24,7 +24,9 @@ def plot_regression(model, cls_data, config):
         if len(plot_in_axis)==2 and  cls_data.bool_normalize == False:
             # we will plot the error only when there is no normalization on the original data.
             plot_2D_1D(model, cls_data, plot_in_axis, plot_out_axis)
-            plot_modes(model, cls_data, plot_in_axis, plot_out_axis)
+
+            if config['interp_method'] != "MLP":
+                plot_modes(model, cls_data, plot_in_axis, plot_out_axis)
         
         elif len(plot_in_axis)==1 and len(plot_out_axis)==1 and  cls_data.bool_normalize == False:
             # we will plot the error only when there is no normalization on the original data.
@@ -41,7 +43,8 @@ def plot_regression(model, cls_data, config):
         elif len(plot_in_axis)==3 and len(plot_out_axis)==1 and  cls_data.bool_normalize == True:
             # we will plot the error only when there is no normalization on the original data.
             # plot_2D_1D(model, cls_data, [0,1], plot_out_axis)
-            plot_modes(model, cls_data, plot_in_axis, plot_out_axis)
+            if config['interp_method'] != "MLP":
+                plot_modes(model, cls_data, plot_in_axis, plot_out_axis)
 
     else:
         print("\nPlotting deactivated\n")

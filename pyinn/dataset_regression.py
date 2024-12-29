@@ -70,6 +70,48 @@ class Data_regression(Dataset):
             u_data_org = (self.u_data_minmax["max"] - self.u_data_minmax["min"]) * u_data + self.u_data_minmax["min"]
         return x_data, u_data
     
+class Data_regression_streamlit(Dataset):
+    def __init__(self, data, config) -> None:
+        self.data_name = config["data_name"]
+        self.input_col = config['DATA_PARAM']['input_col']
+        self.output_col = config['DATA_PARAM']['output_col']
+        self.dim = len(self.input_col) # size of input
+        self.var = len(self.output_col) # size of output
+        self.split_ratio = config['DATA_PARAM']['split_ratio']
+        self.bool_normalize = config['DATA_PARAM']['bool_normalize']
+
+        self.x_data_org = data[:, self.input_col]
+        self.u_data_org = data[:, self.output_col]
+        
+        if self.bool_normalize:    
+            self.x_data_minmax = {"min" : self.x_data_org.min(axis=0), "max" : self.x_data_org.max(axis=0)}
+            self.u_data_minmax = {"min" : self.u_data_org.min(axis=0), "max" : self.u_data_org.max(axis=0)}
+            self.x_data = (self.x_data_org - self.x_data_minmax["min"]) / (self.x_data_minmax["max"] - self.x_data_minmax["min"])
+            self.u_data = (self.u_data_org - self.u_data_minmax["min"]) / (self.u_data_minmax["max"] - self.u_data_minmax["min"])
+        else:
+            self.x_data_minmax = {"min" : self.x_data_org.min(axis=0), "max" : self.x_data_org.max(axis=0)}
+            self.u_data_minmax = {"min" : self.u_data_org.min(axis=0), "max" : self.u_data_org.max(axis=0)}
+            self.x_data = self.x_data_org
+            self.u_data = self.u_data_org
+            
+        
+    def __len__(self):
+        return len(self.x_data_org)
+
+    def __getitem__(self, idx):
+        return self.x_data[idx], self.u_data[idx]
+    
+    def denormalize(self, x_data=None, u_data=None):
+        """ Denormalize both x_data and u_data
+        x_data: (ndata, I)
+        u_data: (ndata, L)
+        """
+        if x_data is not None:
+            x_data_org = (self.x_data_minmax["max"] - self.x_data_minmax["min"]) * x_data + self.x_data_minmax["min"]
+        if u_data is not None:
+            u_data_org = (self.u_data_minmax["max"] - self.u_data_minmax["min"]) * u_data + self.u_data_minmax["min"]
+        return x_data, u_data
+    
 
 def data_generation_regression(data_name: str, data_size: int, input_col: Sequence[int]):
 
@@ -218,7 +260,7 @@ def fun_8D_1D_physics(p):
 
 def fun_10D_5D_physics(x1,x2,x3,x4,x5): 
     
-    ## u1: Borehole function 
+    ## u1: Borehole function
     p=x1
     p1, p2, p3, p4, p5, p6, p7, p8 = p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7]
     u1 = 2*jnp.pi* p1 * (p4-p6) * (jnp.log(p2/p3) * (1 + 2*(p7*p1) / (jnp.log(p2/p3)*p3**2*p8) + p1/p5))**(-1)

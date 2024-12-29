@@ -28,7 +28,7 @@ with open(f'./config/{data_name}.yaml','r') as file_dataConfig:
     config['TD_type'] = settings['PROBLEM']["TD_type"]
     
 
-# --------------------- Regression --------------------------
+# --------------------- Regression --------------------------3
 if run_type == "regression":
     
     ## data import
@@ -36,16 +36,16 @@ if run_type == "regression":
 
     ## train
     if interp_method == "linear" or interp_method == "nonlinear":
-        regressor = train.Regression_INN(data, config)  
+        regressor = train.Regression_INN(data, config)  # HiDeNN-TD regressor class
     elif interp_method == "MLP":
-        regressor = train.Regression_MLP(data, config)  
+        regressor = train.Regression_MLP(data, config)  # HiDeNN-TD regressor class
     regressor.train()  # Train module
 
     ## plot
     plot.plot_regression(regressor, data, config)
 
 # --------------------- Classification --------------------------
-elif run_type == "classification":
+elif run_type == "classification": 
 
     ## data import
     data = dataset_classification.Data_classification(data_name, config)
