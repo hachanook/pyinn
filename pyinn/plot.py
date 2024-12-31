@@ -46,10 +46,16 @@ def plot_regression(model, cls_data, config):
             if config['interp_method'] != "MLP":
                 plot_modes(model, cls_data, plot_in_axis, plot_out_axis)
 
+        
+
     else:
         print("\nPlotting deactivated\n")
         import sys
         sys.exit()
+
+
+
+
 
 def plot_classification(model, cls_data, config):
     bool_plot = config['PLOT']['bool_plot']
@@ -309,4 +315,46 @@ def plot_2D_classification(model, cls_data, plot_in_axis, plot_out_axis):
     
 
 
-    
+def read_mesh_ANSYS(inp_filename):
+    """Can read and identify 2D plane elements - CPE4, CPE6, CPE8 and 3D Tetrahedral and Brick elements - C3D4, C3D10, C3D8, C3D20"""
+    file_directory = os.path.dirname(__file__)
+    file_folder = '\\data'
+    filename = inp_filename
+    path = os.path.join(file_directory, file_folder, filename)
+    mesh_file = open(path,'r')
+    lines = mesh_file.readlines()
+    xy, elem_nodes_list = [], []
+    for count,line in enumerate(lines):
+        if 'N,UNBL,LOC' in line:
+            Coor_list = [items for items in line.strip().split(",")]
+            Nodal_Coor = [float(items) for items in Coor_list[6:]]
+            xy.append(Nodal_Coor)
+
+        if 'EN,UNBL,ATTR' in line:
+            connectivity_list_temp = []
+            for count2,line2 in enumerate(lines[count+1:]):
+                if 'EN,UNBL,NODE' in line2:
+                    line2 = line2.strip().split(",")
+                    connectivity_list_temp2 = [items for items in line2[3:] if items]
+                    connectivity_list_temp.extend(connectivity_list_temp2)
+                else:
+                    Nodal_Connectivity = [float(items) for items in connectivity_list_temp]
+                    elem_nodes_list.append(Nodal_Connectivity)
+                    break
+
+    elem_nodes = np.array(elem_nodes_list) - 1
+    elem_nodes = np.array(elem_nodes, dtype=np.int64)
+
+    XY = np.array(xy)
+
+    if np.all(XY[:,2] == 0):
+        XY = XY[:,:-1]
+    if XY.shape[1] == 2:
+        n = elem_nodes.shape[1]
+        elem_type = 'CPE' + str(n)
+    else:
+        d = XY.shape[1]
+        n = elem_nodes.shape[1]
+        elem_type = 'C' + str(d) + 'D' + str(n)
+
+    return XY, elem_nodes, elem_type

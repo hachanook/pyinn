@@ -11,7 +11,7 @@ st.set_page_config(
 
 # Display logo in the upper left corner
 logo = Image.open("logo.jpg")
-col1, col2 = st.columns([1, 8])
+col1, col2 = st.columns([1, 8]) 
 with col1:
     st.image(logo, use_container_width=True)
 with col2:
