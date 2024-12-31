@@ -88,14 +88,8 @@ class Regression_INN:
             # Use a boolean mask to set diagonal elements
             core = jnp.zeros(shape, dtype=jnp.float64)
             core = core.at[tuple([indices] * self.cls_data.dim)].set(1.0)
-            # diagonal_mask = jnp.stack([indices] * self.cls_data.dim, axis=0)
-            # diagonal_indices = jnp.all(diagonal_mask == diagonal_mask.T, axis=0)
-            # core = core.at[diagonal_indices].set(1)
             self.params = [core, self.params] # core tensor and factor matrices
-            # self.params = [jnp.eye([self.nmode]*self.cls_data.dim, dtype=jnp.double), 
-            #                self.params] # core tensor and factor matrices
             numParam += len(self.params[0].reshape(-1))
-        
         
         
         if self.interp_method == "linear" or self.interp_method == "nonlinear":
@@ -166,18 +160,16 @@ class Regression_INN:
             bool_train_acc = self.config['TRAIN_PARAM']['bool_train_acc']
             if bool_train_acc:
                 acc_metrics = "R2"
-                acc = r2_score(u, u_pred)
+                acc = r2_score(np.array(u), np.array(u_pred))
             else:
                 acc, acc_metrics = 0,"R2"
                 
         elif type == "val" or type == "test":
             acc_metrics = "R2"
-            acc = r2_score(u, u_pred)
+            acc = r2_score(np.array(u), np.array(u_pred))
         return acc, acc_metrics
 
     def inference(self, x_test):
-            u_pred = self.forward(self.params, x_test[0]) # (ndata_train, var)
-            u_pred = self.forward(self.params, x_test[0]) # (ndata_train, var)
             u_pred = self.forward(self.params, x_test[0]) # (ndata_train, var)
             start_time_inference = time.time()
             u_pred = self.forward(self.params, x_test[0]) # (ndata_train, var)
@@ -291,7 +283,7 @@ class Regression_INN:
         print("Test")
         print(f"\tTest loss: {batch_loss_test:.4e}")
         print(f"\tTest {acc_metrics}: {batch_acc_test:.4f}")
-        print(f"\tTest took {time.time() - start_time_test:.4f} seconds")
+        print(f"\tTest took {time.time() - start_time_test:.4f} seconds") 
 
         ## Inference
         self.inference(x_test)
@@ -352,11 +344,10 @@ class Regression_MLP(Regression_INN):
         u_pred = self.forward(self.params, self.activation, x_test[0]) # (ndata_train, var)
         print(f"\tInference time: {time.time() - start_time_inference:.4f} seconds")    
     
-    
 
 class Classification_INN(Regression_INN):
-    def __init__(self, interp_method, cls_data, config):
-        super().__init__(interp_method, cls_data, config) # prob being dropout probability
+    def __init__(self, cls_data, config):
+        super().__init__(cls_data, config) # prob being dropout probability
         
         ## classification problem always normalize inputs between 0 and 1
         self.x_dms_nds = jnp.tile(jnp.linspace(0,1,self.nnode, dtype=jnp.float64), (self.cls_data.dim,1)) # (dim,nnode)
@@ -398,7 +389,7 @@ class Classification_INN(Regression_INN):
             if bool_train_acc:
                 u_single = jnp.argmax(u, axis=1)
                 u_pred_single = jnp.argmax(u_pred, axis=1)
-                report = classification_report(u_single, u_pred_single, output_dict=True, zero_division=1)
+                report = classification_report(np.array(u_single), np.array(u_pred_single), output_dict=True, zero_division=1)
                 acc = report["accuracy"]
                 acc_metrics = "Accuracy"
             else:
@@ -407,7 +398,7 @@ class Classification_INN(Regression_INN):
         elif type == "val" or type == "test":
             u_single = jnp.argmax(u, axis=1)
             u_pred_single = jnp.argmax(u_pred, axis=1)
-            report = classification_report(u_single, u_pred_single, output_dict=True, zero_division=1)
+            report = classification_report(np.array(u_single), np.array(u_pred_single), output_dict=True, zero_division=1)
             acc = report["accuracy"]
             acc_metrics = "Accuracy"
         return acc, acc_metrics
@@ -415,8 +406,8 @@ class Classification_INN(Regression_INN):
 
 class Classification_MLP(Regression_MLP):
 
-    def __init__(self, interp_method, cls_data, config):
-        super().__init__(interp_method, cls_data, config) # prob being dropout probability
+    def __init__(self, cls_data, config):
+        super().__init__(cls_data, config) # prob being dropout probability
 
     @partial(jax.jit, static_argnames=['self']) # jit necessary
     def get_loss(self, params, x_data, u_data):

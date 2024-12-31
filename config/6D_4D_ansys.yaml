@@ -33,7 +33,7 @@ DATA_PARAM:
   
 TRAIN_PARAM:
   num_epochs_INN : 200
-  num_epochs_MLP : 500
+  num_epochs_MLP : 200
   batch_size : 128 # 128
   learning_rate : 1e-3
   bool_train_acc : False
