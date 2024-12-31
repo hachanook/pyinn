@@ -1,8 +1,8 @@
 MODEL_PARAM: 
 
   ## INN linear
-  nmode : 10
-  nelem : 20 
+  nmode : 70
+  nelem : 50 
 
   ## INN nonlinear
   s_patch : 2
@@ -19,26 +19,21 @@ MODEL_PARAM:
 
   ## MLP
   nlayers : 3
-  nneurons : 50
+  nneurons : 200
   # activation : "relu"
   activation : "sigmoid"
 
 DATA_PARAM:
-  input_col : [1,2,3]
+  input_col : [1,2,3,4,5,6]
   output_col : [7,8,9,10]
   bool_normalize: True # whether we normalize the input data or not
   bool_random_split : True # whether we randomly split the data or not
-  data_size: 29285
+  data_size: 1364742 # 29285 
   split_ratio: [0.8,0.2] # [0.7,0.15,0.15]
   
 TRAIN_PARAM:
-<<<<<<< HEAD
-  num_epochs_INN : 200
-  num_epochs_MLP : 200
-=======
-  num_epochs_INN : 2
-  num_epochs_MLP : 10
->>>>>>> c0b14ff08c2c6e17e62369820ddf5ac3c5fc61be
+  num_epochs_INN : 50
+  num_epochs_MLP : 50
   batch_size : 128 # 128
   learning_rate : 1e-3
   bool_train_acc : False
