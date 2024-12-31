@@ -10,7 +10,7 @@ MODEL_PARAM:
   p_order: 2
   radial_basis : "cubicSpline" # Activataion functions
   # radial_basis : 'gaussian1'
-  INNactivation : 'polynomial'
+  INNactivation : 'polynomial' 
   # INNactivation : 'sinusoidal'
   # INNactivation : 'exponential'
   # INNactivation : 'sigmoid'
@@ -32,14 +32,19 @@ DATA_PARAM:
   split_ratio: [0.8,0.2] # [0.7,0.15,0.15]
   
 TRAIN_PARAM:
+<<<<<<< HEAD
   num_epochs_INN : 200
   num_epochs_MLP : 200
+=======
+  num_epochs_INN : 2
+  num_epochs_MLP : 10
+>>>>>>> c0b14ff08c2c6e17e62369820ddf5ac3c5fc61be
   batch_size : 128 # 128
   learning_rate : 1e-3
   bool_train_acc : False
   validation_period : 10 # if this is greater than num_epochs, validation will not be conducted
 
 PLOT:
-  bool_plot: False
+  bool_plot: True
   plot_in_axis: [3,4] # plot input axis
   plot_out_axis: [0] # plot output axis
