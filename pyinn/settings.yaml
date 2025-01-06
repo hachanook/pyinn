@@ -1,5 +1,5 @@
 GPU: 
-  gpu_idx: 2
+  gpu_idx: 3
 
 PROBLEM:
   run_type: "regression" 
@@ -8,8 +8,8 @@ PROBLEM:
   TD_type: "CP"
 
   # interp_method: "linear" # INN
-  interp_method: "nonlinear" # INN
-  # interp_method: "MLP"
+  # interp_method: "nonlinear" # INN
+  interp_method: "MLP"
 
 DATA:
   ## ----------- regression data -------------
