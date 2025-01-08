@@ -1,4 +1,5 @@
 import streamlit as st
+from PIL import Image
 import numpy as np
 import pandas as pd
 import os, sys
@@ -8,7 +9,7 @@ from pyinn.dataset_regression import Data_regression_streamlit
 from jax import config
 import pyvista as pv
 from stpyvista import stpyvista
-config.update("jax_enable_x64", True)
+config.update("jax_enable_x64", True) 
 
 
 # Set page configuration
@@ -20,6 +21,60 @@ st.set_page_config(
 
 # Page title
 st.title("Space-Parameter")
+
+st.markdown(
+    """
+    ### Problem statement
+    If your physical simulation is static and depends on variable parameters such as geometry, material properties, 
+    and boundary conditions, the problem is called "Space-Parameter" problem. 
+
+    The inputs to the model are spatial variables (i.e., x,y,z coordinates) and variable parameters (p1, p2, ...) 
+    while the outputs can be physical properties such as temperature and displacement.
+
+    ##### Example - Crane Hook Design
+    """
+)
+
+problem = Image.open("SP_problem_statement.jpg")
+col1, col2 = st.columns([1, 1]) 
+with col1: st.image(problem, use_container_width=True)
+
+st.markdown(
+    """
+    
+    For example, consider a crane hook design problem where the physical domain is represented in a 3D x,y,z coordinate system and three variable geometric parameters: 
+    - $p_1 = t_x$; thickness in x-direction
+    - $p_2 = t_y$; thickness in y-direction
+    - $p_3 = t_z$; thickness in z-direction, \n
+    making it a 6-dimensional problem. The outputs are x,y,z deformations and equivalent stress. 
+
+    The training data shall be acquired by physical simulations or experiments, and be concatenated as a .csv file format. 
+    In this problem, a dataset may look like:
+    """
+)
+
+# Define the columns and a single row of data
+columns = [" index "," &nbsp;&nbsp; 0 &nbsp;&nbsp;","&nbsp;&nbsp;&nbsp; 1 &nbsp;&nbsp;&nbsp;","&nbsp;&nbsp; 2 &nbsp;&nbsp;",
+           "&nbsp;&nbsp; 3 &nbsp;&nbsp;","&nbsp;&nbsp; 4 &nbsp;&nbsp;","&nbsp;&nbsp; 5 &nbsp;&nbsp;","&nbsp;&nbsp; 6 &nbsp;&nbsp;",
+           "&nbsp;&nbsp; 7 &nbsp;&nbsp;","&nbsp;&nbsp; 8 &nbsp;&nbsp;","&nbsp;&nbsp; 9 &nbsp;&nbsp;","&nbsp;&nbsp; 10 &nbsp;&nbsp;"]
+table_header = "| " + " | ".join(columns) + " |"
+table_separator = "| " + " | ".join(["---"] * 12) + " |"
+st.markdown(f"{table_header}\n{table_separator}")
+data_path = './data/6D_4D_ansys_29285.csv'
+data = pd.read_csv(data_path)
+st.dataframe(data.head())  # Display as an interactive table
+
+st.markdown(
+    """
+    
+    Then you may want to specify which columns are the inputs and outputs. In this problem, columns 1,2,3,4,5,6 are the inputs and 7,8,9,10 are the outputs.
+    After setting hyperparameters for training, now you will be asked to run "Train the model". 
+
+    """
+
+)
+
+
 
 if 'Start training' not in st.session_state:
     st.session_state.start_training = False
@@ -63,29 +118,7 @@ else:
     st.info("Awaiting file upload...")
 
 
-st.markdown("#### Upload Your Mesh (.inp) File")
-uploaded_inp_file = st.file_uploader("Drop your mesh (.inp) file here:", type=["inp"], help="Please upload a .inp file.")
 
-if uploaded_inp_file is not None:
-    try:
-        # Read the .inp file line by line
-        lines = uploaded_inp_file.read().decode("utf-8").splitlines()
-        xy_list, elem_nodes_list = [], []
-        for count, line in enumerate(lines):
-            if 'N,UNBL,LOC' in line:
-                Nodal_Coor = [float(items) for items in line.strip().split(",")[6:]]
-                xy_list.append(Nodal_Coor)
-            elif 'EN,UNBL,NODE' in line:
-                Nodal_Connectivity = [int(items) for items in line.strip().split(",")[3:] if items]
-                elem_nodes_list.append(Nodal_Connectivity)
-        elem_nodes = np.array(elem_nodes_list) - 1
-        xy = np.array(xy_list)
-        st.success("Mesh file uploaded successfully!")
-        
-    except Exception as e:
-        st.error(f"An error occurred while processing the data file: {e}")
-else:
-    st.info("Awaiting file upload...")
 
 
 # Convert input to list of integers
@@ -151,8 +184,35 @@ if "data" in globals():
 
 
 ## plot 
-# if st.session_state.start_training:
 st.markdown("### Plot trained model")
+
+st.markdown("##### Upload Your Mesh (.inp) File")
+uploaded_inp_file = st.file_uploader("Drop your mesh (.inp) file here:", type=["inp"], help="Please upload a .inp file.")
+
+if uploaded_inp_file is not None:
+    try:
+        # Read the .inp file line by line
+        lines = uploaded_inp_file.read().decode("utf-8").splitlines()
+        xy_list, elem_nodes_list = [], []
+        for count, line in enumerate(lines):
+            if 'N,UNBL,LOC' in line:
+                Nodal_Coor = [float(items) for items in line.strip().split(",")[6:]]
+                xy_list.append(Nodal_Coor)
+            elif 'EN,UNBL,NODE' in line:
+                Nodal_Connectivity = [int(items) for items in line.strip().split(",")[3:] if items]
+                elem_nodes_list.append(Nodal_Connectivity)
+        elem_nodes = np.array(elem_nodes_list) - 1
+        xy = np.array(xy_list)
+        st.success("Mesh file uploaded successfully!")
+        
+    except Exception as e:
+        st.error(f"An error occurred while processing the data file: {e}")
+else:
+    st.info("Awaiting file upload...")
+
+
+# if st.session_state.start_training:
+
 output_idx = st.number_input("Output index to be plotted:", min_value=1, step=1, help="Specify the output index to be plotted.")
 st.write(f"Output index to be plotted: {output_idx}")
 st.session_state.output_idx = output_idx

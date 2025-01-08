@@ -15,7 +15,7 @@ col1, col2 = st.columns([1, 8])
 with col1:
     st.image(logo, use_container_width=True)
 with col2:
-    st.title("Welcome to HIDENN-AI, LLC")
+    st.title("Welcome to HIDENN-AI, LLC") 
 
 # Add introductory description
 st.markdown(
