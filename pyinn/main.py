@@ -5,7 +5,7 @@ Copyright (C) 2024  Chanwook Park
  Northwestern University, Evanston, Illinois, US, chanwookpark2024@u.northwestern.edu
 """
 from pyinn import dataset_classification, dataset_regression, model, train, plot
-from plot_mesh import *
+# from plot_mesh import *
 from jax import config
 config.update("jax_enable_x64", True)
 import os
@@ -45,8 +45,8 @@ if run_type == "regression":
 
     ## plot
     plot.plot_regression(regressor, data, config)
-    if "ansys" in config['data_name']:
-        plot_mesh(regressor, data, config)
+    # if "ansys" in config['data_name']:
+    #     plot_mesh(regressor, data, config)
 
 
 # --------------------- Classification --------------------------
