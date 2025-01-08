@@ -14,7 +14,7 @@ from typing import Sequence
 from torch.utils.data import Dataset
 from scipy.stats import qmc
 
-
+ 
 class Data_regression(Dataset):
     def __init__(self, data_name: str, config) -> None:
         if not os.path.exists('data'):

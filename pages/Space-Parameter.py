@@ -109,8 +109,9 @@ if uploaded_file is not None:
 
         # Input for specifying columns
         st.markdown("### Specify Columns")
-        input_columns = st.text_input("Enter input columns (comma-separated):", help="Specify the indices of the columns to be used as inputs (e.g., 0, 1, 2).")
-        output_columns = st.text_input("Enter output columns (comma-separated):", help="Specify the indices of the columns to be used as outputs (e.g., 3, 4).")
+        input_space_columns = st.text_input("Enter column indices for spatial inputs (comma-separated):", help="Specify the indices of the columns to be used as spatial inputs (e.g., 0, 1, 2).")
+        input_parameter_columns = st.text_input("Enter column indices for parametric inputs (comma-separated):", help="Specify the indices of the columns to be used as parametric inputs (e.g., 3, 4, 5).")
+        output_columns = st.text_input("Enter output columns (comma-separated):", help="Specify the indices of the columns to be used as outputs (e.g., 6, 7).")
 
     except Exception as e:
         st.error(f"An error occurred while processing the data file: {e}")
@@ -119,12 +120,13 @@ else:
 
 
 
-
-
 # Convert input to list of integers
-if 'input_columns' in globals():
+if 'output_columns' in globals():
     try:
-        input_col = [int(col.strip()) for col in input_columns.split(",") if col.strip()] if input_columns else []
+        input_space_col = [int(col.strip()) for col in input_space_columns.split(",") if col.strip()] if input_space_columns else []
+        input_parameter_col = [int(col.strip()) for col in input_parameter_columns.split(",") if col.strip()] if input_parameter_columns else []
+        st.session_state.input_parameter_col = input_parameter_col
+        input_col = input_space_col + input_parameter_col
         output_col = [int(col.strip()) for col in output_columns.split(",") if col.strip()] if output_columns else []
         # Ask user to choose the model type
         st.markdown("### Choose Model Type")
@@ -136,16 +138,16 @@ if 'input_columns' in globals():
         # Additional user inputs
         st.markdown("### Additional Parameters")
         if interp_method == "INN" or "nonlinear":
-            nelem = st.number_input("Number of elements per dimension:", min_value=1, step=1, help="Specify the number of elements per dimension.", value=20)
-            nmode = st.number_input("Number of modes of CP decomposition:", min_value=1, step=1, help="Specify the number of modes of CP decomposition.", value=10)
+            nelem = st.number_input("Number of elements per dimension:", min_value=1, step=1, help="Specify the number of elements per dimension.", value=40)
+            nmode = st.number_input("Number of modes of CP decomposition:", min_value=1, step=1, help="Specify the number of modes of CP decomposition.", value=50)
             
         elif interp_method == "MLP":
-            nlayers = st.number_input("Number of hidden layers:", min_value=1, step=1, help="Specify the number of hidden layers.", value=2)
-            nneurons = st.number_input("Number of neurons per layer:", min_value=1, step=1, help="Specify the number of neurons per layer.", value=50)
-        nepoch = st.number_input("Number of epochs:", min_value=1, step=1, help="Specify the number of epochs for training.", value=100)
+            nlayers = st.number_input("Number of hidden layers:", min_value=1, step=1, help="Specify the number of hidden layers.", value=3)
+            nneurons = st.number_input("Number of neurons per layer:", min_value=1, step=1, help="Specify the number of neurons per layer.", value=200)
+        nepoch = st.number_input("Number of epochs:", min_value=1, step=1, help="Specify the number of epochs for training.", value=2)
 
-        config = {"MODEL_PARAM": {"nelem": 20, "nmode": 10, "s_patch": 2, "alpha_dil": 20, "p_order": 2, "radial_basis": "cubicSpline", "INNactivation": "polynomial",
-                                "nlayers": 3, "nneurons": 50, "activation": "sigmoid"},
+        config = {"MODEL_PARAM": {"nelem": 40, "nmode": 50, "s_patch": 2, "alpha_dil": 20, "p_order": 2, "radial_basis": "cubicSpline", "INNactivation": "polynomial",
+                                "nlayers": 3, "nneurons": 200, "activation": "sigmoid"},
                 "DATA_PARAM": {"input_col": input_col, "output_col": output_col, "bool_normalize": True, "bool_random_split": True, "split_ratio": [0.8, 0.2]},
                 "TRAIN_PARAM": {"num_epochs_INN": nepoch, "num_epochs_MLP": nepoch, "batch_size": 128, "learning_rate": 1e-3, "bool_train_acc": False, "validation_period": 10},
                 "PLOT": {"bool_plot": False, "plot_in_axis": [3,4], "plot_out_axis": [0]}}
@@ -214,8 +216,19 @@ else:
 # if st.session_state.start_training:
 
 output_idx = st.number_input("Output index to be plotted:", min_value=1, step=1, help="Specify the output index to be plotted.")
-st.write(f"Output index to be plotted: {output_idx}")
+output_label = st.text_input("Output label in text:", help="A short description of the output to be plotted.")
+# st.write(f"Output index to be plotted: {output_idx}")
 st.session_state.output_idx = output_idx
+st.session_state.output_label = output_label
+
+if 'input_parameter_col' in globals():
+    parameters = []
+    for idx, col in enumerate(input_parameter_col):
+        p = st.number_input(rf"$p_{idx+1}$:", min_value=0.0, step=0.0001, help=f"Specify the value of {idx+1}-th parameter.", value=0.015)
+        parameters.append(p)
+    st.markdown("Parametric inputs:")
+    st.write(f"{parameters}")
+
     
 if st.button("Start Plotting"):
     st.session_state.start_plotting = True
@@ -231,19 +244,34 @@ if st.button("Start Plotting"):
     ## Create the unstructured grid
     mesh = pv.UnstructuredGrid(connectivity, cell_types, xy)
 
+    p_org = np.tile(parameters, (xy.shape[0], 1)) 
+    x_org = np.hstack((xy, p_org))
+
+    ## Normalize inputs
+    x = (x_org - st.session_state.model.cls_data.x_data_minmax["min"]) / (
+        st.session_state.model.cls_data.x_data_minmax["max"] - st.session_state.model.cls_data.x_data_minmax["min"])
+    
     ## Add the nodal data
     if st.session_state.model.interp_method == "linear" or st.session_state.model.interp_method == "nonlinear" or st.session_state.model.interp_method == "INN":
-        U_pred = st.session_state.model.v_forward(st.session_state.model.params, xy) # (101,L)
+        U_pred = st.session_state.model.v_forward(st.session_state.model.params, x) # (101,L)
     elif st.session_state.model.interp_method == "MLP":
-        U_pred = st.session_state.model.v_forward(st.session_state.model.params, st.session_state.model.activation, xy) # (101,L)
+        U_pred = st.session_state.model.v_forward(st.session_state.model.params, st.session_state.model.activation, x) # (101,L)
+    
+    st.write(f"{U_pred.shape}")
+    ## Denormalize
+    U_pred_org = (st.session_state.model.cls_data.u_data_minmax["max"] - st.session_state.model.cls_data.u_data_minmax["min"]
+                  ) * U_pred + st.session_state.model.cls_data.u_data_minmax["min"]
 
     for i in range(U_pred.shape[1]):
-        mesh.point_data[f'u_{i+1}'] = U_pred[:, i]
+        mesh.point_data[f'u_{i+1}'] = U_pred_org[:, i]
 
     plotter = pv.Plotter()
-    plotter.add_mesh(mesh, scalars=f"u_{output_idx}", show_edges=True, color="lightblue")
+    plotter.add_mesh(mesh, scalars=f"u_{output_idx}", show_edges=True, color="lightblue", cmap="viridis", 
+                     show_scalar_bar=True, scalar_bar_args={"title": f"{st.session_state.output_label}"})
+    # plotter.add_axes()         
+    plotter.view_isometric()            
     # Display the mesh using stpyvista Plotter
-    stpyvista(plotter)
+    stpyvista(plotter, key="pv_cube")
 
     # except Exception as e:
     #     st.error(f"An error occurred while plotting results: {e}")

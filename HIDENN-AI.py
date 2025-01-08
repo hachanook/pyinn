@@ -24,22 +24,24 @@ st.markdown(
     HIDENN-AI, LLC is a cutting-edge technology startup co-founded by researchers at Northwestern University (led by Dr. Wing Kam Liu)
     and UT Dallas (led by Dr. Dong Qian).
 
-    ### Our Vision
-    At HIDENN-AI, We are developing a next generation software that combines physics with AI 
-    to create and analyze complex digital twins in design and manufacturing.
-
+    ### Mission Statement
+    To develop the next-generation predictive artificial intelligence (AI) that can revolutionize decision making processes in industries. 
 
     ### Our Services
-    - Faster and more accurate Finite Element Analysis (C-HiDeNN Module)
-    - Resource-efficient AI surrogate model training (INN trainer)
-    - Data-free surrogate modeling (Space-Time-Parameter C-HiDeNN-TD solver)
-
+    - Faster and more accurate physical simulations
+    - Resource-efficient models for predictive AI
+    - Data-free physical modeling for digital twins
+    - Education innovation and research
+    
     Join us on our journey to transform the future with AI!
 
     ### Visit Our Homepage
     [HIDENN-AI Homepage](https://hidennai.wordpress.com/)
     """
 )
+
+# At HIDENN-AI, We are developing a next generation software that combines physics with AI 
+#     to create and analyze complex digital twins in design and manufacturing.
 
 # Add a footer
 st.write("---")
