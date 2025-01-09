@@ -130,18 +130,18 @@ if 'output_columns' in globals():
         output_col = [int(col.strip()) for col in output_columns.split(",") if col.strip()] if output_columns else []
         # Ask user to choose the model type
         st.markdown("### Choose Model Type")
-        interp_method = st.selectbox("Select the model type:", options=["INN", "MLP"], help="Choose the model type for training.")
+        model_type = st.selectbox("Select the model type:", options=["INN", "MLP"], help="Choose the model type for training.")
         # st.write(f"**Selected Model Type:** {interp_method}")
-        if interp_method == "INN":
-            interp_method = "nonlinear" # use nonlinear INN as default
-
-        # Additional user inputs
         st.markdown("### Additional Parameters")
-        if interp_method == "INN" or "nonlinear":
+        
+        # Additional user inputs
+        if model_type == "INN":
+            interp_method = "nonlinear" # use nonlinear INN as default
             nelem = st.number_input("Number of elements per dimension:", min_value=1, step=1, help="Specify the number of elements per dimension.", value=40)
             nmode = st.number_input("Number of modes of CP decomposition:", min_value=1, step=1, help="Specify the number of modes of CP decomposition.", value=50)
             
-        elif interp_method == "MLP":
+        elif model_type == "MLP":
+            interp_method = "MLP" # 
             nlayers = st.number_input("Number of hidden layers:", min_value=1, step=1, help="Specify the number of hidden layers.", value=3)
             nneurons = st.number_input("Number of neurons per layer:", min_value=1, step=1, help="Specify the number of neurons per layer.", value=200)
         nepoch = st.number_input("Number of epochs:", min_value=1, step=1, help="Specify the number of epochs for training.", value=2)
@@ -154,10 +154,10 @@ if 'output_columns' in globals():
         config["interp_method"] = interp_method
         config["data_name"] = data_name
         config["TD_type"] = "CP"
-        if interp_method == "INN" or "nonlinear":
+        if (interp_method == "INN" or "nonlinear") and 'nelem' in globals():
             config["MODEL_PARAM"]["nelem"] = nelem
             config["MODEL_PARAM"]["nmode"] = nmode
-        elif interp_method == "MLP":
+        elif interp_method == "MLP" and 'nlayers' in globals():
             config["MODEL_PARAM"]["nlayers"] = nlayers
             config["MODEL_PARAM"]["nneurons"] = nneurons 
 
@@ -175,7 +175,7 @@ if "data" in globals():
         st.session_state.start_training = True
         # status_placeholder = st.empty()  # Create a placeholder for training status
 
-        if interp_method == "INN" or "nonlinear":
+        if interp_method == "INN" or interp_method == "nonlinear":
             regressor = train.Regression_INN(data, config)  # HiDeNN-TD regressor class
         elif interp_method == "MLP":
             regressor = train.Regression_MLP(data, config)  # HiDeNN-TD regressor class
