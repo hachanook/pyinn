@@ -171,6 +171,8 @@ class Regression_INN:
 
     def inference(self, x_test):
             u_pred = self.forward(self.params, x_test[0]) # (ndata_train, var)
+            u_pred = self.forward(self.params, x_test[0]) # (ndata_train, var)
+            u_pred = self.forward(self.params, x_test[0]) # (ndata_train, var)
             start_time_inference = time.time()
             u_pred = self.forward(self.params, x_test[0]) # (ndata_train, var)
             print(f"\tInference time: {time.time() - start_time_inference:.4f} seconds")       
