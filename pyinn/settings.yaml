@@ -1,15 +1,16 @@
 GPU: 
-  gpu_idx: 0
+  gpu_idx: 1
 
 PROBLEM:
-  # run_type: "regression" 
-  run_type: "classification" 
+  run_type: "regression" 
+  # run_type: "classification" 
 
   TD_type: "CP"
 
   # interp_method: "linear" # INN
-  interp_method: "nonlinear" # INN
+  # interp_method: "nonlinear" # INN
   # interp_method: "MLP"
+  interp_method: "CPMLP"
 
 DATA:
   ## ----------- regression data -------------
@@ -22,9 +23,10 @@ DATA:
   # data_name : '8D_1D_physics' # borehole equation
   # data_name : '10D_5D_physics' # physcial equation
   # data_name : 'IGAMapping2D' # for IGA inverse mapping; multi-CAD-patch C-IGA paper
-
+  data_name : 'STP_icml'
+  # data_name : 'STP_training_data_pandas_wor'
   ## ----------- classification data -------------
-  data_name : 'spiral'
+  # data_name : 'spiral'
   # data_name : 'mnist'
   # data_name : 'fashion_mnist'
 

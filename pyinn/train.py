@@ -11,14 +11,15 @@ from jax import config
 config.update("jax_enable_x64", True)
 import optax
 from functools import partial
-import numpy as np
+import numpy as onp
 from torch.utils.data import DataLoader, random_split, Subset
 import time
 import torch
 from sklearn.metrics import r2_score, classification_report
 import importlib.util
-
+import pandas as pd
 from .model import *
+from tqdm import tqdm
 
 if importlib.util.find_spec("GPUtil") is not None: # for linux & GPU
     ''' If you are funning on GPU, please install the following libraries on your anaconda environment via 
@@ -113,16 +114,37 @@ class Regression_INN:
     @partial(jax.jit, static_argnames=['self']) 
     def update_optax(self, params, opt_state, x_data, u_data):
         ((loss, u_pred), grads) = self.Grad_get_loss(params, x_data, u_data)
+        # print(f"\tgrad shape: {jax.tree_map(lambda x: x.shape, grads)}")
         updates, opt_state = self.optimizer.update(grads, opt_state)
         params = optax.apply_updates(params, updates)
         return params, opt_state, loss, u_pred    
     
     def data_split(self):
         split_ratio = self.cls_data.split_ratio
-        if self.config['DATA_PARAM']['bool_random_split'] == True and all(isinstance(item, float) for item in split_ratio):
+        if self.config['DATA_PARAM']['bool_load_data'] == True:
+            self.split_type = 'TT' # test as validation data
+            self.train_dataloader = DataLoader(self.cls_data.pre_split_train_data, batch_size=self.batch_size, shuffle=True)
+            self.test_dataloader = DataLoader(self.cls_data.pre_split_test_data, batch_size=self.batch_size, shuffle=True)
+        elif self.config['DATA_PARAM']['bool_random_split'] == True and all(isinstance(item, float) for item in split_ratio):
             # random split with a split ratio
             generator = torch.Generator().manual_seed(42)
-            split_data = random_split(dataset=self.cls_data,lengths=self.cls_data.split_ratio, generator=generator)
+            retained_data, _ = random_split(dataset=self.cls_data, lengths=[0.8, 0.2], generator=generator)
+            # Lists to store features and labels
+            features_list = []
+            labels_list = []
+
+            # Iterate over the retained_data
+            for data_item in retained_data:
+                # Split data_item into features and labels
+                features, label = data_item 
+                
+                # If features is a tensor, convert to list or numpy array
+                features_list.append(features.tolist())
+                
+                # If label is a tensor, convert to scalar (assuming it's a single label per item)
+                labels_list.append(label.item()) 
+
+            split_data = random_split(dataset=retained_data, lengths=self.cls_data.split_ratio, generator=generator)
             if len(split_ratio) == 2:
                 self.split_type="TT" # train and test
                 train_data = split_data[0]
@@ -133,7 +155,10 @@ class Regression_INN:
                 val_data = split_data[1]
                 test_data = split_data[2]
                 self.val_dataloader = DataLoader(test_data, batch_size=self.batch_size, shuffle=True)
-            
+
+            self.train_dataloader = DataLoader(train_data, batch_size=self.batch_size, shuffle=True)
+            self.test_dataloader = DataLoader(test_data, batch_size=self.batch_size, shuffle=True)
+                        
         elif self.config['DATA_PARAM']['bool_random_split'] == False and all(isinstance(item, int) for item in split_ratio):
             # non-random split with a fixed number of data
             if len(split_ratio) == 2:
@@ -146,17 +171,18 @@ class Regression_INN:
                 test_data = Subset(self.cls_data, list(range(split_ratio[0], split_ratio[0]+split_ratio[1])))
                 val_data = Subset(self.cls_data, list(range(split_ratio[0]+split_ratio[1], split_ratio[0]+split_ratio[1]+split_ratio[2])))
                 self.val_dataloader = DataLoader(test_data, batch_size=self.batch_size, shuffle=True)
-        self.train_dataloader = DataLoader(train_data, batch_size=self.batch_size, shuffle=True)
-        self.test_dataloader = DataLoader(test_data, batch_size=self.batch_size, shuffle=True)
+        
+            self.train_dataloader = DataLoader(train_data, batch_size=self.batch_size, shuffle=True)
+            self.test_dataloader = DataLoader(test_data, batch_size=self.batch_size, shuffle=True)
 
-    def get_acc_metrics(self, u, u_pred, type="test"):
+    def get_acc_metrics(self, u, u_pred, type0="test"):
         """ Get accuracy metrics. For regression, R2 will be returned.
         """
         if jnp.isnan(u_pred).any(): # if the prediction has nan value,
             print(f"[Error] INN prediction has NaN components")
             print(jnp.where(jnp.isnan(u_pred))[0])        
 
-        if type == "train":
+        if type0 == "train":
             bool_train_acc = self.config['TRAIN_PARAM']['bool_train_acc']
             if bool_train_acc:
                 acc_metrics = "R2"
@@ -164,7 +190,7 @@ class Regression_INN:
             else:
                 acc, acc_metrics = 0,"R2"
                 
-        elif type == "val" or type == "test":
+        elif type0 == "val" or type0 == "test":
             acc_metrics = "R2"
             acc = r2_score(u, u_pred)
         return acc, acc_metrics
@@ -194,14 +220,14 @@ class Regression_INN:
         #     loss_val_list, acc_val_list = [], []
         
         ## Train
+        total_epochs = self.num_epochs  # Assuming self.num_epochs is defined
+        interval = total_epochs // 5  # This calculates 10% of the total epochs
         start_time_train = time.time()
-        for epoch in range(self.num_epochs):
+        for epoch in tqdm(range(self.num_epochs), desc='Epochs'):
             epoch_list_loss, epoch_list_acc = [], [] 
             start_time_epoch = time.time()    
             count = 0
-            for batch in self.train_dataloader:
-                
-                
+            for idx, batch in enumerate(self.train_dataloader):
                 
                 # time_batch = time.time()
                 x_train, u_train = jnp.array(batch[0]), jnp.array(batch[1])
@@ -216,22 +242,23 @@ class Regression_INN:
                 # print("\t\t\t", jnp.where(jnp.isnan(u_pred_train))[0])
                 
                 # time_batch = time.time()
-                acc_train, acc_metrics = self.get_acc_metrics(u_train, u_pred_train, "train")
+                acc_train, acc_metrics = self.get_acc_metrics(onp.array(u_train), onp.array(u_pred_train), "train")
                 epoch_list_loss.append(loss_train)
                 epoch_list_acc.append(acc_train)
                 # print(f"\t append {time.time() - time_batch:.4f} seconds")
 
                 
-            batch_loss_train = np.mean(epoch_list_loss)
-            batch_acc_train = np.mean(epoch_list_acc)
-                
-            print(f"Epoch {epoch+1}")
-            print(f"\tTraining loss: {batch_loss_train:.4e}")
-            if self.config['TRAIN_PARAM']['bool_train_acc']:
-                print(f"\tTraining {acc_metrics}: {batch_acc_train:.4f}")
+            batch_loss_train = onp.mean(epoch_list_loss)
+            batch_acc_train = onp.mean(epoch_list_acc)
+            
+            if epoch % interval == 0:    
+                print(f"Epoch {epoch+1}")
+                print(f"\tTraining loss: {batch_loss_train:.4e}")
+                if self.config['TRAIN_PARAM']['bool_train_acc']:
+                    print(f"\tTraining {acc_metrics}: {batch_acc_train:.4f}")
             else:
                 pass
-            print(f"\tEpoch {epoch+1} training took {time.time() - start_time_epoch:.4f} seconds")
+            # print(f"\tEpoch {epoch+1} training took {time.time() - start_time_epoch:.4f} seconds")
 
             ## Validation
             if (epoch+1)%self.validation_period == 0:
@@ -248,12 +275,12 @@ class Regression_INN:
                     #     print(idx)   
                     #     print(x_val[idx])
                     
-                    acc_val, acc_metrics = self.get_acc_metrics(u_val, u_pred_val)
+                    acc_val, acc_metrics = self.get_acc_metrics(onp.array(u_val), onp.array(u_pred_val))
                     epoch_list_loss.append(loss_val)
                     epoch_list_acc.append(acc_val)
                 
-                batch_loss_val = np.mean(epoch_list_loss)
-                batch_acc_val = np.mean(epoch_list_acc)
+                batch_loss_val = onp.mean(epoch_list_loss)
+                batch_acc_val = onp.mean(epoch_list_acc)
                 print(f"\tValidation loss: {batch_loss_val:.4e}")
                 print(f"\tValidation {acc_metrics}: {batch_acc_val:.4f}")
 
@@ -274,12 +301,12 @@ class Regression_INN:
         for batch in self.test_dataloader:
             x_test, u_test = jnp.array(batch[0]), jnp.array(batch[1])
             _, _, loss_test, u_pred_test = self.update_optax(params, opt_state, x_test, u_test)
-            acc_test, acc_metrics = self.get_acc_metrics(u_test, u_pred_test)
+            acc_test, acc_metrics = self.get_acc_metrics(onp.array(u_test), onp.array(u_pred_test))
             epoch_list_loss.append(loss_test)
             epoch_list_acc.append(acc_test)
         
-        batch_loss_test = np.mean(epoch_list_loss)
-        batch_acc_test = np.mean(epoch_list_acc)
+        batch_loss_test = onp.mean(epoch_list_loss)
+        batch_acc_test = onp.mean(epoch_list_acc)
         print("Test")
         print(f"\tTest loss: {batch_loss_test:.4e}")
         print(f"\tTest {acc_metrics}: {batch_acc_test:.4f}")
@@ -304,6 +331,7 @@ class Regression_MLP(Regression_INN):
 
         ### initialization of trainable parameters
         layer_sizes = [cls_data.dim] + self.nlayers * [self.nneurons] + [cls_data.var]
+        print(layer_sizes)
         self.params = self.init_network_params(layer_sizes, jax.random.PRNGKey(self.key))
         weights, biases = 0,0
         for layer in self.params:
@@ -334,6 +362,7 @@ class Regression_MLP(Regression_INN):
         u_pred = self.v_forward(params, self.activation, x_data) # (ndata_train, var)
         loss = ((u_pred- u_data)**2).mean()
         return loss, u_pred
+    # Grad_get_loss = jax.value_and_grad(get_loss, argnums=1, has_aux=True)
     Grad_get_loss = jax.jit(jax.value_and_grad(get_loss, argnums=1, has_aux=True), static_argnames=['self'])
 
     def inference(self, x_test):
@@ -344,6 +373,104 @@ class Regression_MLP(Regression_INN):
         u_pred = self.forward(self.params, self.activation, x_test[0]) # (ndata_train, var)
         print(f"\tInference time: {time.time() - start_time_inference:.4f} seconds")    
     
+class Regression_CPMLP(Regression_INN):
+    def __init__(self, cls_data, config):
+        super().__init__(cls_data, config) # prob being dropout probability
+        
+        self.forward = forward_CPMLP
+        self.v_forward = v_forward_CPMLP
+        self.vv_forward = vv_forward_CPMLP
+        self.ninput = cls_data.dim
+        self.nmode = int(config['MODEL_PARAM']['nmode'])
+        self.nlayers = config['MODEL_PARAM']["nlayers_cp"]
+        self.nneurons = config['MODEL_PARAM']["nneurons_cp"]
+        self.activation = config['MODEL_PARAM']["activation_cp"]
+        self.num_epochs = int(self.config['TRAIN_PARAM']['num_epochs_MLP'])
+        
+        assert self.cls_data.var == 1, "CPMLP only works for 1d output for now"
+        ### initialization of trainable parameters
+        layer_sizes = [1] + [self.nmode] + self.nlayers * [self.nneurons] + [self.nmode]
+        print(layer_sizes)
+        # print(param.shape for param in self.params)
+        self.params = {}
+        key = jax.random.PRNGKey(self.key)
+        for i in range(self.ninput):
+            key, subkey = jax.random.split(key)
+            self.params[i] = self.init_network_params(layer_sizes, subkey)
+        print(f"num_mode {jax.tree.map(lambda x: x.shape, self.params)}")
+        # jax.debug.print("num_mode {params}", params = jax.tree.map(lambda x: x.shape, self.params))
+         
+        # weights, biases = 0,0
+        # for layer in self.params[0]:
+        #     w, b = layer[0], layer[1]
+        #     weights += w.shape[0]*w.shape[1]
+        #     biases += b.shape[0]
+        print("------------CPMLP-------------")
+        # print(jax.tree_map(lambda x: x.shape, self.params))
+        # print(f"# of training parameters: {(weights+biases) * self.ninput}")
+
+# class Regression_CPMLP(Regression_INN):
+#     def __init__(self, cls_data, config):
+#         super().__init__(cls_data, config) # prob being dropout probability
+        
+#         self.forward = forward_CPMLP
+#         self.v_forward = v_forward_CPMLP
+#         self.vv_forward = vv_forward_CPMLP
+#         self.ninput = cls_data.dim
+#         self.nmode = int(config['MODEL_PARAM']['nmode'])
+#         self.nlayers = config['MODEL_PARAM']["nlayers"]
+#         self.nneurons = config['MODEL_PARAM']["nneurons"]
+#         self.activation = config['MODEL_PARAM']["activation"]
+#         self.num_epochs = int(self.config['TRAIN_PARAM']['num_epochs_MLP'])
+        
+#         assert self.cls_data.var == 1, "CPMLP only works for 1d output for now"
+#         ### initialization of trainable parameters
+#         layer_sizes = [1, 10, 10, 1]
+#         # layer_sizes = [1] + [self.nmode] + self.nlayers * [self.nneurons] + [self.nmode] #only works for 1d output for now
+#         print(layer_sizes)
+#         # print(param.shape for param in self.params)
+#         self.params = self.init_network_params(layer_sizes, jax.random.PRNGKey(self.key))
+            
+#         # weights, biases = 0,0
+#         # for layer in self.params[0]:
+#         #     w, b = layer[0], layer[1]
+#         #     weights += w.shape[0]*w.shape[1]
+#         #     biases += b.shape[0]
+#         print("------------CPMLP-------------")
+#         # print(jax.tree_map(lambda x: x.shape, self.params))
+#         # print(f"# of training parameters: {(weights+biases) * self.ninput}")
+        
+    def random_layer_params(self, m, n, key, scale=1e-2): # m input / n output neurons
+      w_key, b_key = jax.random.split(key)
+      return scale * jax.random.normal(w_key, (n, m)), scale * jax.random.normal(b_key, (n,))
+    
+    def init_network_params(self, sizes, key):
+        keys = jax.random.split(key, len(sizes))
+        return [self.random_layer_params(m, n, k) for m, n, k in zip(sizes[:-1], sizes[1:], keys)]
+    
+    @partial(jax.jit, static_argnames=['self']) # jit necessary
+    def get_loss(self, params, x_data, u_data):
+        ''' Compute loss value at (m)th mode given upto (m-1)th mode solution, which is u_pred_old
+        --- input ---
+        u_p_modes: (nmode, dim, nnode, var)
+        u_data: exact u from the data. (ndata_train, var)
+        shape_vals_data, patch_nodes_data: defined in "get_HiDeNN_shape_fun"
+        '''
+        
+        u_pred = self.v_forward(params, self.activation, x_data) # (ndata_train, var)
+        loss = ((u_pred- u_data)**2).mean()
+        return loss, u_pred
+    # 
+    # Grad_get_loss = jax.value_and_grad(get_loss, argnums=1, has_aux=True)
+    Grad_get_loss = jax.jit(jax.value_and_grad(get_loss, argnums=1, has_aux=True), static_argnames=['self'])
+
+    def inference(self, x_test):
+        u_pred = self.forward(self.params, self.activation, x_test[0]) # (ndata_train, var)
+        u_pred = self.forward(self.params, self.activation, x_test[0]) # (ndata_train, var)
+        u_pred = self.forward(self.params, self.activation, x_test[0]) # (ndata_train, var)
+        start_time_inference = time.time()
+        u_pred = self.forward(self.params, self.activation, x_test[0]) # (ndata_train, var)
+        print(f"\tInference time: {time.time() - start_time_inference:.4f} seconds")   
 
 class Classification_INN(Regression_INN):
     def __init__(self, cls_data, config):

@@ -142,3 +142,38 @@ def forward_MLP(params, activation, x_idata):
     return jnp.dot(final_w, activations) + final_b
 v_forward_MLP = jax.vmap(forward_MLP, in_axes=(None,None, 0)) # returns (ndata,)
 vv_forward_MLP = jax.vmap(v_forward_MLP, in_axes=(None,None, 0)) # returns (ndata,)
+
+
+@partial(jax.jit, static_argnames=['activation'])
+def forward_CPMLP(params, activation, x_idata):
+    # per-example predictions
+    
+    num_mode = params[0][0][0].shape[0]
+    # jax.debug.print("num_mode {num_mode}", num_mode = num_mode)
+    num_input_dim = x_idata.shape[0]
+    output_dims_modes = jnp.empty((0, num_mode))  #()
+    
+    for dim in range(num_input_dim):
+        params_dim = params[dim]
+        activations = x_idata[dim].reshape(-1)
+        for w, b in params_dim[:-1]:
+            outputs = jnp.dot(w, activations) + b
+            if activation == 'relu':
+                activations = relu(outputs)
+            elif activation == 'sigmoid':
+                activations = jax.nn.sigmoid(outputs)
+        final_w, final_b = params_dim[-1]
+        output_idim = jnp.dot(final_w, activations) + final_b # (num_mode,)
+        output_dims_modes = jnp.append(output_dims_modes, output_idim.reshape(1,-1), axis=0) # (num_input_dim, num_mode)
+    
+    # jax.debug.print("output_idim {output_idim}", output_idim = output_idim.shape)
+    
+    output = jnp.sum(jnp.prod(output_dims_modes, axis = 0)).reshape(-1) # (data dimension)
+    # jax.debug.print("output {output}", output = output.shape)
+    # jax.debug.print("output_idim {output_idim}", output_idim = output_idim)
+   
+    return output #why can't keep track of gradient?
+
+
+v_forward_CPMLP = jax.vmap(forward_CPMLP, in_axes=(None,None, 0)) # returns (ndata,)
+vv_forward_CPMLP = jax.vmap(v_forward_CPMLP, in_axes=(None,None, 0)) # returns (ndata,)
