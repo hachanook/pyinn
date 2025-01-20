@@ -16,6 +16,10 @@ MODEL_PARAM:
   # INNactivation : 'sigmoid'
   # INNactivation : 'tanh'
   # INNactivation : 'gelu'
+
+  ## r-adaptivity
+  radap : True
+  radap_epoch: 2
   
   ## MLP
   nlayers : 2

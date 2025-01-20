@@ -109,17 +109,18 @@ class Regression_INN:
         u_data: exact u from the data. (ndata_train, var)
         shape_vals_data, patch_nodes_data: defined in "get_HiDeNN_shape_fun"
         '''
-        if self.interp_method == "linear":
-            model = INN_linear(grid_dms, self.config)
+        # if self.interp_method == "linear":
+        model = INN_linear(grid_dms, self.config)
             
-        elif self.interp_method == "nonlinear":
-            model = INN_nonlinear(grid_dms, self.config)
+        # elif self.interp_method == "nonlinear":
+        #     model = INN_nonlinear(grid_dms, self.config)
 
         u_pred = model.v_forward(params, x_data) # (ndata_train, var)
         loss = ((u_pred- u_data)**2).mean()
         return loss, u_pred
     Grad_get_loss_r = jax.jit(jax.value_and_grad(get_loss_r, argnums=1, has_aux=True), static_argnames=['self'])
     
+
     @partial(jax.jit, static_argnames=['self']) 
     def update_optax(self, params, opt_state, x_data, u_data):
         ((loss, u_pred), grads) = self.Grad_get_loss(params, x_data, u_data)
@@ -195,12 +196,12 @@ class Regression_INN:
         ## Define model
         if self.interp_method == "linear":
             # model = INN_linear(self.x_dms_nds[0,:], config)
-            model = INN_linear(self.grid_dms, config)
+            model = INN_linear(self.grid_dms, self.config)
             self.forward = model.forward
             self.v_forward = model.v_forward
             self.vv_forward = model.vv_forward
         elif self.interp_method == "nonlinear":
-            model = INN_nonlinear(self.grid_dms[0,:], config)
+            model = INN_nonlinear(self.grid_dms, self.config)
             self.forward = model.forward
             self.v_forward = model.v_forward
             self.vv_forward = model.vv_forward
@@ -314,7 +315,7 @@ class Regression_INN:
         self.inference(x_test)
 
     def train_r(self):
-        self.batch_size = int(self.config['TRAIN_PARAM']['batch_size'])
+        self.batch_size = int(self.config['TRAIN_PARAM']['batch_size']) * 100 # set r-batch as large as possible
         self.learning_rate = float(self.config['TRAIN_PARAM']['learning_rate'])
         self.validation_period = int(self.config['TRAIN_PARAM']['validation_period'])
         
@@ -335,7 +336,7 @@ class Regression_INN:
             grads = grads.at[:,[0,-1]].set(0) # fix boundary nodes
             elem_size = grid_dms[:,1:] - grid_dms[:,0:-1]  # (dim, J-1)
             elem_size_min = jnp.min(elem_size, axis=1) # (dim,) minimum element size for each dimension
-            learning_rate = 0.1 * elem_size_min / jnp.max(jnp.abs(grads), axis=1)
+            learning_rate = 0.05 * elem_size_min / jnp.max(jnp.abs(grads), axis=1)
             grid_dms -= learning_rate[:,None] * grads
 
         ## Save updated nodal coordinates 
@@ -344,18 +345,17 @@ class Regression_INN:
         
         ## Re-define models
         if self.interp_method == "linear":
-            model = INN_linear(self.grid_dms, config)
+            model = INN_linear(self.grid_dms, self.config)
             self.forward = model.forward
             self.v_forward = model.v_forward
             self.vv_forward = model.vv_forward
         elif self.interp_method == "nonlinear":
-            model = INN_nonlinear(self.grid_dms[0,:], config)
+            model = INN_nonlinear(self.grid_dms, self.config)
             self.forward = model.forward
             self.v_forward = model.v_forward
             self.vv_forward = model.vv_forward
-            
 
-    
+
 
 
 class Regression_MLP(Regression_INN):

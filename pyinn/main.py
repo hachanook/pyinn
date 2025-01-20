@@ -44,10 +44,11 @@ if run_type == "regression":
         
         if config["MODEL_PARAM"]["radap"]: # with r-adaptivity
             for r_itr in range(int(config["MODEL_PARAM"]["radap_epoch"])):
-                regressor.train()  # Train module    
-                if r_itr == 0:
-                    regressor.num_epochs = 10
+                if r_itr == 0: # at first iteration
+                    regressor.train()  # Train module    
+                    regressor.num_epochs = 20
                 regressor.train_r()     # Train r-adaptivity; update nodal coordinates
+                regressor.train()  # Train module    
 
         else:
             regressor.train()  # Train module    

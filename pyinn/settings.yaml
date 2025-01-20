@@ -7,8 +7,8 @@ PROBLEM:
 
   TD_type: "CP"
 
-  interp_method: "linear" # INN
-  # interp_method: "nonlinear" # INN
+  # interp_method: "linear" # INN
+  interp_method: "nonlinear" # INN
   # interp_method: "MLP"
 
   
