@@ -18,7 +18,8 @@ import torch
 from sklearn.metrics import r2_score, classification_report
 import importlib.util
 
-from .model import *
+# from .model import * ## when using pyinn
+from model import * ## when debugging
 
 if importlib.util.find_spec("GPUtil") is not None: # for linux & GPU
     ''' If you are funning on GPU, please install the following libraries on your anaconda environment via 
@@ -57,21 +58,10 @@ class Regression_INN:
         
         ## initialization of trainable parameters
         if cls_data.bool_normalize: # when the data is normalized
-            self.x_dms_nds = jnp.tile(jnp.linspace(0,1,self.nnode, dtype=jnp.float64), (self.cls_data.dim,1)) # (dim,nnode)
+            self.grid_dms = jnp.tile(jnp.linspace(0,1,self.nnode, dtype=jnp.float64), (self.cls_data.dim,1)) # (dim,nnode)
         else: # when the data is not normalized
-            self.x_dms_nds = v_get_linspace(cls_data.x_data_minmax["min"], cls_data.x_data_minmax["max"], self.nnode)
+            self.grid_dms = v_get_linspace(cls_data.x_data_minmax["min"], cls_data.x_data_minmax["max"], self.nnode)
 
-        if self.interp_method == "linear":
-            model = INN_linear(self.x_dms_nds[0,:], config)
-            self.forward = model.forward
-            self.v_forward = model.v_forward
-            self.vv_forward = model.vv_forward
-        elif self.interp_method == "nonlinear":
-            model = INN_nonlinear(self.x_dms_nds[0,:], config)
-            self.forward = model.forward
-            self.v_forward = model.v_forward
-            self.vv_forward = model.vv_forward
-        
         
         self.params = jax.random.uniform(jax.random.PRNGKey(self.key), (self.nmode, self.cls_data.dim, 
                                             self.cls_data.var, self.nnode), dtype=jnp.double)       
@@ -109,6 +99,26 @@ class Regression_INN:
         loss = ((u_pred- u_data)**2).mean()
         return loss, u_pred
     Grad_get_loss = jax.jit(jax.value_and_grad(get_loss, argnums=1, has_aux=True), static_argnames=['self'])
+
+
+    def get_loss_r(self, grid_dms, params, x_data, u_data):
+        ''' Compute MSE loss value for r-adaptivity
+        --- input ---
+        grid_dms: (dim, J)
+        u_p_modes: (nmode, dim, nnode, var)
+        u_data: exact u from the data. (ndata_train, var)
+        shape_vals_data, patch_nodes_data: defined in "get_HiDeNN_shape_fun"
+        '''
+        if self.interp_method == "linear":
+            model = INN_linear(grid_dms, self.config)
+            
+        elif self.interp_method == "nonlinear":
+            model = INN_nonlinear(grid_dms, self.config)
+
+        u_pred = model.v_forward(params, x_data) # (ndata_train, var)
+        loss = ((u_pred- u_data)**2).mean()
+        return loss, u_pred
+    Grad_get_loss_r = jax.jit(jax.value_and_grad(get_loss_r, argnums=1, has_aux=True), static_argnames=['self'])
     
     @partial(jax.jit, static_argnames=['self']) 
     def update_optax(self, params, opt_state, x_data, u_data):
@@ -181,6 +191,19 @@ class Regression_INN:
         self.batch_size = int(self.config['TRAIN_PARAM']['batch_size'])
         self.learning_rate = float(self.config['TRAIN_PARAM']['learning_rate'])
         self.validation_period = int(self.config['TRAIN_PARAM']['validation_period'])
+
+        ## Define model
+        if self.interp_method == "linear":
+            # model = INN_linear(self.x_dms_nds[0,:], config)
+            model = INN_linear(self.grid_dms, config)
+            self.forward = model.forward
+            self.v_forward = model.v_forward
+            self.vv_forward = model.vv_forward
+        elif self.interp_method == "nonlinear":
+            model = INN_nonlinear(self.grid_dms[0,:], config)
+            self.forward = model.forward
+            self.v_forward = model.v_forward
+            self.vv_forward = model.vv_forward
         
         ## Split data and create dataloader
         self.data_split()
@@ -289,7 +312,50 @@ class Regression_INN:
 
         ## Inference
         self.inference(x_test)
+
+    def train_r(self):
+        self.batch_size = int(self.config['TRAIN_PARAM']['batch_size'])
+        self.learning_rate = float(self.config['TRAIN_PARAM']['learning_rate'])
+        self.validation_period = int(self.config['TRAIN_PARAM']['validation_period'])
         
+        ## Split data and create dataloader
+        self.data_split()
+        
+        ## Define variables
+        grid_dms = self.grid_dms
+        
+        ## Train
+        start_time_train = time.time()
+        for batch in self.train_dataloader:
+            # time_batch = time.time()
+            x_train, u_train = jnp.array(batch[0]), jnp.array(batch[1])
+            ((loss, u_pred), grads) = self.Grad_get_loss_r(grid_dms, self.params, x_train, u_train)
+
+            ## Updated nodal coordinates - r-adaptivity
+            grads = grads.at[:,[0,-1]].set(0) # fix boundary nodes
+            elem_size = grid_dms[:,1:] - grid_dms[:,0:-1]  # (dim, J-1)
+            elem_size_min = jnp.min(elem_size, axis=1) # (dim,) minimum element size for each dimension
+            learning_rate = 0.1 * elem_size_min / jnp.max(jnp.abs(grads), axis=1)
+            grid_dms -= learning_rate[:,None] * grads
+
+        ## Save updated nodal coordinates 
+        self.grid_dms = grid_dms
+        # print(grid_dms)
+        
+        ## Re-define models
+        if self.interp_method == "linear":
+            model = INN_linear(self.grid_dms, config)
+            self.forward = model.forward
+            self.v_forward = model.v_forward
+            self.vv_forward = model.vv_forward
+        elif self.interp_method == "nonlinear":
+            model = INN_nonlinear(self.grid_dms[0,:], config)
+            self.forward = model.forward
+            self.v_forward = model.v_forward
+            self.vv_forward = model.vv_forward
+            
+
+    
 
 
 class Regression_MLP(Regression_INN):

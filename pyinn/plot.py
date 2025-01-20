@@ -3,9 +3,12 @@ import jax.numpy as jnp
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 import os
-from .model import *
-from .dataset_regression import *
-from .dataset_classification import *
+# from .model import * ## when using pyinn
+# from .dataset_regression import *
+# from .dataset_classification import *
+from model import * ## when debugging
+from dataset_regression import *
+from dataset_classification import *
 
 
 def plot_regression(model, cls_data, config):
@@ -27,6 +30,11 @@ def plot_regression(model, cls_data, config):
 
             if config['interp_method'] != "MLP":
                 plot_modes(model, cls_data, plot_in_axis, plot_out_axis)
+            
+        if config['data_name'] == "2D_1D_radap":
+            # we will plot the error only when there is no normalization on the original data.
+            plot_2D_1D_radap(model, cls_data, plot_in_axis, plot_out_axis)
+
         
         elif len(plot_in_axis)==1 and len(plot_out_axis)==1 and  cls_data.bool_normalize == False:
             # we will plot the error only when there is no normalization on the original data.
@@ -235,6 +243,72 @@ def plot_2D_1D(model, cls_data, plot_in_axis, plot_out_axis, color_map="viridis"
     plt.subplots_adjust(wspace=0.4)  # Increase the width space between subplots
 
     surf1 = ax1.pcolormesh(X, Y, U_pred[:,:,plot_out_axis[0]], cmap=color_map, vmin=umin, vmax=umax)
+    ax1.set_xlabel(f"x_{str(plot_in_axis[0]+1)}", fontsize=16)
+    ax1.set_ylabel(f"x_{str(plot_in_axis[1]+1)}", fontsize=16)
+    ax1.tick_params(axis='both', labelsize=12)
+    cbar1 = fig.colorbar(surf1, shrink=0.8, aspect=20, pad=0.02)
+    cbar1.set_label(f'u', fontsize=14)
+    cbar1.ax.tick_params(labelsize=12)
+    ax1.set_title('Prediction', fontsize=16)
+
+    surf2 = ax2.pcolormesh(X, Y, U_exact[:,:,plot_out_axis[0]], cmap=color_map, vmin=umin, vmax=umax)
+    ax2.set_xlabel(f"x_{str(plot_in_axis[0]+1)}", fontsize=16)
+    ax2.set_ylabel(f"x_{str(plot_in_axis[1]+1)}", fontsize=16)
+    ax2.tick_params(axis='both', labelsize=12)
+    cbar2 = fig.colorbar(surf2, shrink=0.8, aspect=20, pad=0.02)
+    cbar2.set_label(f'u', fontsize=14)
+    cbar2.ax.tick_params(labelsize=12)
+    ax2.set_title('Original function', fontsize=16)
+
+    parent_dir = os.path.abspath(os.getcwd())
+    path_figure = os.path.join(parent_dir, 'plots')
+    fig.savefig(os.path.join(path_figure, cls_data.data_name + f"_{TD_type}_" + model.interp_method) , dpi=300)
+    plt.close()
+
+
+def plot_2D_1D_radap(model, cls_data, plot_in_axis, plot_out_axis, color_map="viridis", vmin=0, vmax=1, marker_size=20):
+    """ This function plots 2D input and 1D output data. By default, this function should work on original data only
+    plot_in_axis: [axis1, axis2]
+    plot_out_axis: [axis1]
+    """
+
+    TD_type = model.config["TD_type"]
+
+    ## create mesh and data
+    ### in normalized space, create prediction
+    xmin, xmax = cls_data.x_data_minmax["min"][plot_in_axis[0]], cls_data.x_data_minmax["max"][plot_in_axis[0]]
+    ymin, ymax = cls_data.x_data_minmax["min"][plot_in_axis[1]], cls_data.x_data_minmax["max"][plot_in_axis[1]]
+    umin, umax = cls_data.u_data_minmax["min"][plot_out_axis[0]], cls_data.u_data_minmax["max"][plot_out_axis[0]]
+
+    x_nds = jnp.linspace(xmin, xmax, 101, dtype=jnp.float64)
+    y_nds = jnp.linspace(ymin, ymax, 101, dtype=jnp.float64)
+    X,Y = jnp.meshgrid(x_nds, y_nds) # (101,101) each
+    XY = jnp.dstack((X, Y)) # (101,101,2)
+    if model.interp_method == "linear" or model.interp_method == "nonlinear":
+        U_pred = model.vv_forward(model.params, XY) # (101,101,L)
+    elif model.interp_method == "MLP":
+        U_pred = model.vv_forward(model.params, model.activation, XY) # (101,101,L)
+        
+
+    U_exact = globals()["vv_fun_"+cls_data.data_name](XY) # (101,101,L)    
+
+    fig = plt.figure(figsize=(10,5))
+    gs = gridspec.GridSpec(1, 2)
+    ax1 = fig.add_subplot(gs[0])
+    ax2 = fig.add_subplot(gs[1])
+    plt.subplots_adjust(wspace=0.4)  # Increase the width space between subplots
+
+    surf1 = ax1.pcolormesh(X, Y, U_pred[:,:,plot_out_axis[0]], cmap=color_map, vmin=umin, vmax=umax)
+
+    # Add grid lines for visualization for INN CP
+    if model.config['interp_method'] == "linear" or model.config['interp_method'] == "nonlinear":
+        grid_dms = model.grid_dms # (dim, J)
+        for i in range(grid_dms.shape[1]):
+            ax1.axvline(x=grid_dms[0,i], color='black', linestyle='--', linewidth=0.5)  # Vertical lines
+        for j in range(grid_dms.shape[1]):
+            ax1.axhline(y=grid_dms[1,j], color='black', linestyle='--', linewidth=0.5)  # Horizontal lines
+
+
     ax1.set_xlabel(f"x_{str(plot_in_axis[0]+1)}", fontsize=16)
     ax1.set_ylabel(f"x_{str(plot_in_axis[1]+1)}", fontsize=16)
     ax1.tick_params(axis='both', labelsize=12)

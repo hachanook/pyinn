@@ -134,6 +134,10 @@ def data_generation_regression(data_name: str, data_size: int, input_col: Sequen
         u_data_org = v_fun_1D_2D_sine_exp(x_data_org)
         cols = ['x1','u1','u2']
 
+    elif data_name == "2D_1D_radap":
+        u_data_org = v_fun_2D_1D_radap(x_data_org)
+        cols = ['x1','x2','u']
+
     elif data_name == "2D_1D_sine":
         u_data_org = v_fun_2D_1D_sine(x_data_org)
         cols = ['x1','x2','u']
@@ -231,6 +235,17 @@ def fun_1D_2D_sine_exp(x_data_org):
     return jnp.array([u1,u2], dtype=jnp.double).reshape(-1)
 v_fun_1D_2D_sine_exp = jax.vmap(fun_1D_2D_sine_exp, in_axes = (0)) # output: (ndata, )
 vv_fun_1D_2D_sine_exp = jax.vmap(v_fun_1D_2D_sine_exp, in_axes = (0)) # output: (ndata, ndata)
+
+def fun_2D_1D_radap(x_data_org):
+    # xy: (num_cells, num_quads, dim)
+    # u: (num_cells, num_quads)
+    a = 5
+    x_data_org *= 10
+    u = 1/625* (  (x_data_org[0]**2 - 10*x_data_org[0]) * (x_data_org[1]**2 - 10*x_data_org[1]) * 
+         (2*jnp.exp(-a*((x_data_org[0]-3)**2 + (x_data_org[1]-3)**2)) + jnp.exp(-a*((x_data_org[0]-7)**2 + (x_data_org[1]-7)**2))) )
+    return u.reshape(1,)
+v_fun_2D_1D_radap = jax.vmap(fun_2D_1D_radap, in_axes = (0)) # output: (ndata, )
+vv_fun_2D_1D_radap = jax.vmap(v_fun_2D_1D_radap, in_axes = (0)) # output: (ndata, ndata)
 
 def fun_2D_1D_sine(x_data_org):
     u_data_org =  jnp.sin(x_data_org[0]) * jnp.cos(x_data_org[1])

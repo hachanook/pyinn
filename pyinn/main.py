@@ -4,7 +4,8 @@ INN trainer
 Copyright (C) 2024  Chanwook Park
  Northwestern University, Evanston, Illinois, US, chanwookpark2024@u.northwestern.edu
 """
-from pyinn import dataset_classification, dataset_regression, model, train, plot
+# from pyinn import dataset_classification, dataset_regression, model, train, plot
+import dataset_classification, dataset_regression, model, train, plot
 # from plot_mesh import *
 from jax import config
 config.update("jax_enable_x64", True)
@@ -29,6 +30,7 @@ with open(f'./config/{data_name}.yaml','r') as file_dataConfig:
     config['interp_method'] = settings['PROBLEM']["interp_method"]
     config['TD_type'] = settings['PROBLEM']["TD_type"]
     
+    
 
 # --------------------- Regression --------------------------3
 if run_type == "regression":
@@ -39,9 +41,20 @@ if run_type == "regression":
     ## train
     if interp_method == "linear" or interp_method == "nonlinear":
         regressor = train.Regression_INN(data, config)  # HiDeNN-TD regressor class
+        
+        if config["MODEL_PARAM"]["radap"]: # with r-adaptivity
+            for r_itr in range(int(config["MODEL_PARAM"]["radap_epoch"])):
+                regressor.train()  # Train module    
+                if r_itr == 0:
+                    regressor.num_epochs = 10
+                regressor.train_r()     # Train r-adaptivity; update nodal coordinates
+
+        else:
+            regressor.train()  # Train module    
+
     elif interp_method == "MLP":
         regressor = train.Regression_MLP(data, config)  # HiDeNN-TD regressor class
-    regressor.train()  # Train module
+        regressor.train()  # Train module
 
     ## plot
     plot.plot_regression(regressor, data, config)

@@ -14,33 +14,38 @@ from functools import partial
 from typing import (Any, Callable, Iterable, List, Optional, Sequence, Tuple,
                     Union)
 from jax.scipy.interpolate import RegularGridInterpolator
-from .Interpolator import LinearInterpolator, NonlinearInterpolator
+# from .Interpolator import LinearInterpolator, NonlinearInterpolator ## when using pyinn
+from Interpolator import LinearInterpolator, NonlinearInterpolator ## when debugging
 
 class INN_linear:
-    def __init__(self, grid, config):
+    def __init__(self, grid_dms, config):
         """ 1D linear interpolation
         --- input --- 
-        grid: (J,) 1D vector of the grid
+        ## grid: (J,) 1D vector of the grid
+        grid_dms: (dim,J) 1D vector of the grid and dimension
         values: (J,) 1D vector of nodal values
         """
-        self.grid = grid
+        self.grid_dms = grid_dms
         self.config = config
-        self.interpolate = LinearInterpolator(grid)
+        # self.interpolate = LinearInterpolator(grid)
         
     @partial(jax.jit, static_argnames=['self'])
-    def get_Ju_idata_imd_idm_ivar(self, x_idata_idm, u_imd_idm_ivar_nds):
+    def get_Ju_idata_imd_idm_ivar(self, x_idata_idm, grid, u_imd_idm_ivar_nds):
         """ compute interpolation for a single mode, 1D function
         --- input ---
         x_idata_idm: scalar, jnp value / this can be any input
+        grid: (J,) 1D vector of the grid
         u_imd_idm_ivar_nds: (J,) jnp 1D array
         --- output ---
         Ju_idata_imd_idm_ivar: scalar, 1D interpolated value
         """
-        Ju_idata_imd_idm_ivar = self.interpolate(x_idata_idm, u_imd_idm_ivar_nds)
+        interpolate = LinearInterpolator(grid)
+        # Ju_idata_imd_idm_ivar = self.interpolate(x_idata_idm, u_imd_idm_ivar_nds)
+        Ju_idata_imd_idm_ivar = interpolate(x_idata_idm, u_imd_idm_ivar_nds)
         return Ju_idata_imd_idm_ivar
-    get_Ju_idata_imd_idm_vars = jax.vmap(get_Ju_idata_imd_idm_ivar, in_axes = (None,None,0)) # input: scalar, (var,J) / output: (var,)
-    get_Ju_idata_imd_dms_vars = jax.vmap(get_Ju_idata_imd_idm_vars, in_axes = (None,0,0)) # input: (dim,), (dim,var,J) / output: (dim,var)
-    get_Ju_idata_mds_dms_vars = jax.vmap(get_Ju_idata_imd_dms_vars, in_axes = (None,None,0)) # input: (dim,), (M,dim,var,J) / output: (M,dim,var)
+    get_Ju_idata_imd_idm_vars = jax.vmap(get_Ju_idata_imd_idm_ivar, in_axes = (None,None,None,0)) # input: scalar, (J,), (var,J) / output: (var,)
+    get_Ju_idata_imd_dms_vars = jax.vmap(get_Ju_idata_imd_idm_vars, in_axes = (None,0,0,0)) # input: (dim,), (dim,J) (dim,var,J) / output: (dim,var)
+    get_Ju_idata_mds_dms_vars = jax.vmap(get_Ju_idata_imd_dms_vars, in_axes = (None,None,None,0)) # input: (dim,), (dim,J), (M,dim,var,J) / output: (M,dim,var)
 
     ## CP decomposition
     # def get_Ju_idata_imd(self, x_idata_dms, u_imd_dms_vars_nds):
@@ -98,7 +103,7 @@ class INN_linear:
             predicted output (var,)
         """
         # if self.config['TD_type']=='CP':
-        pred = self.get_Ju_idata_mds_dms_vars(x_idata, params) # output: (M,dim,var)
+        pred = self.get_Ju_idata_mds_dms_vars(x_idata, self.grid_dms, params) # input: (dim,), (dim,J), (M,dim,var,J) / output: (M,dim,var)
         pred = jnp.prod(pred, axis=1) # output: (M,var)
         pred = jnp.sum(pred, axis=0) # output: (var,)
         
