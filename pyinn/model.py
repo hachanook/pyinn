@@ -38,9 +38,11 @@ class INN_linear:
         """
         Ju_idata_imd_idm_ivar = self.interpolate(x_idata_idm, u_imd_idm_ivar_nds)
         return Ju_idata_imd_idm_ivar
-    get_Ju_idata_imd_idm_vars = jax.vmap(get_Ju_idata_imd_idm_ivar, in_axes = (None,None,0)) # input: scalar, (var,J) / output: (var,)
-    get_Ju_idata_imd_dms_vars = jax.vmap(get_Ju_idata_imd_idm_vars, in_axes = (None,0,0)) # input: (dim,), (dim,var,J) / output: (dim,var)
-    get_Ju_idata_mds_dms_vars = jax.vmap(get_Ju_idata_imd_dms_vars, in_axes = (None,None,0)) # input: (dim,), (M,dim,var,J) / output: (M,dim,var)
+    
+    
+    get_Ju_idata_imd_idm_vars = jax.jit(jax.vmap(get_Ju_idata_imd_idm_ivar, in_axes = (None,None,0)), static_argnums= 0) # input: scalar, (var,J) / output: (var,)
+    get_Ju_idata_imd_dms_vars = jax.jit(jax.vmap(get_Ju_idata_imd_idm_vars, in_axes = (None,0,0)), static_argnums= 0) # )input: (dim,), (dim,var,J) / output: (dim,var)
+    get_Ju_idata_mds_dms_vars = jax.jit(jax.vmap(get_Ju_idata_imd_dms_vars, in_axes = (None,None,0)), static_argnums= 0) # input: (dim,), (M,dim,var,J) / output: (M,dim,var)
 
     ## CP decomposition
     # def get_Ju_idata_imd(self, x_idata_dms, u_imd_dms_vars_nds):
@@ -114,8 +116,8 @@ class INN_linear:
 
         return pred 
 
-    v_forward = jax.vmap(forward, in_axes=(None,None, 0)) # returns (ndata,)
-    vv_forward = jax.vmap(v_forward, in_axes=(None,None, 0)) # returns (ndata,)
+    v_forward =  jax.jit(jax.vmap(forward, in_axes=(None,None, 0)) , static_argnums= 0)# returns (ndata,)
+    vv_forward = jax.jit(jax.vmap(v_forward, in_axes=(None,None, 0)), static_argnums= 0) # returns (ndata,)
         
 
 class INN_nonlinear(INN_linear):
@@ -140,8 +142,8 @@ def forward_MLP(params, activation, x_idata):
             activations = jax.nn.sigmoid(outputs)
     final_w, final_b = params[-1]
     return jnp.dot(final_w, activations) + final_b
-v_forward_MLP = jax.vmap(forward_MLP, in_axes=(None,None, 0)) # returns (ndata,)
-vv_forward_MLP = jax.vmap(v_forward_MLP, in_axes=(None,None, 0)) # returns (ndata,)
+v_forward_MLP =  jax.jit(jax.vmap(forward_MLP, in_axes=(None,None, 0)) , static_argnums= 1)# returns (ndata,)
+vv_forward_MLP = jax.jit(jax.vmap(v_forward_MLP, in_axes=(None,None, 0)), static_argnums= 1) # returns (ndata,)
 
 
 @partial(jax.jit, static_argnames=['activation'])
@@ -175,5 +177,5 @@ def forward_CPMLP(params, activation, x_idata):
     return output #why can't keep track of gradient?
 
 
-v_forward_CPMLP = jax.vmap(forward_CPMLP, in_axes=(None,None, 0)) # returns (ndata,)
-vv_forward_CPMLP = jax.vmap(v_forward_CPMLP, in_axes=(None,None, 0)) # returns (ndata,)
+v_forward_CPMLP =  jax.jit(jax.vmap(forward_CPMLP, in_axes=(None,None, 0)), static_argnums= 1) # returns (ndata,)
+vv_forward_CPMLP = jax.jit(jax.vmap(v_forward_CPMLP, in_axes=(None,None, 0)), static_argnums= 1) # returns (ndata,)

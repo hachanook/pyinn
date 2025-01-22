@@ -122,9 +122,10 @@ class Regression_INN:
     def data_split(self):
         split_ratio = self.cls_data.split_ratio
         if self.config['DATA_PARAM']['bool_load_data'] == True:
-            self.split_type = 'TT' # test as validation data
+            self.split_type = 'TVT' # test as validation data
             self.train_dataloader = DataLoader(self.cls_data.pre_split_train_data, batch_size=self.batch_size, shuffle=True)
             self.test_dataloader = DataLoader(self.cls_data.pre_split_test_data, batch_size=self.batch_size, shuffle=True)
+            self.val_dataloader = DataLoader(self.cls_data.pre_split_val_data, batch_size=self.batch_size, shuffle=True)
         elif self.config['DATA_PARAM']['bool_random_split'] == True and all(isinstance(item, float) for item in split_ratio):
             # random split with a split ratio
             generator = torch.Generator().manual_seed(42)
@@ -221,7 +222,7 @@ class Regression_INN:
         
         ## Train
         total_epochs = self.num_epochs  # Assuming self.num_epochs is defined
-        interval = total_epochs // 5  # This calculates 10% of the total epochs
+        interval = total_epochs // 10  # This calculates 10% of the total epochs
         start_time_train = time.time()
         for epoch in tqdm(range(self.num_epochs), desc='Epochs'):
             epoch_list_loss, epoch_list_acc = [], [] 
@@ -243,17 +244,17 @@ class Regression_INN:
                 
                 # time_batch = time.time()
                 acc_train, acc_metrics = self.get_acc_metrics(onp.array(u_train), onp.array(u_pred_train), "train")
-                epoch_list_loss.append(loss_train)
+                epoch_list_loss.append(jnp.sqrt(loss_train))  #root mean square error
                 epoch_list_acc.append(acc_train)
                 # print(f"\t append {time.time() - time_batch:.4f} seconds")
 
                 
-            batch_loss_train = onp.mean(epoch_list_loss)
+            batch_loss_train = onp.mean(epoch_list_loss) #root mean square error
             batch_acc_train = onp.mean(epoch_list_acc)
             
-            if epoch % interval == 0:    
+            if epoch % interval == 0 or epoch == self.num_epochs-1:    
                 print(f"Epoch {epoch+1}")
-                print(f"\tTraining loss: {batch_loss_train:.4e}")
+                print(f"\tTraining loss (RMSE): {batch_loss_train:.4e}")
                 if self.config['TRAIN_PARAM']['bool_train_acc']:
                     print(f"\tTraining {acc_metrics}: {batch_acc_train:.4f}")
             else:
@@ -261,10 +262,10 @@ class Regression_INN:
             # print(f"\tEpoch {epoch+1} training took {time.time() - start_time_epoch:.4f} seconds")
 
             ## Validation
-            if (epoch+1)%self.validation_period == 0:
+            if epoch % interval == 0: 
                 epoch_list_loss, epoch_list_acc = [], [] 
                 if self.split_type == "TT": # when there are only train & test data
-                    self.val_dataloader = self.test_dataloader # deal test data as validation data
+                    self.val_dataloader = self.val_dataloader # deal test data as validation data
                 for batch in self.val_dataloader:
                     x_val, u_val = jnp.array(batch[0]), jnp.array(batch[1])
                     _, _, loss_val, u_pred_val = self.update_optax(params, opt_state, x_val, u_val)
@@ -276,12 +277,12 @@ class Regression_INN:
                     #     print(x_val[idx])
                     
                     acc_val, acc_metrics = self.get_acc_metrics(onp.array(u_val), onp.array(u_pred_val))
-                    epoch_list_loss.append(loss_val)
+                    epoch_list_loss.append(jnp.sqrt(loss_val))  #root mean square error
                     epoch_list_acc.append(acc_val)
                 
                 batch_loss_val = onp.mean(epoch_list_loss)
                 batch_acc_val = onp.mean(epoch_list_acc)
-                print(f"\tValidation loss: {batch_loss_val:.4e}")
+                print(f"\tValidation loss (RMSE): {batch_loss_val:.4e}")
                 print(f"\tValidation {acc_metrics}: {batch_acc_val:.4f}")
 
                 if self.cls_data.data_name == "IGAMapping2D" and batch_loss_val < 1e-3:
@@ -302,13 +303,13 @@ class Regression_INN:
             x_test, u_test = jnp.array(batch[0]), jnp.array(batch[1])
             _, _, loss_test, u_pred_test = self.update_optax(params, opt_state, x_test, u_test)
             acc_test, acc_metrics = self.get_acc_metrics(onp.array(u_test), onp.array(u_pred_test))
-            epoch_list_loss.append(loss_test)
+            epoch_list_loss.append(jnp.sqrt(loss_test))
             epoch_list_acc.append(acc_test)
         
         batch_loss_test = onp.mean(epoch_list_loss)
         batch_acc_test = onp.mean(epoch_list_acc)
         print("Test")
-        print(f"\tTest loss: {batch_loss_test:.4e}")
+        print(f"\tTest loss (RMSE): {batch_loss_test:.4e}")
         print(f"\tTest {acc_metrics}: {batch_acc_test:.4f}")
         print(f"\tTest took {time.time() - start_time_test:.4f} seconds") 
 
@@ -400,14 +401,14 @@ class Regression_CPMLP(Regression_INN):
         print(f"num_mode {jax.tree.map(lambda x: x.shape, self.params)}")
         # jax.debug.print("num_mode {params}", params = jax.tree.map(lambda x: x.shape, self.params))
          
-        # weights, biases = 0,0
-        # for layer in self.params[0]:
-        #     w, b = layer[0], layer[1]
-        #     weights += w.shape[0]*w.shape[1]
-        #     biases += b.shape[0]
+        weights, biases = 0,0
+        for layer in self.params[0]:
+            w, b = layer[0], layer[1]
+            weights += w.shape[0]*w.shape[1]
+            biases += b.shape[0]
         print("------------CPMLP-------------")
-        # print(jax.tree_map(lambda x: x.shape, self.params))
-        # print(f"# of training parameters: {(weights+biases) * self.ninput}")
+        print(jax.tree_map(lambda x: x.shape, self.params))
+        print(f"# of training parameters: {(weights+biases) * self.ninput}")
 
 # class Regression_CPMLP(Regression_INN):
 #     def __init__(self, cls_data, config):

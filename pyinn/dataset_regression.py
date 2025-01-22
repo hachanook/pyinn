@@ -42,12 +42,14 @@ class Data_regression(Dataset):
                 print(data_path + '/train_' + str(int(dataset_ratio * 100)))
                 data_train = np.loadtxt(data_path + '/train_' + str(int(dataset_ratio * 100)) + '.csv', delimiter=",", dtype=np.float64, skiprows=1)
             data_test = np.loadtxt(data_path + '/test.csv', delimiter=",", dtype=np.float64, skiprows=1)
-    
+            data_val = np.loadtxt(data_path + '/val.csv', delimiter=",", dtype=np.float64, skiprows=1)
             self.x_data_train = data_train[:, self.input_col]
             self.u_data_train = data_train[:, self.output_col]
             self.x_data_test  = data_test[:, self.input_col]
             self.u_data_test  = data_test[:, self.output_col]
-                                
+            self.x_data_val  = data_val[:, self.input_col]
+            self.u_data_val  = data_val[:, self.output_col]
+                                            
             if self.bool_normalize:    
                 self.x_data_minmax = {"min" : self.x_data_train.min(axis=0), "max" : self.x_data_train.max(axis=0)}
                 self.u_data_minmax = {"min" : self.u_data_train.min(axis=0), "max" : self.u_data_train.max(axis=0)}
@@ -58,7 +60,8 @@ class Data_regression(Dataset):
                 self.u_data_train = (self.u_data_train - self.u_data_minmax["min"]) / (self.u_data_minmax["max"] - self.u_data_minmax["min"])
                 self.x_data_test  = (self.x_data_test  - self.x_data_minmax["min"]) / (self.x_data_minmax["max"] - self.x_data_minmax["min"])
                 self.u_data_test  = (self.u_data_test  - self.u_data_minmax["min"]) / (self.u_data_minmax["max"] - self.u_data_minmax["min"])
-            
+                self.x_data_val  = (self.x_data_val  - self.x_data_minmax["min"]) / (self.x_data_minmax["max"] - self.x_data_minmax["min"])
+                self.u_data_val  = (self.u_data_val  - self.u_data_minmax["min"]) / (self.u_data_minmax["max"] - self.u_data_minmax["min"])            
             else:
                 self.x_data_minmax = {"min" : self.x_data_org.min(axis=0), "max" : self.x_data_org.max(axis=0)}
                 self.u_data_minmax = {"min" : self.u_data_org.min(axis=0), "max" : self.u_data_org.max(axis=0)}       
@@ -80,6 +83,7 @@ class Data_regression(Dataset):
             
             self.pre_split_train_data = PreSplitDataset(self.x_data_train, self.u_data_train)
             self.pre_split_test_data = PreSplitDataset(self.x_data_test, self.u_data_test)
+            self.pre_split_val_data = PreSplitDataset(self.x_data_val, self.u_data_val)
         
         else:
             try:
