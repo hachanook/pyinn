@@ -6,5 +6,6 @@ build/
 dist/
 pages/
 pyinn.egg-info/
+pyinn/data/
 pip
 requirements.txt

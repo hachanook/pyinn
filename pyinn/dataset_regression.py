@@ -29,29 +29,87 @@ class Data_regression(Dataset):
         self.split_ratio = config['DATA_PARAM']['split_ratio']
         self.bool_normalize = config['DATA_PARAM']['bool_normalize']
         
-        data_file = self.data_dir + data_name + '_' + str(self.data_size) + '.csv'
-        try:
-            data = np.loadtxt(data_file, delimiter=",", dtype=np.float64, skiprows=1)
-        except: 
-            print(F"Data file {data_file} dose not exist. We will create the data.")
-            data_generation_regression(data_name, self.data_size, self.input_col)
-            data = np.loadtxt(data_file, delimiter=",", dtype=np.float64, skiprows=1)
+        data_file = self.data_dir + data_name + '_' + str(self.data_size) + '.csv'  #load csv file change to npz file
         
-        self.x_data_org = data[:, self.input_col]
-        self.u_data_org = data[:, self.output_col]
+        if config['DATA_PARAM']['bool_load_data'] == True:
+            data_path = config['DATA_PARAM']['path_data']
+            if config['DATA_PARAM']['dataset_ratio'] == 1:
+                print(data_path + '/train.csv')
+                data_train = np.loadtxt(data_path + '/train.csv', delimiter=",", dtype=np.float64, skiprows=1)
+                
+            else:
+                dataset_ratio = config['DATA_PARAM']['dataset_ratio']
+                print(data_path + '/train_' + str(int(dataset_ratio * 100)))
+                data_train = np.loadtxt(data_path + '/train_' + str(int(dataset_ratio * 100)) + '.csv', delimiter=",", dtype=np.float64, skiprows=1)
+            data_test = np.loadtxt(data_path + '/test.csv', delimiter=",", dtype=np.float64, skiprows=1)
+            data_val = np.loadtxt(data_path + '/val.csv', delimiter=",", dtype=np.float64, skiprows=1)
+            self.x_data_train = data_train[:, self.input_col]
+            self.u_data_train = data_train[:, self.output_col]
+            self.x_data_test  = data_test[:, self.input_col]
+            self.u_data_test  = data_test[:, self.output_col]
+            self.x_data_val  = data_val[:, self.input_col]
+            self.u_data_val  = data_val[:, self.output_col]
+                                            
+            if self.bool_normalize:    
+                self.x_data_minmax = {"min" : self.x_data_train.min(axis=0), "max" : self.x_data_train.max(axis=0)}
+                self.u_data_minmax = {"min" : self.u_data_train.min(axis=0), "max" : self.u_data_train.max(axis=0)}
+                self.x_data_minmax_test = {"min" : self.x_data_test.min(axis=0), "max" : self.x_data_test.max(axis=0)}
+                print(self.x_data_minmax)
+                print(self.x_data_minmax_test)
+                self.x_data_train = (self.x_data_train - self.x_data_minmax["min"]) / (self.x_data_minmax["max"] - self.x_data_minmax["min"])
+                self.u_data_train = (self.u_data_train - self.u_data_minmax["min"]) / (self.u_data_minmax["max"] - self.u_data_minmax["min"])
+                self.x_data_test  = (self.x_data_test  - self.x_data_minmax["min"]) / (self.x_data_minmax["max"] - self.x_data_minmax["min"])
+                self.u_data_test  = (self.u_data_test  - self.u_data_minmax["min"]) / (self.u_data_minmax["max"] - self.u_data_minmax["min"])
+                self.x_data_val  = (self.x_data_val  - self.x_data_minmax["min"]) / (self.x_data_minmax["max"] - self.x_data_minmax["min"])
+                self.u_data_val  = (self.u_data_val  - self.u_data_minmax["min"]) / (self.u_data_minmax["max"] - self.u_data_minmax["min"])            
+            else:
+                self.x_data_minmax = {"min" : self.x_data_org.min(axis=0), "max" : self.x_data_org.max(axis=0)}
+                self.u_data_minmax = {"min" : self.u_data_org.min(axis=0), "max" : self.u_data_org.max(axis=0)}       
         
-        if self.bool_normalize:    
-            self.x_data_minmax = {"min" : self.x_data_org.min(axis=0), "max" : self.x_data_org.max(axis=0)}
-            self.u_data_minmax = {"min" : self.u_data_org.min(axis=0), "max" : self.u_data_org.max(axis=0)}
-            self.x_data = (self.x_data_org - self.x_data_minmax["min"]) / (self.x_data_minmax["max"] - self.x_data_minmax["min"])
-            self.u_data = (self.u_data_org - self.u_data_minmax["min"]) / (self.u_data_minmax["max"] - self.u_data_minmax["min"])
-        else:
-            self.x_data_minmax = {"min" : self.x_data_org.min(axis=0), "max" : self.x_data_org.max(axis=0)}
-            self.u_data_minmax = {"min" : self.u_data_org.min(axis=0), "max" : self.u_data_org.max(axis=0)}
-            self.x_data = self.x_data_org
-            self.u_data = self.u_data_org
+            class PreSplitDataset(Dataset):
+                def __init__(self, x_data, u_data):
+                    self.x_data = x_data
+                    self.u_data = u_data
+
+                def __len__(self):
+                    # Return the size of the dataset
+                    return len(self.x_data)
+
+                def __getitem__(self, idx):
+                    # Return the input and output pair at index `idx`
+                    x = self.x_data[idx]
+                    u = self.u_data[idx]
+                    return x, u
             
-        print('loaded ',len(self.x_data_org),'datapoints from',data_name,'dataset')
+            self.pre_split_train_data = PreSplitDataset(self.x_data_train, self.u_data_train)
+            self.pre_split_test_data = PreSplitDataset(self.x_data_test, self.u_data_test)
+            self.pre_split_val_data = PreSplitDataset(self.x_data_val, self.u_data_val)
+        
+        else:
+            try:
+                data = np.loadtxt(data_file, delimiter=",", dtype=np.float64, skiprows=1)
+                
+            except FileNotFoundError:
+                print(F"Data file {data_file} dose not exist. We will create the data.")
+                exit(1)
+                data_generation_regression(data_name, self.data_size, self.input_col)
+                data = np.loadtxt(data_file, delimiter=",", dtype=np.float64, skiprows=1)
+        
+            self.x_data_org = data[:, self.input_col]
+            self.u_data_org = data[:, self.output_col]
+            
+            if self.bool_normalize:    
+                self.x_data_minmax = {"min" : self.x_data_org.min(axis=0), "max" : self.x_data_org.max(axis=0)}
+                self.u_data_minmax = {"min" : self.u_data_org.min(axis=0), "max" : self.u_data_org.max(axis=0)}
+                self.x_data = (self.x_data_org - self.x_data_minmax["min"]) / (self.x_data_minmax["max"] - self.x_data_minmax["min"])
+                self.u_data = (self.u_data_org - self.u_data_minmax["min"]) / (self.u_data_minmax["max"] - self.u_data_minmax["min"])
+            else:
+                self.x_data_minmax = {"min" : self.x_data_org.min(axis=0), "max" : self.x_data_org.max(axis=0)}
+                self.u_data_minmax = {"min" : self.u_data_org.min(axis=0), "max" : self.u_data_org.max(axis=0)}
+                self.x_data = self.x_data_org
+                self.u_data = self.u_data_org
+                
+            print('loaded ',len(self.x_data_org),'datapoints from',data_name,'dataset')
         
     def __len__(self):
         return len(self.x_data_org)
@@ -155,8 +213,7 @@ def data_generation_regression(data_name: str, data_size: int, input_col: Sequen
         x_data_org = x_data_org * (x_max-x_min) + x_min
         u_data_org = v_fun_IGAMapping2D(x_data_org)
         cols = ['x1','x2','u1','u2']
-
-
+        
     data = np.concatenate((x_data_org, u_data_org), axis=1)
     df = pd.DataFrame(data, columns=cols)
 

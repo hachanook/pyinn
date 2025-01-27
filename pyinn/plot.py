@@ -25,7 +25,7 @@ def plot_regression(model, cls_data, config):
             # we will plot the error only when there is no normalization on the original data.
             plot_2D_1D(model, cls_data, plot_in_axis, plot_out_axis)
 
-            if config['interp_method'] != "MLP":
+            if config['interp_method'] != "MLP" and config['interp_method'] != "CPMLP":
                 plot_modes(model, cls_data, plot_in_axis, plot_out_axis)
         
         elif len(plot_in_axis)==1 and len(plot_out_axis)==1 and  cls_data.bool_normalize == False:
@@ -87,7 +87,9 @@ def plot_1D_1D(model, cls_data, plot_in_axis, plot_out_axis):
         U_pred = model.v_forward(model.params, x_nds) # (101,L)
     elif model.interp_method == "MLP":
         U_pred = model.v_forward(model.params, model.activation, x_nds) # (101,L)
-    
+    elif model.interp_method == "CPMLP":
+        # print(jax.tree_map(lambda x: x, model.params))
+        U_pred = model.v_forward(model.params, model.activation, x_nds) # (101,L)    
     U_exact = globals()["v_fun_"+cls_data.data_name](x_nds) # (101,L)    
 
     fig = plt.figure(figsize=(6,5))
@@ -217,7 +219,8 @@ def plot_2D_1D(model, cls_data, plot_in_axis, plot_out_axis, color_map="viridis"
         U_pred = model.vv_forward(model.params, XY) # (101,101,L)
     elif model.interp_method == "MLP":
         U_pred = model.vv_forward(model.params, model.activation, XY) # (101,101,L)
-        
+    elif model.interp_method == "CPMLP":
+        U_pred = model.vv_forward(model.params, model.activation, XY) # (101,101,L)        
 
     
     U_exact = globals()["vv_fun_"+cls_data.data_name](XY) # (101,101,L)    
