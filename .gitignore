@@ -4,7 +4,6 @@ plots/
 assets/
 build/
 dist/
-pages/
 pyinn.egg-info/
 pyinn/data/
 pip

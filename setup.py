@@ -6,7 +6,7 @@ with open("README.md", "r", encoding="utf8") as fh:
 
 setup(
     name='pyinn',
-    version='0.1.4',
+    version='0.1.3',
     author='Chanwook Park',
     author_email='chanwookpark2024@u.northwestern.edu',
     description='Interpolating Neural Networks',

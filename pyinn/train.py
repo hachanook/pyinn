@@ -187,13 +187,13 @@ class Regression_INN:
             bool_train_acc = self.config['TRAIN_PARAM']['bool_train_acc']
             if bool_train_acc:
                 acc_metrics = "R2"
-                acc = r2_score(np.array(u), np.array(u_pred))
+                acc = r2_score(u, u_pred)
             else:
                 acc, acc_metrics = 0,"R2"
                 
         elif type0 == "val" or type0 == "test":
             acc_metrics = "R2"
-            acc = r2_score(np.array(u), np.array(u_pred))
+            acc = r2_score(u, u_pred)
         return acc, acc_metrics
 
     def inference(self, x_test):
@@ -517,7 +517,7 @@ class Classification_INN(Regression_INN):
             if bool_train_acc:
                 u_single = jnp.argmax(u, axis=1)
                 u_pred_single = jnp.argmax(u_pred, axis=1)
-                report = classification_report(np.array(u_single), np.array(u_pred_single), output_dict=True, zero_division=1)
+                report = classification_report(u_single, u_pred_single, output_dict=True, zero_division=1)
                 acc = report["accuracy"]
                 acc_metrics = "Accuracy"
             else:
@@ -526,7 +526,7 @@ class Classification_INN(Regression_INN):
         elif type == "val" or type == "test":
             u_single = jnp.argmax(u, axis=1)
             u_pred_single = jnp.argmax(u_pred, axis=1)
-            report = classification_report(np.array(u_single), np.array(u_pred_single), output_dict=True, zero_division=1)
+            report = classification_report(u_single, u_pred_single, output_dict=True, zero_division=1)
             acc = report["accuracy"]
             acc_metrics = "Accuracy"
         return acc, acc_metrics

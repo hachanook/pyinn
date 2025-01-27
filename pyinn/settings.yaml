@@ -2,8 +2,8 @@ GPU:
   gpu_idx: 3
 
 PROBLEM:
-  run_type: "regression" 
-  # run_type: "classification" 
+  # run_type: "regression" 
+  run_type: "classification" 
 
   TD_type: "CP"
 
@@ -17,7 +17,7 @@ DATA:
   # data_name : '1D_1D_sine'  
   # data_name : '1D_1D_exp' 
   # data_name : "1D_2D_sine_exp"
-  data_name : '2D_1D_sine'
+  # data_name : '2D_1D_sine'
   # data_name : '2D_1D_exp' 
   # data_name : '3D_1D_exp'
   # data_name : '8D_1D_physics' # borehole equation
@@ -26,7 +26,7 @@ DATA:
   data_name : 'STP_icml'
   # data_name : 'STP_training_data_pandas_wor'
   ## ----------- classification data -------------
-  # data_name : 'spiral'
+  data_name : 'spiral'
   # data_name : 'mnist'
   # data_name : 'fashion_mnist'
 
