@@ -14,7 +14,7 @@ from typing import Sequence
 from torch.utils.data import Dataset
 from scipy.stats import qmc
 
-
+ 
 class Data_regression(Dataset):
     def __init__(self, data_name: str, config) -> None:
         if not os.path.exists('data'):
@@ -34,15 +34,17 @@ class Data_regression(Dataset):
         if config['DATA_PARAM']['bool_load_data'] == True:
             data_path = config['DATA_PARAM']['path_data']
             if config['DATA_PARAM']['dataset_ratio'] == 1:
-                print(data_path + '/train.csv')
-                data_train = np.loadtxt(data_path + '/train.csv', delimiter=",", dtype=np.float64, skiprows=1)
+                print(data_path + f'/train_{config['DATA_PARAM']['data_noise']}.csv')
+                data_train = np.loadtxt(data_path + f'/train_{config['DATA_PARAM']['data_noise']}.csv', 
+                                        delimiter=",", dtype=np.float64, skiprows=1)
                 
             else:
                 dataset_ratio = config['DATA_PARAM']['dataset_ratio']
-                print(data_path + '/train_' + str(int(dataset_ratio * 100)))
-                data_train = np.loadtxt(data_path + '/train_' + str(int(dataset_ratio * 100)) + '.csv', delimiter=",", dtype=np.float64, skiprows=1)
-            data_test = np.loadtxt(data_path + '/test.csv', delimiter=",", dtype=np.float64, skiprows=1)
-            data_val = np.loadtxt(data_path + '/val.csv', delimiter=",", dtype=np.float64, skiprows=1)
+                print(data_path + '/train_' + str(int(dataset_ratio * 100)) + f'_{config['DATA_PARAM']['data_noise']}')
+                data_train = np.loadtxt(data_path + '/train_' + str(int(dataset_ratio * 100)) + f'_{config['DATA_PARAM']['data_noise']}.csv', 
+                                        delimiter=",", dtype=np.float64, skiprows=1)
+            data_test = np.loadtxt(data_path + f'/test_{config['DATA_PARAM']['data_noise']}.csv', delimiter=",", dtype=np.float64, skiprows=1)
+            data_val = np.loadtxt(data_path + f'/val_{config['DATA_PARAM']['data_noise']}.csv', delimiter=",", dtype=np.float64, skiprows=1)
             self.x_data_train = data_train[:, self.input_col]
             self.u_data_train = data_train[:, self.output_col]
             self.x_data_test  = data_test[:, self.input_col]
@@ -53,9 +55,9 @@ class Data_regression(Dataset):
             if self.bool_normalize:    
                 self.x_data_minmax = {"min" : self.x_data_train.min(axis=0), "max" : self.x_data_train.max(axis=0)}
                 self.u_data_minmax = {"min" : self.u_data_train.min(axis=0), "max" : self.u_data_train.max(axis=0)}
-                self.x_data_minmax_test = {"min" : self.x_data_test.min(axis=0), "max" : self.x_data_test.max(axis=0)}
-                print(self.x_data_minmax)
-                print(self.x_data_minmax_test)
+                # self.x_data_minmax_test = {"min" : self.x_data_test.min(axis=0), "max" : self.x_data_test.max(axis=0)}
+                # print(self.x_data_minmax)
+                # print(self.x_data_minmax_test)
                 self.x_data_train = (self.x_data_train - self.x_data_minmax["min"]) / (self.x_data_minmax["max"] - self.x_data_minmax["min"])
                 self.u_data_train = (self.u_data_train - self.u_data_minmax["min"]) / (self.u_data_minmax["max"] - self.u_data_minmax["min"])
                 self.x_data_test  = (self.x_data_test  - self.x_data_minmax["min"]) / (self.x_data_minmax["max"] - self.x_data_minmax["min"])
@@ -117,16 +119,13 @@ class Data_regression(Dataset):
     def __getitem__(self, idx):
         return self.x_data[idx], self.u_data[idx]
     
-    def denormalize(self, x_data=None, u_data=None):
+    def denormalize(self, data, minmax):
         """ Denormalize both x_data and u_data
-        x_data: (ndata, I)
-        u_data: (ndata, L)
+        data: (ndata, dim or var) either u_data or x_data
+        minmax: dictionary that stores minmax values
         """
-        if x_data is not None:
-            x_data_org = (self.x_data_minmax["max"] - self.x_data_minmax["min"]) * x_data + self.x_data_minmax["min"]
-        if u_data is not None:
-            u_data_org = (self.u_data_minmax["max"] - self.u_data_minmax["min"]) * u_data + self.u_data_minmax["min"]
-        return x_data, u_data
+        data_org = (minmax["max"] - minmax["min"]) * data + minmax["min"]
+        return data_org
     
 
 def data_generation_regression(data_name: str, data_size: int, input_col: Sequence[int]):

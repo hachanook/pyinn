@@ -14,12 +14,14 @@ currentdir = os.path.dirname(os.path.realpath(__file__))
 parentdir = os.path.dirname(currentdir)
 sys.path.append(parentdir)
 
-from pyinn import dataset_classification, dataset_regression, model, train, plot
+# from pyinn import dataset_classification, dataset_regression, model, train, plot
+import dataset_classification, dataset_regression, model, train, plot
 
 os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"] = "false"
 
+
 # %% User Set up
-with open('settings.yaml','r') as file:
+with open('./pyinn/settings.yaml','r') as file:
     settings = yaml.safe_load(file)
 
 gpu_idx = settings['GPU']['gpu_idx']  # set which GPU to run on Athena
@@ -30,11 +32,11 @@ run_type = settings['PROBLEM']["run_type"]
 interp_method = settings['PROBLEM']["interp_method"]
 data_name = settings['DATA']["data_name"]
 
-with open(f'../config/{data_name}.yaml','r') as file_dataConfig:
+with open(f'./config/{data_name}.yaml','r') as file_dataConfig:
     config = yaml.safe_load(file_dataConfig)
     config['interp_method'] = settings['PROBLEM']["interp_method"]
     config['TD_type'] = settings['PROBLEM']["TD_type"]
-    
+
 
 # --------------------- Regression --------------------------3
 if run_type == "regression":
@@ -47,8 +49,8 @@ if run_type == "regression":
         regressor = train.Regression_INN(data, config)  # HiDeNN-TD regressor class
     elif interp_method == "MLP":
         regressor = train.Regression_MLP(data, config)  # HiDeNN-TD regressor class
-    elif interp_method == "CPMLP":
-        regressor = train.Regression_CPMLP(data, config)  # CPMLP regressor class
+    # elif interp_method == "CPMLP":
+    #     regressor = train.Regression_CPMLP(data, config)  # CPMLP regressor class
         
     regressor.train()  # Train module
 

@@ -14,7 +14,9 @@ from functools import partial
 from typing import (Any, Callable, Iterable, List, Optional, Sequence, Tuple,
                     Union)
 from jax.scipy.interpolate import RegularGridInterpolator
-from .Interpolator import LinearInterpolator, NonlinearInterpolator
+# from .Interpolator import LinearInterpolator, NonlinearInterpolator ## when using pyinn
+from Interpolator import LinearInterpolator, NonlinearInterpolator ## when debugging
+
 
 class INN_linear:
     def __init__(self, grid, config):

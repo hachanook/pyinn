@@ -8,17 +8,18 @@ Copyright (C) 2024  Chanwook Park
 import jax
 import jax.numpy as jnp
 from jax import config
+import numpy as np
 config.update("jax_enable_x64", True)
 import optax
 from functools import partial
-import numpy as onp
 from torch.utils.data import DataLoader, random_split, Subset
 import time
 import torch
 from sklearn.metrics import r2_score, classification_report
 import importlib.util
 import pandas as pd
-from .model import *
+# from .model import * ## when using pyinn
+from model import * ## when debugging
 from tqdm import tqdm
 
 if importlib.util.find_spec("GPUtil") is not None: # for linux & GPU
@@ -214,6 +215,7 @@ class Regression_INN:
         params = self.params
         self.optimizer = optax.adam(self.learning_rate)
         opt_state = self.optimizer.init(params)
+        early_stopping = False
         
         # loss_train_list, loss_test_list = [], []
         # acc_train_list, acc_test_list = [], []
@@ -224,94 +226,72 @@ class Regression_INN:
         total_epochs = self.num_epochs  # Assuming self.num_epochs is defined
         interval = total_epochs // 10  # This calculates 10% of the total epochs
         start_time_train = time.time()
+        losses_train, losses_val = [],[] # validation loss for every epoch
         for epoch in tqdm(range(self.num_epochs), desc='Epochs'):
-            epoch_list_loss, epoch_list_acc = [], [] 
-            start_time_epoch = time.time()    
-            count = 0
-            for idx, batch in enumerate(self.train_dataloader):
-                
-                # time_batch = time.time()
-                x_train, u_train = jnp.array(batch[0]), jnp.array(batch[1])
-                # print(f"\t data transfer {time.time() - time_batch:.4f} seconds")
-
-                ## Optimization step (or update)
-                # time_batch = time.time()
-                params, opt_state, loss_train, u_pred_train = self.update_optax(params, opt_state, x_train, u_train)
-                # print(f"\t update {time.time() - time_batch:.4f} seconds")
-
-                # print(f"\t\tbatch {count+1}")
-                # print("\t\t\t", jnp.where(jnp.isnan(u_pred_train))[0])
-                
-                # time_batch = time.time()
-                acc_train, acc_metrics = self.get_acc_metrics(onp.array(u_train), onp.array(u_pred_train), "train")
-                epoch_list_loss.append(jnp.sqrt(loss_train))  #root mean square error
-                epoch_list_acc.append(acc_train)
-                # print(f"\t append {time.time() - time_batch:.4f} seconds")
-
-                
-            batch_loss_train = onp.mean(epoch_list_loss) #root mean square error
-            batch_acc_train = onp.mean(epoch_list_acc)
             
-            if epoch % interval == 0 or epoch == self.num_epochs-1:    
-                print(f"Epoch {epoch+1}")
-                print(f"\tTraining loss (RMSE): {batch_loss_train:.4e}")
-                if self.config['TRAIN_PARAM']['bool_train_acc']:
-                    print(f"\tTraining {acc_metrics}: {batch_acc_train:.4f}")
+            ## Training one epoch
+            losses_train_epoch = [] # for one epoch, list of losses from all batches
+            for idx, batch in enumerate(self.train_dataloader):
+                x_train, u_train = jnp.array(batch[0]), jnp.array(batch[1])
+                params, opt_state, loss_train, u_pred_train = self.update_optax(params, opt_state, x_train, u_train)
+            #     losses_train_epoch.append(jnp.sqrt(loss_train))  #root mean square error in normalized space
+            # loss_train_epoch = np.mean(losses_train_epoch) #root mean square error
+            # losses_train_epoch.append(loss_train_epoch)
+            self.params = params # save trained parameters
+
+
+            ## Check validation set in normalized scale
+            losses_val_epoch = [] 
+            for batch in self.val_dataloader:
+                x_val, u_val = jnp.array(batch[0]), jnp.array(batch[1])
+                _, _, loss_val, u_pred_val = self.update_optax(params, opt_state, x_val, u_val)
+                losses_val_epoch.append(jnp.sqrt(loss_val))  #root mean square error in normalized space
+            loss_val_epoch = np.mean(losses_val_epoch) #root mean square error, scalar
+            losses_val.append(loss_val_epoch)
+            
+            ## Check early stopping
+            patience = int(self.config['TRAIN_PARAM']['patience'])
+            if len(losses_val) > patience:
+                early_stopping = np.all(np.subtract(losses_val[-patience:], losses_val[-patience-1:-1])>0)
+
+            ## Print out training results
+            if (early_stopping or (epoch % 200 == 0 or epoch == self.num_epochs-1)):
+                print(f"\tEpoch {epoch+1}")
+                
+                ## Train error in original scale
+                losses_train_epoch = [] 
+                for batch in self.train_dataloader:
+                    x_train, u_train = jnp.array(batch[0]), jnp.array(batch[1])
+                    _, _, _, u_pred_train = self.update_optax(params, opt_state, x_train, u_train)
+                    u_train_org = self.cls_data.denormalize(u_train, self.cls_data.u_data_minmax)
+                    u_pred_train_org = self.cls_data.denormalize(u_pred_train, self.cls_data.u_data_minmax)
+                    loss_train_batch = jnp.sqrt(jnp.mean((u_train_org-u_pred_train_org)**2))
+                    losses_train_epoch.append(loss_train_batch)
+                loss_train_epoch = np.mean(losses_train_epoch)
+                print(f"\tTrain denormalized loss (RMSE): {loss_train_epoch:.4e}")
+
+                ## Test error in original scale
+                losses_test_epoch = [] 
+                for batch in self.test_dataloader:
+                    x_test, u_test = jnp.array(batch[0]), jnp.array(batch[1])
+                    _, _, _, u_pred_test = self.update_optax(params, opt_state, x_test, u_test)
+                    u_test_org = self.cls_data.denormalize(u_test, self.cls_data.u_data_minmax)
+                    u_pred_test_org = self.cls_data.denormalize(u_pred_test, self.cls_data.u_data_minmax)
+                    loss_test_batch = jnp.sqrt(jnp.mean((u_train_org-u_pred_train_org)**2))
+                    losses_test_epoch.append(loss_test_batch)
+                loss_test_epoch = np.mean(losses_test_epoch)
+                print(f"\tTest denormalized loss (RMSE): {loss_test_epoch:.4e}")
+
+                ## Early stopping
+                if early_stopping:
+                    print(f"\tEarly stopping at {epoch+1}-th epoch")
+                    print(f"\tValidation losses of the latest epochs are {losses_val[-patience:]:.4e}")
+                    break
             else:
                 pass
-            # print(f"\tEpoch {epoch+1} training took {time.time() - start_time_epoch:.4f} seconds")
-
-            ## Validation
-            if epoch % interval == 0: 
-                epoch_list_loss, epoch_list_acc = [], [] 
-                if self.split_type == "TT": # when there are only train & test data
-                    self.val_dataloader = self.val_dataloader # deal test data as validation data
-                for batch in self.val_dataloader:
-                    x_val, u_val = jnp.array(batch[0]), jnp.array(batch[1])
-                    _, _, loss_val, u_pred_val = self.update_optax(params, opt_state, x_val, u_val)
-                    
-                    # ## debug
-                    # if jnp.isnan(u_pred_val).any():
-                    #     idx = jnp.where(jnp.isnan(u_pred_val))[0][0]
-                    #     print(idx)   
-                    #     print(x_val[idx])
-                    
-                    acc_val, acc_metrics = self.get_acc_metrics(onp.array(u_val), onp.array(u_pred_val))
-                    epoch_list_loss.append(jnp.sqrt(loss_val))  #root mean square error
-                    epoch_list_acc.append(acc_val)
-                
-                batch_loss_val = onp.mean(epoch_list_loss)
-                batch_acc_val = onp.mean(epoch_list_acc)
-                print(f"\tValidation loss (RMSE): {batch_loss_val:.4e}")
-                print(f"\tValidation {acc_metrics}: {batch_acc_val:.4f}")
-
-                if self.cls_data.data_name == "IGAMapping2D" and batch_loss_val < 1e-3:
-                    # stopping criteria for the IGA inverse mapping; multi-CAD-patch C-IGA paper
-                    break
-            if (self.cls_data.data_name == "8D_1D_physics" or self.cls_data.data_name == "10D_5D_physics") and batch_loss_train < 4e-4:
-                break
             
-        self.params = params
-        print(f"INN training took {time.time() - start_time_train:.4f} seconds")
-        # if importlib.util.find_spec("GPUtil") is not None: # report GPU memory usage
-        #     mem_report('After training', gpu_idx)
-
-        ## Test 
-        start_time_test = time.time()
-        epoch_list_loss, epoch_list_acc = [], [] 
-        for batch in self.test_dataloader:
-            x_test, u_test = jnp.array(batch[0]), jnp.array(batch[1])
-            _, _, loss_test, u_pred_test = self.update_optax(params, opt_state, x_test, u_test)
-            acc_test, acc_metrics = self.get_acc_metrics(onp.array(u_test), onp.array(u_pred_test))
-            epoch_list_loss.append(jnp.sqrt(loss_test))
-            epoch_list_acc.append(acc_test)
         
-        batch_loss_test = onp.mean(epoch_list_loss)
-        batch_acc_test = onp.mean(epoch_list_acc)
-        print("Test")
-        print(f"\tTest loss (RMSE): {batch_loss_test:.4e}")
-        print(f"\tTest {acc_metrics}: {batch_acc_test:.4f}")
-        print(f"\tTest took {time.time() - start_time_test:.4f} seconds") 
+        print(f"INN training took {time.time() - start_time_train:.4f} seconds")
 
         ## Inference
         self.inference(x_test)
