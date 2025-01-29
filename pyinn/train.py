@@ -226,7 +226,7 @@ class Regression_INN:
         total_epochs = self.num_epochs  # Assuming self.num_epochs is defined
         interval = total_epochs // 10  # This calculates 10% of the total epochs
         start_time_train = time.time()
-        losses_train, losses_val = [],[] # validation loss for every epoch
+        rmses_val = [] # validation loss for every epoch
         for epoch in tqdm(range(self.num_epochs), desc='Epochs'):
             
             ## Training one epoch
@@ -241,46 +241,47 @@ class Regression_INN:
 
 
             ## Check validation set in normalized scale
-            losses_val_epoch = [] 
+            rmse_val, n_samples = 0,0
             for batch in self.val_dataloader:
                 x_val, u_val = jnp.array(batch[0]), jnp.array(batch[1])
                 _, _, loss_val, u_pred_val = self.update_optax(params, opt_state, x_val, u_val)
-                losses_val_epoch.append(jnp.sqrt(loss_val))  #root mean square error in normalized space
-            loss_val_epoch = np.mean(losses_val_epoch) #root mean square error, scalar
-            losses_val.append(loss_val_epoch)
+                rmse_val += loss_val * len(x_val) # sum of squared error
+                n_samples += len(x_val)
+            rmse_val = jnp.sqrt(rmse_val/n_samples)
+            rmses_val.append(rmse_val)
             
             ## Check early stopping
             patience = int(self.config['TRAIN_PARAM']['patience'])
-            if len(losses_val) > patience:
-                early_stopping = np.all(np.subtract(losses_val[-patience:], losses_val[-patience-1:-1])>0)
+            if len(rmses_val) > patience:
+                early_stopping = np.all(np.subtract(rmses_val[-patience:], rmses_val[-patience-1:-1])>0)
 
             ## Print out training results
             if (early_stopping or (epoch % 200 == 0 or epoch == self.num_epochs-1)):
                 print(f"\tEpoch {epoch+1}")
                 
                 ## Train error in original scale
-                losses_train_epoch = [] 
+                rmse_train, n_samples = 0, 0
                 for batch in self.train_dataloader:
                     x_train, u_train = jnp.array(batch[0]), jnp.array(batch[1])
                     _, _, _, u_pred_train = self.update_optax(params, opt_state, x_train, u_train)
                     u_train_org = self.cls_data.denormalize(u_train, self.cls_data.u_data_minmax)
                     u_pred_train_org = self.cls_data.denormalize(u_pred_train, self.cls_data.u_data_minmax)
-                    loss_train_batch = jnp.sqrt(jnp.mean((u_train_org-u_pred_train_org)**2))
-                    losses_train_epoch.append(loss_train_batch)
-                loss_train_epoch = np.mean(losses_train_epoch)
-                print(f"\tTrain denormalized loss (RMSE): {loss_train_epoch:.4e}")
+                    rmse_train += jnp.sum((u_train_org-u_pred_train_org)**2) # sum of squared errors
+                    n_samples += len(x_train)
+                rmse_train = jnp.sqrt(rmse_train/n_samples)
+                print(f"\tTrain denormalized loss (RMSE): {rmse_train:.4e}")
 
                 ## Test error in original scale
-                losses_test_epoch = [] 
+                rmse_test, n_samples = 0, 0
                 for batch in self.test_dataloader:
                     x_test, u_test = jnp.array(batch[0]), jnp.array(batch[1])
                     _, _, _, u_pred_test = self.update_optax(params, opt_state, x_test, u_test)
                     u_test_org = self.cls_data.denormalize(u_test, self.cls_data.u_data_minmax)
                     u_pred_test_org = self.cls_data.denormalize(u_pred_test, self.cls_data.u_data_minmax)
-                    loss_test_batch = jnp.sqrt(jnp.mean((u_train_org-u_pred_train_org)**2))
-                    losses_test_epoch.append(loss_test_batch)
-                loss_test_epoch = np.mean(losses_test_epoch)
-                print(f"\tTest denormalized loss (RMSE): {loss_test_epoch:.4e}")
+                    rmse_test += jnp.sum((u_test_org-u_pred_test_org)**2) # sum of squared errors
+                    n_samples += len(x_test)
+                rmse_test = jnp.sqrt(rmse_test/n_samples)
+                print(f"\tTest denormalized loss (RMSE): {rmse_test:.4e}")
 
                 ## Early stopping
                 if early_stopping:
