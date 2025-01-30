@@ -1,3 +1,4 @@
+
 import numpy as np
 import jax
 import jax.numpy as jnp
@@ -39,18 +40,19 @@ class LinearInterpolator:
 
 
 class NonlinearInterpolator(LinearInterpolator):
-  def __init__(self, grid, config):
+  def __init__(self, grid,
+                    nelem, nnode, s_patch, alpha_dil, p_order, 
+                    mbasis, radial_basis, activation):
     super().__init__(grid) # prob being dropout probability
 
-    self.nelem = config['MODEL_PARAM']['nelem']
-    self.nnode = len(grid)
-    self.s_patch = config['MODEL_PARAM']['s_patch']
-    self.alpha_dil = config['MODEL_PARAM']['alpha_dil']
-    self.p_order = config['MODEL_PARAM']['p_order']
-    p_dict = {0:0, 1:2, 2:3, 3:4, 4:5, 5:6} 
-    self.mbasis = p_dict[self.p_order] 
-    self.radial_basis = config['MODEL_PARAM']['radial_basis']
-    self.activation = config['MODEL_PARAM']['INNactivation']
+    self.nelem = nelem
+    self.nnode = nnode
+    self.s_patch = s_patch
+    self.alpha_dil = alpha_dil
+    self.p_order = p_order
+    self.mbasis = mbasis
+    self.radial_basis = radial_basis
+    self.activation = activation
     
     ## compute G_inv
     self.nodes_per_elem = 2
@@ -73,7 +75,13 @@ class NonlinearInterpolator(LinearInterpolator):
       ) = self.get_patch_info()       
     
     self.Gs = self.vv_get_G(self.ndexes, self.Nodal_patch_nodes_st, self.Nodal_patch_nodes_bool, grid.reshape(-1,1)) # (nelem, npe=2, ndex_max+mbasis, ndex_max+mbasis)
-    self.Gs_inv = jnp.array(np.linalg.inv(self.Gs))
+    # self.Gs_inv = jnp.array(np.linalg.inv(self.Gs))
+    # print(self.Gs)
+    # print(self.Gs.shape)
+    self.Gs_inv = jnp.linalg.inv(self.Gs)
+    # print(self.Gs_inv)
+    # print(self.Gs.shape)
+    
 
 
   def __call__(self, xi, values):
@@ -439,10 +447,3 @@ class NonlinearInterpolator(LinearInterpolator):
      
 
      
-
-
-
-
-
-
-

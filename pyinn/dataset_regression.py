@@ -59,17 +59,13 @@ class Data_regression(Dataset):
     def __getitem__(self, idx):
         return self.x_data[idx], self.u_data[idx]
     
-    def denormalize(self, x_data=None, u_data=None):
+    def denormalize(self, data, minmax):
         """ Denormalize both x_data and u_data
-        x_data: (ndata, I)
-        u_data: (ndata, L)
+        data: (ndata, dim or var) either u_data or x_data
+        minmax: dictionary that stores minmax values
         """
-        if x_data is not None:
-            x_data_org = (self.x_data_minmax["max"] - self.x_data_minmax["min"]) * x_data + self.x_data_minmax["min"]
-        if u_data is not None:
-            u_data_org = (self.u_data_minmax["max"] - self.u_data_minmax["min"]) * u_data + self.u_data_minmax["min"]
-        return x_data, u_data
-    
+        data_org = (minmax["max"] - minmax["min"]) * data + minmax["min"]
+        return data_org
 
 def data_generation_regression(data_name: str, data_size: int, input_col: Sequence[int]):
 

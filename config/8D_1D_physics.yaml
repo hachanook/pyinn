@@ -37,7 +37,12 @@ TRAIN_PARAM:
   batch_size : 128 # 128
   learning_rate : 1e-3
   bool_train_acc : False
+  
   validation_period : 10 # if this is greater than num_epochs, validation will not be conducted
+  bool_denormalize: False # or True, whether we denormalize when measuring errors
+  error_type : "rmse" # or mse
+  patience : 3
+
 
 PLOT:
   bool_plot: False

@@ -32,12 +32,16 @@ DATA_PARAM:
   split_ratio: [0.7,0.15,0.15]
 
 TRAIN_PARAM:
-  num_epochs_INN : 10
-  num_epochs_MLP : 10
+  num_epochs_INN : 200
+  num_epochs_MLP : 200
   batch_size : 50
   learning_rate : 1e-3
   bool_train_acc : True
+  
   validation_period : 1
+  bool_denormalize: False # or True, whether we denormalize when measuring errors
+  error_type : "rmse" # or mse
+  patience : 3
 
 PLOT:
   bool_plot: True

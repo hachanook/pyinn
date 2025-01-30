@@ -23,7 +23,7 @@ MODEL_PARAM:
   # activation : "relu"
   activation : "sigmoid"
 
-DAAT_PARAM:
+DATA_PARAM:
   input_col : [0]
   output_col : [1]
   bool_normalize: False # whether we normalize the input data or not
@@ -38,7 +38,12 @@ TRAIN_PARAM:
   batch_size : 128
   learning_rate : 1e-3
   bool_train_acc : True
+  
   validation_period : 1
+  bool_denormalize: False # or True, whether we denormalize when measuring errors
+  error_type : "rmse" # or mse
+  patience : 3
+
 
 PLOT:
   bool_plot: True
