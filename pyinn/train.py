@@ -16,10 +16,10 @@ from torch.utils.data import DataLoader, random_split, Subset
 import time
 import torch
 from sklearn.metrics import r2_score, classification_report
-import importlib.util
+import importlib.util 
 
-from .model import * ## when using pyinn
-# from model import * ## when debugging
+# from .model import * ## when using pyinn
+from model import * ## when debugging
 
 if importlib.util.find_spec("GPUtil") is not None: # for linux & GPU
     ''' If you are funning on GPU, please install the following libraries on your anaconda environment via 
@@ -55,6 +55,14 @@ class Regression_INN:
         self.nelem = int(config['MODEL_PARAM']['nelem'])
         self.nnode = self.nelem+1
         self.num_epochs = int(self.config['TRAIN_PARAM']['num_epochs_INN'])
+
+        self.batch_size = int(self.config['TRAIN_PARAM']['batch_size'])
+        self.learning_rate = float(self.config['TRAIN_PARAM']['learning_rate'])
+        self.validation_period = int(self.config['TRAIN_PARAM']['validation_period'])
+        self.bool_denormalize = self.config['TRAIN_PARAM']['bool_denormalize']
+        self.error_type = self.config['TRAIN_PARAM']['error_type']
+        self.patience = int(self.config['TRAIN_PARAM']['patience'])
+        
         
         ## initialization of trainable parameters
         if cls_data.bool_normalize: # when the data is normalized
@@ -180,12 +188,7 @@ class Regression_INN:
             print(f"\tInference time: {time.time() - start_time_inference:.4f} seconds")       
 
     def train(self):
-        self.batch_size = int(self.config['TRAIN_PARAM']['batch_size'])
-        self.learning_rate = float(self.config['TRAIN_PARAM']['learning_rate'])
-        self.validation_period = int(self.config['TRAIN_PARAM']['validation_period'])
-        self.bool_denormalize = self.config['TRAIN_PARAM']['bool_denormalize']
-        self.error_type = self.config['TRAIN_PARAM']['error_type']
-        self.patience = int(self.config['TRAIN_PARAM']['patience'])
+        
 
         
         ## Split data and create dataloader
