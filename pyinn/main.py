@@ -4,8 +4,8 @@ INN trainer
 Copyright (C) 2024  Chanwook Park
  Northwestern University, Evanston, Illinois, US, chanwookpark2024@u.northwestern.edu
 """
-# from pyinn import dataset_classification, dataset_regression, model, train, plot # with pyinn library
-import dataset_classification, dataset_regression, model, train, plot # for debugging
+from pyinn import dataset_classification, dataset_regression, model, train, plot # with pyinn library
+# import dataset_classification, dataset_regression, model, train, plot # for debugging
 from jax import config
 config.update("jax_enable_x64", True)
 import os
@@ -37,10 +37,10 @@ if run_type == "regression":
 
     ## train
     if interp_method == "linear" or interp_method == "nonlinear":
-        regressor = train.Regression_INN(data, config)  # HiDeNN-TD regressor class
+        regressor = train.Regression_INN(data, config)
     elif interp_method == "MLP":
-        regressor = train.Regression_MLP(data, config)  # HiDeNN-TD regressor class
-    regressor.train()  # Train module
+        regressor = train.Regression_MLP(data, config)
+    regressor.train()
 
     ## plot
     plot.plot_regression(regressor, data, config)
@@ -53,10 +53,10 @@ elif run_type == "classification":
     
     ## train
     if interp_method == "linear" or interp_method == "nonlinear":
-        classifier = train.Classification_INN(data, config)  # HiDeNN-TD regressor class
+        classifier = train.Classification_INN(data, config)
     elif interp_method == "MLP":
-        classifier = train.Classification_MLP(data, config)  # HiDeNN-TD regressor class    
-    classifier.train()  # Train module
+        classifier = train.Classification_MLP(data, config)  
+    classifier.train()
 
     ## plot
     plot.plot_classification(classifier, data, config)

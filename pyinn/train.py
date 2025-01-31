@@ -18,8 +18,8 @@ import torch
 from sklearn.metrics import r2_score, classification_report
 import importlib.util
 
-# from .model import * ## when using pyinn
-from model import * ## when debugging
+from .model import * ## when using pyinn
+# from model import * ## when debugging
 
 if importlib.util.find_spec("GPUtil") is not None: # for linux & GPU
     ''' If you are funning on GPU, please install the following libraries on your anaconda environment via 
@@ -67,20 +67,17 @@ class Regression_INN:
                                             self.cls_data.var, self.nnode), dtype=jnp.double)       
         numParam = self.nmode*self.cls_data.dim*self.cls_data.var*self.nnode
 
-        if config['TD_type'] == 'Tucker':
-            # Create a grid of indices for the tensor
-            indices = jnp.arange(self.nmode)
-
-            # Create a tensor of zeros
-            shape = (self.nmode,) * self.cls_data.dim
-            indices = jnp.arange(self.nmode)
-
-            # Use a boolean mask to set diagonal elements
-            core = jnp.zeros(shape, dtype=jnp.float64)
-            core = core.at[tuple([indices] * self.cls_data.dim)].set(1.0)
-            self.params = [core, self.params] # core tensor and factor matrices
-            numParam += len(self.params[0].reshape(-1))
-        
+        ## Define model
+        if self.interp_method == "linear":
+            model = INN_linear(self.grid_dms, self.config)
+            self.forward = model.forward
+            self.v_forward = model.v_forward
+            self.vv_forward = model.vv_forward
+        elif self.interp_method == "nonlinear":
+            model = INN_nonlinear(self.grid_dms, self.config)
+            self.forward = model.forward
+            self.v_forward = model.v_forward
+            self.vv_forward = model.vv_forward
         
         if self.interp_method == "linear" or self.interp_method == "nonlinear":
             print(f"------------INN {config['TD_type']} {self.interp_method} -------------")
@@ -160,7 +157,7 @@ class Regression_INN:
         self.train_dataloader = DataLoader(train_data, batch_size=self.batch_size, shuffle=True)
         self.test_dataloader = DataLoader(test_data, batch_size=self.batch_size, shuffle=True)
 
-    def get_sse(self, u, u_pred):
+    def get_error_metrics(self, u, u_pred, error, ndata):
         """ Get sum of squared error
         """
         if jnp.isnan(u_pred).any(): # if the prediction has nan value,
@@ -170,8 +167,9 @@ class Regression_INN:
         if self.bool_denormalize:
             u = self.cls_data.denormalize(u, self.cls_data.u_data_minmax)
             u_pred = self.cls_data.denormalize(u_pred, self.cls_data.u_data_minmax)
-            
-        return jnp.sum((u - u_pred)**2) # sum of squared error
+        error += jnp.sum((u - u_pred)**2)
+        ndata += len(u)
+        return error, ndata # sum of squared error
 
     def inference(self, x_test):
             u_pred = self.forward(self.params, x_test[0]) # (ndata_train, var)
@@ -189,18 +187,6 @@ class Regression_INN:
         self.error_type = self.config['TRAIN_PARAM']['error_type']
         self.patience = int(self.config['TRAIN_PARAM']['patience'])
 
-        ## Define model
-        if self.interp_method == "linear":
-            # model = INN_linear(self.x_dms_nds[0,:], config)
-            model = INN_linear(self.grid_dms, self.config)
-            self.forward = model.forward
-            self.v_forward = model.v_forward
-            self.vv_forward = model.vv_forward
-        elif self.interp_method == "nonlinear":
-            model = INN_nonlinear(self.grid_dms, self.config)
-            self.forward = model.forward
-            self.v_forward = model.v_forward
-            self.vv_forward = model.vv_forward
         
         ## Split data and create dataloader
         self.data_split()
@@ -221,15 +207,16 @@ class Regression_INN:
                 
                 x_train, u_train = jnp.array(batch[0]), jnp.array(batch[1])
                 params, opt_state, loss_train, u_pred_train = self.update_optax(params, opt_state, x_train, u_train)
-                error += self.get_sse(u_train, u_pred_train)
-                ndata += len(x_train)
-
+                error, ndata = self.get_error_metrics(u_train, u_pred_train, error, ndata)
+                
             self.params = params
             print(f"Epoch {epoch+1}")
             if self.error_type == 'rmse':
                 print(f"\tTrain RMSE: {jnp.sqrt(error/ndata):.4e}")
             elif self.error_type == 'mse':
                 print(f"\tTrain MSE: {error/ndata:.4e}")
+            elif self.error_type == 'accuracy':
+                print(f"\tTrain Accuracy: {error/ndata*100:.2f}%")
             else:
                 pass
             print(f"\tTrain took {time.time() - start_time_epoch:.4f} seconds")
@@ -242,14 +229,16 @@ class Regression_INN:
                 for batch in self.val_dataloader:
                     x_val, u_val = jnp.array(batch[0]), jnp.array(batch[1])
                     _, _, loss_val, u_pred_val = self.update_optax(params, opt_state, x_val, u_val)
-                    error += self.get_sse(u_val, u_pred_val)
-                    ndata += len(x_val)
+                    error, ndata = self.get_error_metrics(u_val, u_pred_val, error, ndata)
                 
                 if self.error_type == 'rmse':
                     print(f"\tVal RMSE: {jnp.sqrt(error/ndata):.4e}")
                     errors_val.append(jnp.sqrt(error/ndata))
                 elif self.error_type == 'mse':
                     print(f"\tVal MSE: {error/ndata:.4e}")
+                    errors_val.append(error/ndata)
+                elif self.error_type == 'accuracy':
+                    print(f"\tVal Accuracy: {error/ndata*100:.2f}%")
                     errors_val.append(error/ndata)
                 else:
                     pass
@@ -272,13 +261,15 @@ class Regression_INN:
         for batch in self.test_dataloader:
             x_test, u_test = jnp.array(batch[0]), jnp.array(batch[1])
             _, _, _, u_pred_test = self.update_optax(params, opt_state, x_test, u_test)
-            error += self.get_sse(u_test, u_pred_test)
-            ndata += len(x_test)
+            error, ndata = self.get_error_metrics(u_test, u_pred_test, error, ndata)
         print("Test")
         if self.error_type == 'rmse':
             print(f"\tTest RMSE: {jnp.sqrt(error/ndata):.4e}")
         elif self.error_type == 'mse':
             print(f"\tTest MSE: {error/ndata:.4e}")
+        elif self.error_type == 'accuracy':
+            print(f"\tTest Accuracy: {error/ndata*100:.2f}%")
+            
         print(f"\tTest took {time.time() - start_time_test:.4f} seconds") 
 
         ## Inference
@@ -394,7 +385,7 @@ class Classification_INN(Regression_INN):
         self.params = jax.random.uniform(jax.random.PRNGKey(self.key), (self.nmode, self.cls_data.dim, 
                                                 self.cls_data.var, self.nnode), dtype=jnp.double,
                                                 minval=0.98, maxval=1.02) # for classification, we sould confine the params range
-        numParam = self.nmode*self.cls_data.dim*self.cls_data.var*self.nnode
+        # numParam = self.nmode*self.cls_data.dim*self.cls_data.var*self.nnode
         
         
 
@@ -415,31 +406,19 @@ class Classification_INN(Regression_INN):
     # Grad_get_loss = jax.value_and_grad(get_loss, argnums=1, has_aux=True)
 
     
-    def get_acc_metrics(self, u, u_pred, type="test"):
-        """ Get accuracy metrics. For regression, R2 will be returned.
+    def get_error_metrics(self, u, u_pred, error, ndata):
+        """ Get accuracy metrics. For regression, either RMSE or MSE will be returned.
             This function cannot be jitted because it uses scipy library
         --- input ---
         u: (ndata, nclass) integer vector that indicates class of the data
         u_train: (ndata, nclass) integer vector that indicates predicted class
         """
-        if type == "train":
-            bool_train_acc = self.config['TRAIN_PARAM']['bool_train_acc']
-            if bool_train_acc:
-                u_single = jnp.argmax(u, axis=1)
-                u_pred_single = jnp.argmax(u_pred, axis=1)
-                report = classification_report(np.array(u_single), np.array(u_pred_single), output_dict=True, zero_division=1)
-                acc = report["accuracy"]
-                acc_metrics = "Accuracy"
-            else:
-                acc, acc_metrics = 0,"Accuracy"
-                
-        elif type == "val" or type == "test":
-            u_single = jnp.argmax(u, axis=1)
-            u_pred_single = jnp.argmax(u_pred, axis=1)
-            report = classification_report(np.array(u_single), np.array(u_pred_single), output_dict=True, zero_division=1)
-            acc = report["accuracy"]
-            acc_metrics = "Accuracy"
-        return acc, acc_metrics
+        u_single = jnp.argmax(u, axis=1)
+        u_pred_single = jnp.argmax(u_pred, axis=1)
+        report = classification_report(np.array(u_single), np.array(u_pred_single), output_dict=True, zero_division=1)
+        error = report["accuracy"]
+        ndata += len(u)
+        return error*ndata, ndata
 
 
 class Classification_MLP(Regression_MLP):
@@ -463,28 +442,16 @@ class Classification_MLP(Regression_MLP):
     Grad_get_loss = jax.jit(jax.value_and_grad(get_loss, argnums=1, has_aux=True), static_argnames=['self'])
     # Grad_get_loss = jax.value_and_grad(get_loss, argnums=1, has_aux=True)
 
-    def get_acc_metrics(self, u, u_pred, type="test"):
-        """ Get accuracy metrics. For regression, R2 will be returned.
+    def get_error_metrics(self, u, u_pred, error, ndata):
+        """ Get accuracy metrics. For regression, either RMSE or MSE will be returned.
             This function cannot be jitted because it uses scipy library
         --- input ---
         u: (ndata, nclass) integer vector that indicates class of the data
         u_train: (ndata, nclass) integer vector that indicates predicted class
         """
-        if type == "train":
-            bool_train_acc = self.config['TRAIN_PARAM']['bool_train_acc']
-            if bool_train_acc:
-                u_single = jnp.argmax(u, axis=1)
-                u_pred_single = jnp.argmax(u_pred, axis=1)
-                report = classification_report(u_single, u_pred_single, output_dict=True, zero_division=1)
-                acc = report["accuracy"]
-                acc_metrics = "Accuracy"
-            else:
-                acc, acc_metrics = 0,"Accuracy"
-                
-        elif type == "val" or type == "test":
-            u_single = jnp.argmax(u, axis=1)
-            u_pred_single = jnp.argmax(u_pred, axis=1)
-            report = classification_report(u_single, u_pred_single, output_dict=True, zero_division=1)
-            acc = report["accuracy"]
-            acc_metrics = "Accuracy"
-        return acc, acc_metrics
+        u_single = jnp.argmax(u, axis=1)
+        u_pred_single = jnp.argmax(u_pred, axis=1)
+        report = classification_report(np.array(u_single), np.array(u_pred_single), output_dict=True, zero_division=1)
+        error = report["accuracy"]
+        ndata += len(u)
+        return error*ndata, ndata

@@ -1,6 +1,19 @@
 MODEL_PARAM: 
   nmode : 30
   nelem : 1
+
+  ## INN nonlinear
+  s_patch : 1
+  alpha_dil: 20
+  p_order: 1
+  radial_basis : "cubicSpline" # Activataion functions
+  # radial_basis : 'gaussian1'
+  INNactivation : 'polynomial'
+  # INNactivation : 'sinusoidal'
+  # INNactivation : 'exponential'
+  # INNactivation : 'sigmoid'
+  # INNactivation : 'tanh'
+  # INNactivation : 'gelu'
   
   ## MLP
   nlayers : 3
@@ -24,7 +37,7 @@ TRAIN_PARAM:
   
   validation_period : 5
   bool_denormalize: False # or True, whether we denormalize when measuring errors
-  error_type : "rmse" # or mse
+  error_type : "accuracy" 
   patience : 3
 
 

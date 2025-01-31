@@ -42,7 +42,7 @@ TRAIN_PARAM:
   validation_period : 100
   validation_period : 1
   bool_denormalize: False # or True, whether we denormalize when measuring errors
-  error_type : "rmse" # or mse
+  error_type : "accuracy" 
   patience : 3
 
 
