@@ -62,7 +62,9 @@ class Regression_INN:
         self.bool_denormalize = self.config['TRAIN_PARAM']['bool_denormalize']
         self.error_type = self.config['TRAIN_PARAM']['error_type']
         self.patience = int(self.config['TRAIN_PARAM']['patience'])
-        
+
+        ## Split data and create dataloader
+        self.data_split()        
         
         ## initialization of trainable parameters
         if cls_data.bool_normalize: # when the data is normalized
@@ -189,10 +191,7 @@ class Regression_INN:
 
     def train(self):
         
-
         
-        ## Split data and create dataloader
-        self.data_split()
         
         ## Define optimizer
         params = self.params
@@ -213,16 +212,16 @@ class Regression_INN:
                 error, ndata = self.get_error_metrics(u_train, u_pred_train, error, ndata)
                 
             self.params = params
-            print(f"Epoch {epoch+1}")
-            if self.error_type == 'rmse':
-                print(f"\tTrain RMSE: {jnp.sqrt(error/ndata):.4e}")
-            elif self.error_type == 'mse':
-                print(f"\tTrain MSE: {error/ndata:.4e}")
-            elif self.error_type == 'accuracy':
-                print(f"\tTrain Accuracy: {error/ndata*100:.2f}%")
-            else:
-                pass
-            print(f"\tTrain took {time.time() - start_time_epoch:.4f} seconds")
+            # print(f"Epoch {epoch+1}")
+            # if self.error_type == 'rmse':
+            #     print(f"\tTrain RMSE: {jnp.sqrt(error/ndata):.4e}")
+            # elif self.error_type == 'mse':
+            #     print(f"\tTrain MSE: {error/ndata:.4e}")
+            # elif self.error_type == 'accuracy':
+            #     print(f"\tTrain Accuracy: {error/ndata*100:.2f}%")
+            # else:
+            #     pass
+            # print(f"\tTrain took {time.time() - start_time_epoch:.4f} seconds")
 
             ## Validation
             if (epoch+1)%self.validation_period == 0:
@@ -255,8 +254,7 @@ class Regression_INN:
                     break
 
         print(f"INN training took {time.time() - start_time_train:.4f} seconds")
-        # if importlib.util.find_spec("GPUtil") is not None: # report GPU memory usage
-        #     mem_report('After training', gpu_idx)
+
 
         ## Test 
         start_time_test = time.time()
@@ -267,11 +265,14 @@ class Regression_INN:
             error, ndata = self.get_error_metrics(u_test, u_pred_test, error, ndata)
         print("Test")
         if self.error_type == 'rmse':
-            print(f"\tTest RMSE: {jnp.sqrt(error/ndata):.4e}")
+            self.test_error = jnp.sqrt(error/ndata)
+            print(f"\tTest RMSE: {self.test_error:.4e}")
         elif self.error_type == 'mse':
-            print(f"\tTest MSE: {error/ndata:.4e}")
+            self.test_error = error/ndata
+            print(f"\tTest MSE: {self.test_error:.4e}")
         elif self.error_type == 'accuracy':
-            print(f"\tTest Accuracy: {error/ndata*100:.2f}%")
+            self.test_error = error/ndata*100
+            print(f"\tTest Accuracy: {self.test_error:.2f}%")
             
         print(f"\tTest took {time.time() - start_time_test:.4f} seconds") 
 

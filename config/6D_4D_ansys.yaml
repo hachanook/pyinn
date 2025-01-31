@@ -1,7 +1,7 @@
 MODEL_PARAM: 
 
   ## INN linear
-  nmode : 400
+  nmode : 50
   nelem : 20 
 
   ## INN nonlinear
@@ -19,7 +19,7 @@ MODEL_PARAM:
 
   ## MLP
   nlayers : 3
-  nneurons : 400
+  nneurons : 50
   # activation : "relu"
   activation : "sigmoid"
 
@@ -32,13 +32,13 @@ DATA_PARAM:
   split_ratio: [0.8,0.2] # [0.7,0.15,0.15]
   
 TRAIN_PARAM:
-  num_epochs_INN : 100
-  num_epochs_MLP : 100
+  num_epochs_INN : 50
+  num_epochs_MLP : 50
   batch_size : 128 # 128
   learning_rate : 1e-3
   bool_train_acc : False
   
-  validation_period : 1 # if this is greater than num_epochs, validation will not be conducted
+  validation_period : 100 # if this is greater than num_epochs, validation will not be conducted
   bool_denormalize: False # or True, whether we denormalize when measuring errors
   error_type : "rmse" # or mse
   patience : 3

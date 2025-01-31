@@ -54,7 +54,7 @@ class Data_regression(Dataset):
         print('loaded ',len(self.x_data_org),'datapoints from',data_name,'dataset')
         
     def __len__(self):
-        return len(self.x_data_org)
+        return len(self.x_data)
 
     def __getitem__(self, idx):
         return self.x_data[idx], self.u_data[idx]
@@ -66,6 +66,62 @@ class Data_regression(Dataset):
         """
         data_org = (minmax["max"] - minmax["min"]) * data + minmax["min"]
         return data_org
+
+class Data_regression_squential(Dataset):
+    def __init__(self, data_name: str, config, x_data, u_data) -> None:
+        # if not os.path.exists('data'):
+        #     os.makedirs('data')
+        # self.data_dir = 'data/'
+        # self.data_name = data_name
+        self.data_size = len(x_data)
+        self.input_col = config['DATA_PARAM']['input_col']
+        self.output_col = config['DATA_PARAM']['output_col']
+        self.dim = len(self.input_col) # size of input
+        self.var = len(self.output_col) # size of output
+        self.split_ratio = config['DATA_PARAM']['split_ratio']
+        self.bool_normalize = config['DATA_PARAM']['bool_normalize']
+        self.x_data = x_data
+        self.u_data = u_data
+        
+        # data_file = self.data_dir + data_name + '_' + str(self.data_size) + '.csv'
+        # try:
+        #     data = np.loadtxt(data_file, delimiter=",", dtype=np.float64, skiprows=1)
+        # except: 
+        #     print(F"Data file {data_file} dose not exist. We will create the data.")
+        #     data_generation_regression(data_name, self.data_size, self.input_col)
+        #     data = np.loadtxt(data_file, delimiter=",", dtype=np.float64, skiprows=1)
+        
+        # self.x_data_org = data[:, self.input_col]
+        # self.u_data_org = data[:, self.output_col]
+        
+        # if self.bool_normalize:    
+        #     self.x_data_minmax = {"min" : self.x_data_org.min(axis=0), "max" : self.x_data_org.max(axis=0)}
+        #     self.u_data_minmax = {"min" : self.u_data_org.min(axis=0), "max" : self.u_data_org.max(axis=0)}
+        #     self.x_data = (self.x_data_org - self.x_data_minmax["min"]) / (self.x_data_minmax["max"] - self.x_data_minmax["min"])
+        #     self.u_data = (self.u_data_org - self.u_data_minmax["min"]) / (self.u_data_minmax["max"] - self.u_data_minmax["min"])
+        # else:
+        #     self.x_data_minmax = {"min" : self.x_data_org.min(axis=0), "max" : self.x_data_org.max(axis=0)}
+        #     self.u_data_minmax = {"min" : self.u_data_org.min(axis=0), "max" : self.u_data_org.max(axis=0)}
+        #     self.x_data = self.x_data_org
+        #     self.u_data = self.u_data_org
+            
+        print(f'loaded {self.data_size} data')
+        
+    def __len__(self):
+        return len(self.x_data)
+
+    def __getitem__(self, idx):
+        return self.x_data[idx], self.u_data[idx]
+    
+    # def denormalize(self, data, minmax):
+    #     """ Denormalize both x_data and u_data
+    #     data: (ndata, dim or var) either u_data or x_data
+    #     minmax: dictionary that stores minmax values
+    #     """
+    #     data_org = (minmax["max"] - minmax["min"]) * data + minmax["min"]
+    #     return data_org
+
+
 
 def data_generation_regression(data_name: str, data_size: int, input_col: Sequence[int]):
 
