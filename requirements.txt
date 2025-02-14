@@ -3,7 +3,7 @@ GPUtil==1.4.0
 humanize==4.11.0
 jax==0.4.35
 matplotlib==3.8.0
-numpy==1.6.0
+numpy==1.26.0
 optax==0.2.4
 pandas==2.2.3
 # Pillow==9.4.0
