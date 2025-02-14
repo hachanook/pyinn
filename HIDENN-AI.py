@@ -1,6 +1,8 @@
 import streamlit as st
 from PIL import Image
 import os
+import sys # for debugging
+sys.path.append('../pyinn')
 
 # Set page configuration
 st.set_page_config(
