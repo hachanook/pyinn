@@ -3,6 +3,20 @@ from PIL import Image
 import os
 import sys # for debugging
 sys.path.append('../pyinn')
+import pyvista as pv
+from stpyvista import stpyvista
+import subprocess
+import urllib.parse as parse
+
+def is_embed():
+    from streamlit.runtime.scriptrunner import get_script_run_ctx
+
+    ctx = get_script_run_ctx()
+    query_params = parse.parse_qs(ctx.query_string)
+    return True if query_params.get("embed") else False
+
+IS_APP_EMBED = is_embed()
+
 
 # Set page configuration
 st.set_page_config(
@@ -10,6 +24,18 @@ st.set_page_config(
     page_icon="🌐",
     layout="centered",
 )
+
+## Check if xvfb is already running on the machine
+is_xvfb_running = subprocess.run(["pgrep", "Xvfb"], capture_output=True)
+
+if is_xvfb_running.returncode == 1:
+    if not IS_APP_EMBED:
+        st.toast("Xvfb was not running...", icon="⚠️")
+    pv.start_xvfb()
+else:
+    if not IS_APP_EMBED:
+        st.toast(f"Xvfb is running! \n\n`PID: {is_xvfb_running.stdout.decode('utf-8')}`", icon="📺")
+
 
 # Display logo in the upper left corner
 logo = Image.open("logo.jpg")
