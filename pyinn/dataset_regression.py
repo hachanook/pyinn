@@ -18,7 +18,15 @@ from torch.utils.data import TensorDataset, DataLoader, random_split
 
  
 class Data_regression(Dataset):
-    def __init__(self, data_name: str, config, *args) -> None:
+    def __init__(self, data_name: str, config: dict, *args: list) -> None:
+        """
+        --- inputs ---
+        data_name: name of the dataset. Used only when the dataset is generated internally.
+        config: configuration file stored in a dictionary. Check /config
+        *args[0]: list of imported dataset. This can be: 1) entire dataset with split ratio specified in the config file, 
+                    2) [train, test] dataset, 3) [train, validation, test] dataset
+        """
+
         if not os.path.exists('data'):
             os.makedirs('data')
 
@@ -37,38 +45,40 @@ class Data_regression(Dataset):
         if self.bool_data_generation == True: # if we use data generator
             self.data_size = config['DATA_PARAM']['data_size']
             data_file = self.data_dir + data_name + '_' + str(self.data_size) + '.csv'
+
+            ## Data load or generate
             try:
                 data = np.loadtxt(data_file, delimiter=",", dtype=np.float64, skiprows=1)
             except: 
                 print(F"Data file {data_file} dose not exist. We will create the data.")
                 data_generation_regression(data_name, self.data_size, self.input_col)
                 data = np.loadtxt(data_file, delimiter=",", dtype=np.float64, skiprows=1)
-                ndata = len(data)
+            ndata = len(data)
 
-                ## shuffle
-                if self.bool_shuffle:
-                    indices = np.arange(ndata)
-                    np.random.shuffle(indices)
-                    data = data[indices]
+            ## shuffle
+            if self.bool_shuffle:
+                indices = np.arange(ndata)
+                np.random.shuffle(indices)
+                data = data[indices]
 
-                ## split
-                split_ratio = config['DATA_PARAM']['split_ratio']
-                if len(split_ratio) == 2: # train & test
-                    train_end = int(split_ratio[0] * ndata)
-                    data_train = data[:train_end]
-                    data_val = data[train_end:]
-                    data_test = data[train_end:]
-                
-                elif len(split_ratio) == 3:
-                    train_end = int(split_ratio[0] * ndata)
-                    val_end = train_end + int(split_ratio[1] * ndata)
-                    data_train = data[:train_end]
-                    data_val = data[train_end:val_end]
-                    data_test = data[val_end:]
+            ## split
+            split_ratio = config['DATA_PARAM']['split_ratio']
+            if len(split_ratio) == 2: # train & test
+                train_end = int(split_ratio[0] * ndata)
+                data_train = data[:train_end]
+                data_val = data[train_end:]
+                data_test = data[train_end:]
+            
+            elif len(split_ratio) == 3:
+                train_end = int(split_ratio[0] * ndata)
+                val_end = train_end + int(split_ratio[1] * ndata)
+                data_train = data[:train_end]
+                data_val = data[train_end:val_end]
+                data_test = data[val_end:]
 
-                else:
-                    print(f"Error took place while generating data. Check split ratio")
-                    sys.exit()
+            else:
+                print(f"Error took place while generating data. Check split ratio")
+                sys.exit()
 
 
         elif self.bool_data_generation == False and 'data_filenames' in config['DATA_PARAM'].keys(): # stored data
@@ -78,7 +88,7 @@ class Data_regression(Dataset):
                 data_file = self.data_dir + args[0]
                 data = np.loadtxt(data_file, delimiter=",", dtype=np.float64, skiprows=1)
                 ndata = len(data)
-
+ 
                 ## shuffle
                 if self.bool_shuffle:
                     indices = np.arange(ndata)
@@ -87,8 +97,8 @@ class Data_regression(Dataset):
 
                 ## split
                 split_ratio = config['DATA_PARAM']['split_ratio']
-                print("split_ratio")
-                print(split_ratio)
+                # print("split_ratio")
+                # print(split_ratio)
 
                 if len(split_ratio) == 2: # train & test
                     train_end = int(split_ratio[0] * ndata)
@@ -190,8 +200,7 @@ class Data_regression(Dataset):
 
         ################# Data loading end ################
 
-
-        ## normalize data
+        ## divide into input and output data
         self.x_data_org = data[:, self.input_col]
         self.u_data_org = data[:, self.output_col]
         x_data_train_org = data_train[:, self.input_col]
@@ -200,9 +209,11 @@ class Data_regression(Dataset):
         u_data_val_org = data_val[:, self.output_col]
         x_data_test_org = data_test[:, self.input_col]
         u_data_test_org = data_test[:, self.output_col]
+
+        ## normalize data
+        self.x_data_minmax = {"min" : self.x_data_org.min(axis=0), "max" : self.x_data_org.max(axis=0)}
+        self.u_data_minmax = {"min" : self.u_data_org.min(axis=0), "max" : self.u_data_org.max(axis=0)}
         if self.bool_normalize:    
-            self.x_data_minmax = {"min" : self.x_data_org.min(axis=0), "max" : self.x_data_org.max(axis=0)}
-            self.u_data_minmax = {"min" : self.u_data_org.min(axis=0), "max" : self.u_data_org.max(axis=0)}
             self.x_data_train = (x_data_train_org - self.x_data_minmax["min"]) / (self.x_data_minmax["max"] - self.x_data_minmax["min"])
             self.u_data_train = (u_data_train_org - self.u_data_minmax["min"]) / (self.u_data_minmax["max"] - self.u_data_minmax["min"])
             self.x_data_val = (x_data_val_org - self.x_data_minmax["min"]) / (self.x_data_minmax["max"] - self.x_data_minmax["min"])
@@ -210,8 +221,6 @@ class Data_regression(Dataset):
             self.x_data_test = (x_data_test_org - self.x_data_minmax["min"]) / (self.x_data_minmax["max"] - self.x_data_minmax["min"])
             self.u_data_test = (u_data_test_org - self.u_data_minmax["min"]) / (self.u_data_minmax["max"] - self.u_data_minmax["min"])
         else:
-            self.x_data_minmax = {"min" : self.x_data_org.min(axis=0), "max" : self.x_data_org.max(axis=0)}
-            self.u_data_minmax = {"min" : self.u_data_org.min(axis=0), "max" : self.u_data_org.max(axis=0)}
             self.x_data_train = x_data_train_org
             self.u_data_train = u_data_train_org
             self.x_data_val = x_data_val_org
@@ -234,9 +243,6 @@ class Data_regression(Dataset):
     def __len__(self):
         return len(self.x_data_org)
 
-    # def __getitem__(self, idx):
-    #     return self.x_data[idx], self.u_data[idx]
-    
     def denormalize(self, x_data=None, u_data=None):
         """ Denormalize both x_data and u_data
         x_data: (ndata, I)
@@ -250,48 +256,6 @@ class Data_regression(Dataset):
             u_data_org = (self.u_data_minmax["max"] - self.u_data_minmax["min"]) * u_data + self.u_data_minmax["min"]
             data_org.append(u_data_org)
         return data_org
-    
-# class Data_regression_streamlit(Dataset):
-#     def __init__(self, data, config) -> None:
-#         self.data_name = config["data_name"]
-#         self.input_col = config['DATA_PARAM']['input_col']
-#         self.output_col = config['DATA_PARAM']['output_col']
-#         self.dim = len(self.input_col) # size of input
-#         self.var = len(self.output_col) # size of output
-#         split_ratio = config['DATA_PARAM']['split_ratio']
-#         self.bool_normalize = config['DATA_PARAM']['bool_normalize']
-
-#         self.x_data_org = data[:, self.input_col]
-#         self.u_data_org = data[:, self.output_col]
-        
-#         if self.bool_normalize:    
-#             self.x_data_minmax = {"min" : self.x_data_org.min(axis=0), "max" : self.x_data_org.max(axis=0)}
-#             self.u_data_minmax = {"min" : self.u_data_org.min(axis=0), "max" : self.u_data_org.max(axis=0)}
-#             self.x_data = (self.x_data_org - self.x_data_minmax["min"]) / (self.x_data_minmax["max"] - self.x_data_minmax["min"])
-#             self.u_data = (self.u_data_org - self.u_data_minmax["min"]) / (self.u_data_minmax["max"] - self.u_data_minmax["min"])
-#         else:
-#             self.x_data_minmax = {"min" : self.x_data_org.min(axis=0), "max" : self.x_data_org.max(axis=0)}
-#             self.u_data_minmax = {"min" : self.u_data_org.min(axis=0), "max" : self.u_data_org.max(axis=0)}
-#             self.x_data = self.x_data_org
-#             self.u_data = self.u_data_org
-            
-        
-#     def __len__(self):
-#         return len(self.x_data_org)
-
-#     def __getitem__(self, idx):
-#         return self.x_data[idx], self.u_data[idx]
-    
-#     def denormalize(self, x_data=None, u_data=None):
-#         """ Denormalize both x_data and u_data
-#         x_data: (ndata, I)
-#         u_data: (ndata, L)
-#         """
-#         if x_data is not None:
-#             x_data_org = (self.x_data_minmax["max"] - self.x_data_minmax["min"]) * x_data + self.x_data_minmax["min"]
-#         if u_data is not None:
-#             u_data_org = (self.u_data_minmax["max"] - self.u_data_minmax["min"]) * u_data + self.u_data_minmax["min"]
-#         return x_data, u_data
     
 
 def data_generation_regression(data_name: str, data_size: int, input_col: Sequence[int]):

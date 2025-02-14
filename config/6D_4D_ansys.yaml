@@ -2,7 +2,7 @@ MODEL_PARAM:
 
   ## INN linear
   nmode : 100
-  nelem : 20
+  nelem : 20 # 
 
   ## INN nonlinear
   s_patch : 4
@@ -37,8 +37,8 @@ DATA_PARAM:
   
   
 TRAIN_PARAM:
-  num_epochs_INN : 100
-  num_epochs_MLP : 100
+  num_epochs_INN : 10
+  num_epochs_MLP : 10
   batch_size : 128 # 128
   learning_rate : 1e-3
   bool_train_acc : False

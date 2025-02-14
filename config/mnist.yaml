@@ -9,11 +9,15 @@ MODEL_PARAM:
   activation : "sigmoid"
 
 DATA_PARAM:
+  
   nclass : 10
-  bool_normalize : False 
-  bool_image : True
-  bool_random_split : False
+  bool_data_generation : True # data is already stored and splitted
   split_ratio : [60000,10000]
+
+  bool_normalize : False # whether we normalize the input data or not
+  bool_image : True # this is not an image data
+  bool_shuffle : False
+  
 
 TRAIN_PARAM:
   num_epochs_INN : 20
@@ -21,7 +25,11 @@ TRAIN_PARAM:
   batch_size : 128
   learning_rate : 2e-4
   bool_train_acc : False
-  validation_period : 5
+  
+  validation_period : 1
+  bool_denormalize: False # or True, whether we denormalize when measuring errors
+  error_type : "accuracy" 
+  patience : 3
 
 PLOT:
   bool_plot: False

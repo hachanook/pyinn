@@ -4,15 +4,15 @@ INN trainer
 Copyright (C) 2024  Chanwook Park
  Northwestern University, Evanston, Illinois, US, chanwookpark2024@u.northwestern.edu
 """
-from pyinn import dataset_classification, dataset_regression, model, train, plot # with pyinn library
-# import dataset_classification, dataset_regression, model, train, plot # for debugging
+# from pyinn import dataset_classification, dataset_regression, model, train, plot # with pyinn library
+import dataset_classification, dataset_regression, model, train, plot # for debugging
 from jax import config
 config.update("jax_enable_x64", True)
 import os
 import yaml
 
 run_types = ['regression', 'classification']
-interp_methods = ['linear','nonlinear', 'MLP']
+interp_methods = ['nonlinear', 'linear','MLP']
 
 data_names_regression = ['1D_1D_sine', '2D_1D_sine','10D_5D_physics', '6D_4D_ansys']
 data_names_classification = ['spiral', 'mnist','fashion_mnist', ]

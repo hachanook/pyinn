@@ -6,12 +6,12 @@ import os
 # from .model import * ## when using pyinn
 # from .dataset_regression import *
 # from .dataset_classification import *
-# from model import * ## when debugging
-# from dataset_regression import *
-# from dataset_classification import *
-from pyinn.model import * ## when debugging on streamlit
-from pyinn.dataset_regression import *
-from pyinn.dataset_classification import *
+from model import * ## when debugging
+from dataset_regression import *
+from dataset_classification import *
+# from pyinn.model import * ## when debugging on streamlit
+# from pyinn.dataset_regression import *
+# from pyinn.dataset_classification import *
 
 def plot_regression(model, cls_data, config):
     bool_plot = config['PLOT']['bool_plot']
@@ -30,7 +30,7 @@ def plot_regression(model, cls_data, config):
             # we will plot the error only when there is no normalization on the original data.
             plot_2D_1D(model, cls_data, plot_in_axis, plot_out_axis)
 
-            if config['interp_method'] != "MLP":
+            if config['interp_method'] != "MLP" and isinstance(config['MODEL_PARAM']['nelem'], int):
                 plot_modes(model, cls_data, plot_in_axis, plot_out_axis)
         
         elif len(plot_in_axis)==1 and len(plot_out_axis)==1 and  cls_data.bool_normalize == False:
@@ -48,15 +48,15 @@ def plot_regression(model, cls_data, config):
         elif len(plot_in_axis)==3 and len(plot_out_axis)==1 and  cls_data.bool_normalize == True:
             # we will plot the error only when there is no normalization on the original data.
             # plot_2D_1D(model, cls_data, [0,1], plot_out_axis)
-            if config['interp_method'] != "MLP":
+            if config['interp_method'] != "MLP" and isinstance(config['MODEL_PARAM']['nelem'], int):
                 plot_modes(model, cls_data, plot_in_axis, plot_out_axis)
 
         
 
     else:
         print("\nPlotting deactivated\n")
-        import sys
-        sys.exit()
+        # import sys
+        # sys.exit()
 
 
 
@@ -79,8 +79,8 @@ def plot_classification(model, cls_data, config):
             plot_2D_classification(model, cls_data, plot_in_axis, plot_out_axis)
     else:
         print("\nPlotting deactivated\n")
-        import sys
-        sys.exit()
+        # import sys
+        # sys.exit()
 
 
 def plot_1D_1D(model, cls_data, plot_in_axis, plot_out_axis):
@@ -135,7 +135,7 @@ def plot_modes(model, cls_data, plot_in_axis, plot_out_axis):
         params = model.params[1]
         print("Core tensor of Tucker product")
         print(model.params[0]) # print out 
-
+    
     M = params.shape[0] # nmode
     I = params.shape[1] # dim
     J = params.shape[3] # nnode
@@ -288,7 +288,7 @@ def plot_2D_classification(model, cls_data, plot_in_axis, plot_out_axis):
     ## debug
     all_inputs, all_labels = [], []
 
-    for inputs, labels in model.test_dataloader:
+    for inputs, labels in cls_data.test_dataloader:
         # Move data to CPU if it’s on GPU
         inputs = inputs.cpu().numpy()
         labels = labels.cpu().numpy()

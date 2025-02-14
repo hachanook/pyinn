@@ -19,8 +19,8 @@ from sklearn.metrics import r2_score, classification_report
 import importlib.util
 
 # from .model import * ## when using pyinn
-# from model import * ## when debugging
-from pyinn.model import * ## when debugging on streamlit
+from model import * ## when debugging
+# from pyinn.model import * ## when debugging on streamlit
 
 if importlib.util.find_spec("GPUtil") is not None: # for linux & GPU
     ''' If you are funning on GPU, please install the following libraries on your anaconda environment via 
@@ -51,22 +51,39 @@ class Regression_INN:
         self.cls_data = cls_data
         self.config = config
         self.key = 3264
-
         self.nmode = int(config['MODEL_PARAM']['nmode'])
-        self.nelem = int(config['MODEL_PARAM']['nelem'])
-        self.nnode = self.nelem+1
         self.num_epochs = int(self.config['TRAIN_PARAM']['num_epochs_INN'])
+            
+        ## Initialize trainable parameters
+        if isinstance(config['MODEL_PARAM']['nelem'], int): # same discretization across dimension
+            
+            self.nelem = int(config['MODEL_PARAM']['nelem'])
+            self.nnode = self.nelem + 1
+            
+            ## initialization of trainable parameters
+            if cls_data.bool_normalize: # when the data is normalized
+                self.grid_dms = jnp.tile(jnp.linspace(0, 1, self.nnode, dtype=jnp.float64), (self.cls_data.dim, 1)) # (dim, nnode)
+            else: # when the data is not normalized
+                self.grid_dms = v_get_linspace(cls_data.x_data_minmax["min"], cls_data.x_data_minmax["max"], self.nnode)
+            self.params = jax.random.uniform(jax.random.PRNGKey(self.key), (self.nmode, self.cls_data.dim, 
+                                                self.cls_data.var, self.nnode), dtype=jnp.double)       
+            numParam = self.nmode*self.cls_data.dim*self.cls_data.var*self.nnode
         
-        ## initialization of trainable parameters
-        if cls_data.bool_normalize: # when the data is normalized
-            self.grid_dms = jnp.tile(jnp.linspace(0,1,self.nnode, dtype=jnp.float64), (self.cls_data.dim,1)) # (dim,nnode)
-        else: # when the data is not normalized
-            self.grid_dms = v_get_linspace(cls_data.x_data_minmax["min"], cls_data.x_data_minmax["max"], self.nnode)
+        elif isinstance(config['MODEL_PARAM']['nelem'], list): # varying discretization across dimension
 
-        
-        self.params = jax.random.uniform(jax.random.PRNGKey(self.key), (self.nmode, self.cls_data.dim, 
-                                            self.cls_data.var, self.nnode), dtype=jnp.double)       
-        numParam = self.nmode*self.cls_data.dim*self.cls_data.var*self.nnode
+            self.nelem = jnp.array(config['MODEL_PARAM']['nelem'], dtype=jnp.int64) # (dim,) 1D array of integers
+            self.nnode = self.nelem + 1
+
+            ## initialization of trainable parameters
+            self.grid_dms, self.params, numParam = [], [], 0
+            for idm, nnode_idm in enumerate(self.nnode):
+                if cls_data.bool_normalize: # when the data is normalized
+                    self.grid_dms.append(jnp.linspace(0, 1, nnode_idm, dtype=jnp.float64))
+                else: # when the data is not normalized
+                    self.grid_dms.append(get_linspace(cls_data.x_data_minmax["min"][idm], cls_data.x_data_minmax["max"][idm], nnode_idm))
+                self.params.append(jax.random.uniform(jax.random.PRNGKey(self.key), (self.nmode, self.cls_data.var, nnode_idm), dtype=jnp.double))
+                numParam += self.nmode*self.cls_data.var*nnode_idm
+ 
 
         ## Define model
         if self.interp_method == "linear":
@@ -79,6 +96,12 @@ class Regression_INN:
             self.forward = model.forward
             self.v_forward = model.v_forward
             self.vv_forward = model.vv_forward
+
+        # ## debug
+        # x_idata = jnp.ones(self.cls_data.dim, dtype=jnp.float64) * 0.5
+        # x_data = jnp.ones((2, self.cls_data.dim), dtype=jnp.float64) * 0.5
+        # a = self.forward(self.params, x_idata)
+        # va = self.v_forward(self.params, x_data)
         
         if self.interp_method == "linear" or self.interp_method == "nonlinear":
             print(f"------------INN {config['TD_type']} {self.interp_method} -------------")
@@ -99,26 +122,6 @@ class Regression_INN:
     Grad_get_loss = jax.jit(jax.value_and_grad(get_loss, argnums=1, has_aux=True), static_argnames=['self'])
 
 
-    def get_loss_r(self, grid_dms, params, x_data, u_data):
-        ''' Compute MSE loss value for r-adaptivity
-        --- input ---
-        grid_dms: (dim, J)
-        u_p_modes: (nmode, dim, nnode, var)
-        u_data: exact u from the data. (ndata_train, var)
-        shape_vals_data, patch_nodes_data: defined in "get_HiDeNN_shape_fun"
-        '''
-        # if self.interp_method == "linear":
-        model = INN_linear(grid_dms, self.config)
-            
-        # elif self.interp_method == "nonlinear":
-        #     model = INN_nonlinear(grid_dms, self.config)
-
-        u_pred = model.v_forward(params, x_data) # (ndata_train, var)
-        loss = ((u_pred- u_data)**2).mean()
-        return loss, u_pred
-    Grad_get_loss_r = jax.jit(jax.value_and_grad(get_loss_r, argnums=1, has_aux=True), static_argnames=['self'])
-    
-
     @partial(jax.jit, static_argnames=['self']) 
     def update_optax(self, params, opt_state, x_data, u_data):
         ((loss, u_pred), grads) = self.Grad_get_loss(params, x_data, u_data)
@@ -126,39 +129,8 @@ class Regression_INN:
         params = optax.apply_updates(params, updates)
         return params, opt_state, loss, u_pred    
     
-    def data_split(self):
-        split_ratio = self.cls_data.split_ratio
-        if self.config['DATA_PARAM']['bool_random_split'] == True and all(isinstance(item, float) for item in split_ratio):
-            # random split with a split ratio
-            generator = torch.Generator().manual_seed(42)
-            split_data = random_split(dataset=self.cls_data,lengths=self.cls_data.split_ratio, generator=generator)
-            if len(split_ratio) == 2:
-                self.split_type="TT" # train and test
-                train_data = split_data[0]
-                test_data = split_data[1]
-            elif len(split_ratio) == 3:
-                self.split_type="TVT" # train, validation, test
-                train_data = split_data[0]
-                val_data = split_data[1]
-                test_data = split_data[2]
-                self.val_dataloader = DataLoader(test_data, batch_size=self.batch_size, shuffle=True)
-            
-        elif self.config['DATA_PARAM']['bool_random_split'] == False and all(isinstance(item, int) for item in split_ratio):
-            # non-random split with a fixed number of data
-            if len(split_ratio) == 2:
-                self.split_type="TT" # train and test
-                train_data = Subset(self.cls_data, list(range(split_ratio[0])))
-                test_data = Subset(self.cls_data, list(range(split_ratio[0], split_ratio[0]+split_ratio[1])))
-            elif len(split_ratio) == 3:
-                self.split_type="TVT" # train, validation, test
-                train_data = Subset(self.cls_data, list(range(split_ratio[0])))
-                test_data = Subset(self.cls_data, list(range(split_ratio[0], split_ratio[0]+split_ratio[1])))
-                val_data = Subset(self.cls_data, list(range(split_ratio[0]+split_ratio[1], split_ratio[0]+split_ratio[1]+split_ratio[2])))
-                self.val_dataloader = DataLoader(test_data, batch_size=self.batch_size, shuffle=True)
-        self.train_dataloader = DataLoader(train_data, batch_size=self.batch_size, shuffle=True)
-        self.test_dataloader = DataLoader(test_data, batch_size=self.batch_size, shuffle=True)
 
-    def get_error_metrics(self, u, u_pred, error, ndata):
+    def get_error_metrics(self, u, u_pred, error_cum, ndata_cum):
         """ Get sum of squared error
         """
         if jnp.isnan(u_pred).any(): # if the prediction has nan value,
@@ -168,9 +140,9 @@ class Regression_INN:
         if self.bool_denormalize:
             u = self.cls_data.denormalize(u, self.cls_data.u_data_minmax)
             u_pred = self.cls_data.denormalize(u_pred, self.cls_data.u_data_minmax)
-        error += jnp.sum((u - u_pred)**2)
-        ndata += len(u)
-        return error, ndata # sum of squared error
+        error_cum += jnp.sum((u - u_pred)**2)
+        ndata_cum += len(u)
+        return error_cum, ndata_cum # sum of squared error
 
     def inference(self, x_test):
             u_pred = self.forward(self.params, x_test[0]) # (ndata_train, var)
@@ -188,10 +160,7 @@ class Regression_INN:
         self.error_type = self.config['TRAIN_PARAM']['error_type']
         self.patience = int(self.config['TRAIN_PARAM']['patience'])
 
-        
-        # ## Split data and create dataloader
-        # self.data_split()
-        
+
         ## Define optimizer
         params = self.params
         self.optimizer = optax.adam(self.learning_rate)
@@ -203,42 +172,42 @@ class Regression_INN:
         for epoch in range(self.num_epochs):
             epoch_list_loss, epoch_list_acc = [], [] 
             start_time_epoch = time.time()    
-            error, ndata = 0,0 # measure train error
+            error_cum, ndata_cum = 0,0 # measure train error
             for batch in self.cls_data.train_dataloader:
                 
                 x_train, u_train = jnp.array(batch[0]), jnp.array(batch[1])
                 params, opt_state, loss_train, u_pred_train = self.update_optax(params, opt_state, x_train, u_train)
-                error, ndata = self.get_error_metrics(u_train, u_pred_train, error, ndata)
+                error_cum, ndata_cum = self.get_error_metrics(u_train, u_pred_train, error_cum, ndata_cum)
                 
             self.params = params
             print(f"Epoch {epoch+1}")
             if self.error_type == 'rmse':
-                print(f"\tTrain RMSE: {jnp.sqrt(error/ndata):.4e}")
+                print(f"\tTrain RMSE: {jnp.sqrt(error_cum/ndata_cum):.4e}")
             elif self.error_type == 'mse':
-                print(f"\tTrain MSE: {error/ndata:.4e}")
+                print(f"\tTrain MSE: {error_cum/ndata_cum:.4e}")
             elif self.error_type == 'accuracy':
-                print(f"\tTrain Accuracy: {error/ndata*100:.2f}%")
+                print(f"\tTrain Accuracy: {error_cum/ndata_cum*100:.2f}%")
             else:
                 pass
             print(f"\tTrain took {time.time() - start_time_epoch:.4f} seconds")
 
             ## Validation
             if (epoch+1)%self.validation_period == 0:
-                error, ndata = 0,0
+                error_cum, ndata_cum = 0,0
                 for batch in self.cls_data.val_dataloader:
                     x_val, u_val = jnp.array(batch[0]), jnp.array(batch[1])
                     _, _, loss_val, u_pred_val = self.update_optax(params, opt_state, x_val, u_val)
-                    error, ndata = self.get_error_metrics(u_val, u_pred_val, error, ndata)
+                    error_cum, ndata_cum = self.get_error_metrics(u_val, u_pred_val, error_cum, ndata_cum)
                 
                 if self.error_type == 'rmse':
-                    print(f"\tVal RMSE: {jnp.sqrt(error/ndata):.4e}")
-                    errors_val.append(jnp.sqrt(error/ndata))
+                    print(f"\tVal RMSE: {jnp.sqrt(error_cum/ndata_cum):.4e}")
+                    errors_val.append(jnp.sqrt(error_cum/ndata_cum))
                 elif self.error_type == 'mse':
-                    print(f"\tVal MSE: {error/ndata:.4e}")
-                    errors_val.append(error/ndata)
+                    print(f"\tVal MSE: {error_cum/ndata_cum:.4e}")
+                    errors_val.append(error_cum/ndata_cum)
                 elif self.error_type == 'accuracy':
-                    print(f"\tVal Accuracy: {error/ndata*100:.2f}%")
-                    errors_val.append(error/ndata)
+                    print(f"\tVal Accuracy: {error_cum/ndata_cum*100:.2f}%")
+                    errors_val.append(error_cum/ndata_cum)
                 else:
                     pass
 
@@ -256,64 +225,23 @@ class Regression_INN:
 
         ## Test 
         start_time_test = time.time()
-        error, ndata = 0,0
+        error_cum, ndata_cum = 0,0
         for batch in self.cls_data.test_dataloader:
             x_test, u_test = jnp.array(batch[0]), jnp.array(batch[1])
             _, _, _, u_pred_test = self.update_optax(params, opt_state, x_test, u_test)
-            error, ndata = self.get_error_metrics(u_test, u_pred_test, error, ndata)
+            error_cum, ndata_cum = self.get_error_metrics(u_test, u_pred_test, error_cum, ndata_cum)
         print("Test")
         if self.error_type == 'rmse':
-            print(f"\tTest RMSE: {jnp.sqrt(error/ndata):.4e}")
+            print(f"\tTest RMSE: {jnp.sqrt(error_cum/ndata_cum):.4e}")
         elif self.error_type == 'mse':
-            print(f"\tTest MSE: {error/ndata:.4e}")
+            print(f"\tTest MSE: {error_cum/ndata_cum:.4e}")
         elif self.error_type == 'accuracy':
-            print(f"\tTest Accuracy: {error/ndata*100:.2f}%")
+            print(f"\tTest Accuracy: {error_cum/ndata_cum*100:.2f}%")
             
         print(f"\tTest took {time.time() - start_time_test:.4f} seconds") 
 
         ## Inference
         self.inference(x_test)
-
-    # def train_r(self):
-    #     self.batch_size = int(self.config['TRAIN_PARAM']['batch_size']) * 100 # set r-batch as large as possible
-    #     self.learning_rate = float(self.config['TRAIN_PARAM']['learning_rate'])
-    #     self.validation_period = int(self.config['TRAIN_PARAM']['validation_period'])
-        
-    #     ## Split data and create dataloader
-    #     self.data_split()
-        
-    #     ## Define variables
-    #     grid_dms = self.grid_dms
-        
-    #     ## Train
-    #     start_time_train = time.time()
-    #     for batch in self.train_dataloader:
-    #         # time_batch = time.time()
-    #         x_train, u_train = jnp.array(batch[0]), jnp.array(batch[1])
-    #         ((loss, u_pred), grads) = self.Grad_get_loss_r(grid_dms, self.params, x_train, u_train)
-
-    #         ## Updated nodal coordinates - r-adaptivity
-    #         grads = grads.at[:,[0,-1]].set(0) # fix boundary nodes
-    #         elem_size = grid_dms[:,1:] - grid_dms[:,0:-1]  # (dim, J-1)
-    #         elem_size_min = jnp.min(elem_size, axis=1) # (dim,) minimum element size for each dimension
-    #         learning_rate = 0.05 * elem_size_min / jnp.max(jnp.abs(grads), axis=1)
-    #         grid_dms -= learning_rate[:,None] * grads
-
-    #     ## Save updated nodal coordinates 
-    #     self.grid_dms = grid_dms
-    #     # print(grid_dms)
-        
-    #     ## Re-define models
-    #     if self.interp_method == "linear":
-    #         model = INN_linear(self.grid_dms, self.config)
-    #         self.forward = model.forward
-    #         self.v_forward = model.v_forward
-    #         self.vv_forward = model.vv_forward
-    #     elif self.interp_method == "nonlinear":
-    #         model = INN_nonlinear(self.grid_dms, self.config)
-    #         self.forward = model.forward
-    #         self.v_forward = model.v_forward
-    #         self.vv_forward = model.vv_forward
 
 
 class Regression_MLP(Regression_INN):
@@ -403,8 +331,8 @@ class Classification_INN(Regression_INN):
     # Grad_get_loss = jax.value_and_grad(get_loss, argnums=1, has_aux=True)
 
     
-    def get_error_metrics(self, u, u_pred, error, ndata):
-        """ Get accuracy metrics. For regression, either RMSE or MSE will be returned.
+    def get_error_metrics(self, u, u_pred, error_cum, ndata_cum):
+        """ Get accuracy metrics for classification.
             This function cannot be jitted because it uses scipy library
         --- input ---
         u: (ndata, nclass) integer vector that indicates class of the data
@@ -414,8 +342,9 @@ class Classification_INN(Regression_INN):
         u_pred_single = jnp.argmax(u_pred, axis=1)
         report = classification_report(np.array(u_single), np.array(u_pred_single), output_dict=True, zero_division=1)
         error = report["accuracy"]
-        ndata += len(u)
-        return error*ndata, ndata
+        error_cum += error*len(u)
+        ndata_cum += len(u)
+        return error_cum, ndata_cum
 
 
 class Classification_MLP(Regression_MLP):
@@ -439,8 +368,8 @@ class Classification_MLP(Regression_MLP):
     Grad_get_loss = jax.jit(jax.value_and_grad(get_loss, argnums=1, has_aux=True), static_argnames=['self'])
     # Grad_get_loss = jax.value_and_grad(get_loss, argnums=1, has_aux=True)
 
-    def get_error_metrics(self, u, u_pred, error, ndata):
-        """ Get accuracy metrics. For regression, either RMSE or MSE will be returned.
+    def get_error_metrics(self, u, u_pred, error_cum, ndata_cum):
+        """ Get accuracy metrics for classification.
             This function cannot be jitted because it uses scipy library
         --- input ---
         u: (ndata, nclass) integer vector that indicates class of the data
@@ -450,5 +379,6 @@ class Classification_MLP(Regression_MLP):
         u_pred_single = jnp.argmax(u_pred, axis=1)
         report = classification_report(np.array(u_single), np.array(u_pred_single), output_dict=True, zero_division=1)
         error = report["accuracy"]
-        ndata += len(u)
-        return error*ndata, ndata
+        error_cum += error*len(u)
+        ndata_cum += len(u)
+        return error_cum, ndata_cum

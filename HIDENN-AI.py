@@ -73,4 +73,4 @@ st.markdown(
 
 # Add a footer
 st.write("---")
-st.caption("© 2024 HIDENN-AI, LLC. All Rights Reserved.")
+st.caption("© 2025 HIDENN-AI, LLC. All Rights Reserved.")
