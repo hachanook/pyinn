@@ -235,7 +235,7 @@ if st.session_state.complete_config_input == True and st.session_state.complete_
     
     st.session_state.config = config
     ## data import
-    print(st.session_state.complete_train, st.session_state.complete_mesh_file)
+    # print(st.session_state.complete_train, st.session_state.complete_mesh_file)
     st.session_state.data = dataset_regression.Data_regression(data_name, config, data_list)
     st.session_state.complete_data = True
 
