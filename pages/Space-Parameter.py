@@ -16,9 +16,9 @@ config.update("jax_enable_x64", True)
 from pyinn import dataset_classification, dataset_regression, model, train, plot # for debugging
 
 
-gpu_idx = 1 # set which GPU to run on Athena
-os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # GPU indexing
-os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_idx)  # GPU indexing
+# gpu_idx = 1 # set which GPU to run on Athena
+# os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # GPU indexing
+# os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_idx)  # GPU indexing
 
 # Set page configuration
 st.set_page_config(
