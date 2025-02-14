@@ -137,7 +137,7 @@ if data_type == "Entire data with split ratio":
         output_columns = st.text_input("Enter output columns (comma-separated):", help="Specify the indices of the columns to be used as outputs (e.g., 6, 7).")
 
         split_ratio_input = st.text_input("Enter data split ratio:", help="Specify the split ratio of the data (e.g., 0.7, 0.15, 0.15).")
-        split_ratio = [float(col.strip()) for col in split_ratio_input.split(",") if col.strip()] if split_ratio_input else []
+        st.session_state.split_ratio = [float(col.strip()) for col in split_ratio_input.split(",") if col.strip()] if split_ratio_input else []
 
         while not split_ratio_input:
             # st.warning("Please enter split ratio to proceed...")
@@ -147,6 +147,49 @@ if data_type == "Entire data with split ratio":
 
 elif data_type == "Train and test data":
     print("debugging")
+
+    # User input for uploading CSV data
+    st.markdown("### Upload Your Train Data")
+    uploaded_file_train = st.file_uploader("Drop your data (CSV) file here:", type=["csv"], help="Please upload a .csv file.", key=123)
+
+    st.markdown("### Upload Your Test Data")
+    uploaded_file_test = st.file_uploader("Drop your data (CSV) file here:", type=["csv"], help="Please upload a .csv file.", key=456)
+
+
+    if uploaded_file_train is not None and uploaded_file_test is not None:
+        # Extract file name
+        data_name_train = uploaded_file_train.name
+        st.write(f"Uploaded data file: {data_name_train}")
+        data_name_test = uploaded_file_test.name
+        st.write(f"Uploaded data file: {data_name_test}")
+        data_name = data_name_train
+
+        # Read the uploaded CSV file
+        data_train = pd.read_csv(uploaded_file_train)
+        data_test = pd.read_csv(uploaded_file_test)
+        st.success("Data file uploaded successfully!")
+
+        # Display the data
+        st.markdown("### Preview of Your Data")
+        st.dataframe(data_train.head())
+
+        # Convert data to numpy array (removing headings)
+        data_train = data_train.to_numpy()
+        data_test = data_test.to_numpy()
+        data_list = [data_train, data_test]
+
+        # Display basic info about the dataset
+        st.markdown("### Dataset Information")
+        st.write(f"Number of rows: {data.shape[0]}")
+        st.write(f"Number of columns: {data.shape[1]}")
+
+        # Input for specifying columns
+        st.markdown("### Specify Columns")
+        input_space_columns = st.text_input("Enter column indices for spatial inputs (comma-separated):", help="Specify the indices of the columns to be used as spatial inputs (e.g., 0, 1, 2).")
+        input_parameter_columns = st.text_input("Enter column indices for parametric inputs (comma-separated):", help="Specify the indices of the columns to be used as parametric inputs (e.g., 3, 4, 5).")
+        output_columns = st.text_input("Enter output columns (comma-separated):", help="Specify the indices of the columns to be used as outputs (e.g., 6, 7).")
+
+        st.session_state.complete_config_input = True
 
 elif data_type == "Train, validation, and test data":
     print("debugging")
@@ -218,8 +261,8 @@ if st.session_state.complete_config_input == True and st.session_state.complete_
             "PLOT": {"bool_plot": False, 
                         "plot_in_axis": [3,4], 
                         "plot_out_axis": [0]}}
-    if "split_ratio" in globals():
-        config["DATA_PARAM"]["split_ratio"] = split_ratio
+    if st.session_state.get("split_ratio") is not None:
+        config["DATA_PARAM"]["split_ratio"] = st.session_state.split_ratio
         # print("split ratio is added \n\n")
 
     config["interp_method"] = st.session_state.interp_method
@@ -266,9 +309,6 @@ if st.session_state.complete_data == True and st.session_state.complete_train ==
         st.session_state.model = regressor # store the trained model as a global variable in streamlit
         st.success("Training completed!")
         st.session_state.complete_train = True
-
-
-
 
 
 ## plot 
