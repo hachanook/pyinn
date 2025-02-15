@@ -1,4 +1,3 @@
-
 import numpy as np
 import jax
 import jax.numpy as jnp
@@ -41,12 +40,12 @@ class LinearInterpolator:
 
 class NonlinearInterpolator(LinearInterpolator):
   def __init__(self, grid,
-                    nelem, nnode, s_patch, alpha_dil, p_order, 
+                    s_patch, alpha_dil, p_order, 
                     mbasis, radial_basis, activation):
     super().__init__(grid) # prob being dropout probability
 
-    self.nelem = nelem
-    self.nnode = nnode
+    self.nnode = len(grid)
+    self.nelem = self.nnode - 1
     self.s_patch = s_patch
     self.alpha_dil = alpha_dil
     self.p_order = p_order

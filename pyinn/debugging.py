@@ -12,9 +12,9 @@ import os
 import yaml
 
 run_types = ['regression', 'classification']
-interp_methods = ['linear','nonlinear', 'MLP']
+interp_methods = ['nonlinear', 'linear','MLP']
 
-data_names_regression = ['1D_1D_sine', '2D_1D_sine','10D_5D_physics', ]
+data_names_regression = ['1D_1D_sine', '2D_1D_sine','10D_5D_physics', '6D_4D_ansys']
 data_names_classification = ['spiral', 'mnist','fashion_mnist', ]
 
 
@@ -84,5 +84,3 @@ for run_type in run_types:
 
 
     
-
-

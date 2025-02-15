@@ -13,59 +13,250 @@ import pandas as pd
 from typing import Sequence
 from torch.utils.data import Dataset
 from scipy.stats import qmc
+import torch
+from torch.utils.data import TensorDataset, DataLoader, random_split
 
-
+ 
 class Data_regression(Dataset):
-    def __init__(self, data_name: str, config) -> None:
+    def __init__(self, data_name: str, config: dict, *args: list) -> None:
+        """
+        --- inputs ---
+        data_name: name of the dataset. Used only when the dataset is generated internally.
+        config: configuration file stored in a dictionary. Check /config
+        *args[0]: list of imported dataset. This can be: 1) entire dataset with split ratio specified in the config file, 
+                    2) [train, test] dataset, 3) [train, validation, test] dataset
+        """
+
         if not os.path.exists('data'):
             os.makedirs('data')
+
         self.data_dir = 'data/'
         self.data_name = data_name
-        self.data_size = config['DATA_PARAM']['data_size']
         self.input_col = config['DATA_PARAM']['input_col']
         self.output_col = config['DATA_PARAM']['output_col']
         self.dim = len(self.input_col) # size of input
         self.var = len(self.output_col) # size of output
-        self.split_ratio = config['DATA_PARAM']['split_ratio']
         self.bool_normalize = config['DATA_PARAM']['bool_normalize']
-        
-        data_file = self.data_dir + data_name + '_' + str(self.data_size) + '.csv'
-        try:
-            data = np.loadtxt(data_file, delimiter=",", dtype=np.float64, skiprows=1)
-        except: 
-            print(F"Data file {data_file} dose not exist. We will create the data.")
-            data_generation_regression(data_name, self.data_size, self.input_col)
-            data = np.loadtxt(data_file, delimiter=",", dtype=np.float64, skiprows=1)
-        
+        self.bool_shuffle = config['DATA_PARAM']['bool_shuffle']
+        self.bool_data_generation = config['DATA_PARAM']['bool_data_generation']
+        self.batch_size = config['TRAIN_PARAM']['batch_size']
+
+        ################## Data loading #################
+        if self.bool_data_generation == True: # if we use data generator
+            self.data_size = config['DATA_PARAM']['data_size']
+            data_file = self.data_dir + data_name + '_' + str(self.data_size) + '.csv'
+
+            ## Data load or generate
+            try:
+                data = np.loadtxt(data_file, delimiter=",", dtype=np.float64, skiprows=1)
+            except: 
+                print(F"Data file {data_file} dose not exist. We will create the data.")
+                data_generation_regression(data_name, self.data_size, self.input_col)
+                data = np.loadtxt(data_file, delimiter=",", dtype=np.float64, skiprows=1)
+            ndata = len(data)
+
+            ## shuffle
+            if self.bool_shuffle:
+                indices = np.arange(ndata)
+                np.random.shuffle(indices)
+                data = data[indices]
+
+            ## split
+            split_ratio = config['DATA_PARAM']['split_ratio']
+            if len(split_ratio) == 2: # train & test
+                train_end = int(split_ratio[0] * ndata)
+                data_train = data[:train_end]
+                data_val = data[train_end:]
+                data_test = data[train_end:]
+            
+            elif len(split_ratio) == 3:
+                train_end = int(split_ratio[0] * ndata)
+                val_end = train_end + int(split_ratio[1] * ndata)
+                data_train = data[:train_end]
+                data_val = data[train_end:val_end]
+                data_test = data[val_end:]
+
+            else:
+                print(f"Error took place while generating data. Check split ratio")
+                sys.exit()
+
+
+        elif self.bool_data_generation == False and 'data_filenames' in config['DATA_PARAM'].keys(): # stored data
+            args = config['DATA_PARAM']['data_filenames']
+
+            if len(args) == 1: # the entire data is provided
+                data_file = self.data_dir + args[0]
+                data = np.loadtxt(data_file, delimiter=",", dtype=np.float64, skiprows=1)
+                ndata = len(data)
+ 
+                ## shuffle
+                if self.bool_shuffle:
+                    indices = np.arange(ndata)
+                    np.random.shuffle(indices)
+                    data = data[indices]
+
+                ## split
+                split_ratio = config['DATA_PARAM']['split_ratio']
+                # print("split_ratio")
+                # print(split_ratio)
+
+                if len(split_ratio) == 2: # train & test
+                    train_end = int(split_ratio[0] * ndata)
+                    data_train = data[:train_end]
+                    data_val = data[train_end:]
+                    data_test = data[train_end:]
+                
+                elif len(split_ratio) == 3:
+                    train_end = int(split_ratio[0] * ndata)
+                    val_end = train_end + int(split_ratio[1] * ndata)
+                    data_train = data[:train_end]
+                    data_val = data[train_end:val_end]
+                    data_test = data[val_end:]
+
+                else:
+                    print(f"Error took place while loading data. Check split ratio")
+                    sys.exit()
+
+
+            elif len(args) == 2: # train and test data are given
+                data_train_file = self.data_dir + args[0]
+                data_train = np.loadtxt(data_train_file, delimiter=",", dtype=np.float64, skiprows=1)
+
+                data_test_file = self.data_dir + args[1]
+                data_val = np.loadtxt(data_test_file, delimiter=",", dtype=np.float64, skiprows=1)
+                data_test = np.loadtxt(data_test_file, delimiter=",", dtype=np.float64, skiprows=1)
+                
+                data = np.concatenate((data_train, data_val), axis=0)
+                ndata = len(data)
+
+            elif len(args) == 3: # train, val, and test data are given
+                data_train_file = self.data_dir + args[0]
+                data_train = np.loadtxt(data_train_file, delimiter=",", dtype=np.float64, skiprows=1)
+
+                data_val_file = self.data_dir + args[1]
+                data_val = np.loadtxt(data_val_file, delimiter=",", dtype=np.float64, skiprows=1)
+                
+                data_test_file = self.data_dir + args[2]
+                data_test = np.loadtxt(data_test_file, delimiter=",", dtype=np.float64, skiprows=1)
+                
+                data = np.concatenate((data_train, data_val, data_test), axis=0)
+                ndata = len(data)
+
+        else: # directly imported data
+            data_list = args[0]
+            if len(data_list) == 1: # the entire data is provided
+                # print(args)
+                data = data_list[0]
+                # print(data)
+                ndata = len(data)
+                # print(f"ndata: {ndata}")
+
+                ## shuffle
+                if self.bool_shuffle:
+                    indices = np.arange(ndata)
+                    np.random.shuffle(indices)
+                    # print(indices)
+                    data = data[indices]
+                    # print(data[0])
+
+
+                ## split
+                split_ratio = config['DATA_PARAM']['split_ratio']
+                # print(ndata, split_ratio)
+
+                if len(split_ratio) == 2: # train & test
+                    train_end = int(split_ratio[0] * ndata)
+                    data_train = data[:train_end]
+                    data_val = data[train_end:]
+                    data_test = data[train_end:]
+                
+                elif len(split_ratio) == 3:
+                    train_end = int(split_ratio[0] * ndata)
+                    val_end = train_end + int(split_ratio[1] * ndata)
+                    data_train = data[:train_end]
+                    data_val = data[train_end:val_end]
+                    data_test = data[val_end:]
+
+                else:
+                    print(f"Error took place while loading data. Check split ratio")
+                    sys.exit()
+
+
+            elif len(data_list) == 2: # train and test data are given
+                
+                data_train = data_list[0]
+                data_val = data_list[1]
+                data_test = data_list[1]
+                
+                data = np.concatenate((data_train, data_val), axis=0)
+                ndata = len(data)
+
+            elif len(data_list) == 3: # train, val, and test data are given
+                data_train = data_list[0]
+                data_val = data_list[1]
+                data_test = data_list[2]
+                data = np.concatenate((data_train, data_val, data_test), axis=0)
+                ndata = len(data)
+
+        ################# Data loading end ################
+
+        ## divide into input and output data
         self.x_data_org = data[:, self.input_col]
         self.u_data_org = data[:, self.output_col]
-        
+        x_data_train_org = data_train[:, self.input_col]
+        u_data_train_org = data_train[:, self.output_col]
+        x_data_val_org = data_val[:, self.input_col]
+        u_data_val_org = data_val[:, self.output_col]
+        x_data_test_org = data_test[:, self.input_col]
+        u_data_test_org = data_test[:, self.output_col]
+
+        ## normalize data
+        self.x_data_minmax = {"min" : self.x_data_org.min(axis=0), "max" : self.x_data_org.max(axis=0)}
+        self.u_data_minmax = {"min" : self.u_data_org.min(axis=0), "max" : self.u_data_org.max(axis=0)}
         if self.bool_normalize:    
-            self.x_data_minmax = {"min" : self.x_data_org.min(axis=0), "max" : self.x_data_org.max(axis=0)}
-            self.u_data_minmax = {"min" : self.u_data_org.min(axis=0), "max" : self.u_data_org.max(axis=0)}
-            self.x_data = (self.x_data_org - self.x_data_minmax["min"]) / (self.x_data_minmax["max"] - self.x_data_minmax["min"])
-            self.u_data = (self.u_data_org - self.u_data_minmax["min"]) / (self.u_data_minmax["max"] - self.u_data_minmax["min"])
+            self.x_data_train = (x_data_train_org - self.x_data_minmax["min"]) / (self.x_data_minmax["max"] - self.x_data_minmax["min"])
+            self.u_data_train = (u_data_train_org - self.u_data_minmax["min"]) / (self.u_data_minmax["max"] - self.u_data_minmax["min"])
+            self.x_data_val = (x_data_val_org - self.x_data_minmax["min"]) / (self.x_data_minmax["max"] - self.x_data_minmax["min"])
+            self.u_data_val = (u_data_val_org - self.u_data_minmax["min"]) / (self.u_data_minmax["max"] - self.u_data_minmax["min"])
+            self.x_data_test = (x_data_test_org - self.x_data_minmax["min"]) / (self.x_data_minmax["max"] - self.x_data_minmax["min"])
+            self.u_data_test = (u_data_test_org - self.u_data_minmax["min"]) / (self.u_data_minmax["max"] - self.u_data_minmax["min"])
         else:
-            self.x_data_minmax = {"min" : self.x_data_org.min(axis=0), "max" : self.x_data_org.max(axis=0)}
-            self.u_data_minmax = {"min" : self.u_data_org.min(axis=0), "max" : self.u_data_org.max(axis=0)}
-            self.x_data = self.x_data_org
-            self.u_data = self.u_data_org
-            
-        print('loaded ',len(self.x_data_org),'datapoints from',data_name,'dataset')
+            self.x_data_train = x_data_train_org
+            self.u_data_train = u_data_train_org
+            self.x_data_val = x_data_val_org
+            self.u_data_val = u_data_val_org
+            self.x_data_test = x_data_test_org
+            self.u_data_test = u_data_test_org
+
+        ## Create TensorDatasets
+        train_dataset = TensorDataset(torch.tensor(self.x_data_train), torch.tensor(self.u_data_train))
+        val_dataset = TensorDataset(torch.tensor(self.x_data_val), torch.tensor(self.u_data_val))
+        test_dataset = TensorDataset(torch.tensor(self.x_data_test), torch.tensor(self.u_data_test))
+
+        ## Define Dataloaders
+        self.train_dataloader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=self.bool_shuffle)
+        self.val_dataloader = DataLoader(val_dataset, batch_size=self.batch_size, shuffle=self.bool_shuffle)
+        self.test_dataloader = DataLoader(test_dataset, batch_size=self.batch_size, shuffle=self.bool_shuffle)
+  
+        print(f'loaded {ndata} datapoints from {data_name} dataset')
         
     def __len__(self):
         return len(self.x_data_org)
 
-    def __getitem__(self, idx):
-        return self.x_data[idx], self.u_data[idx]
-    
-    def denormalize(self, data, minmax):
+    def denormalize(self, x_data=None, u_data=None):
         """ Denormalize both x_data and u_data
-        data: (ndata, dim or var) either u_data or x_data
-        minmax: dictionary that stores minmax values
+        x_data: (ndata, I)
+        u_data: (ndata, L)
         """
-        data_org = (minmax["max"] - minmax["min"]) * data + minmax["min"]
+        data_org = []
+        if x_data is not None:
+            x_data_org = (self.x_data_minmax["max"] - self.x_data_minmax["min"]) * x_data + self.x_data_minmax["min"]
+            data_org.append(x_data_org)
+        if u_data is not None:
+            u_data_org = (self.u_data_minmax["max"] - self.u_data_minmax["min"]) * u_data + self.u_data_minmax["min"]
+            data_org.append(u_data_org)
         return data_org
+    
 
 def data_generation_regression(data_name: str, data_size: int, input_col: Sequence[int]):
 
