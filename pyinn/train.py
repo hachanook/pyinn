@@ -19,8 +19,8 @@ from sklearn.metrics import r2_score, classification_report
 import importlib.util
 
 # from .model import * ## when using pyinn
-from model import * ## when debugging
-# from pyinn.model import * ## when debugging on streamlit
+# from model import * ## when debugging
+from pyinn.model import * ## when debugging on streamlit
 
 if importlib.util.find_spec("GPUtil") is not None: # for linux & GPU
     ''' If you are funning on GPU, please install the following libraries on your anaconda environment via 
