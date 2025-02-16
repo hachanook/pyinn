@@ -451,11 +451,11 @@ if st.session_state.complete_config_plot:
 
         
 
-        st.title("Side-by-Side PyVista Plotters in Streamlit")
+        st.title("Results")
         col1, col2 = st.columns(2)
         
         with col1:
-            st.write("### Test dataset")
+            st.write("### Test dataset - Ansys")
             # plotter1 = create_plotter("red")
             # stpyvista.render_plot(plotter_ref)
             stpyvista(plotter_ref, key="pv_cube_ref")
