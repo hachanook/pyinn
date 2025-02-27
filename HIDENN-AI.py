@@ -25,16 +25,16 @@ st.set_page_config(
     layout="centered",
 )
 
-## Check if xvfb is already running on the machine
-is_xvfb_running = subprocess.run(["pgrep", "Xvfb"], capture_output=True)
+# ## Check if xvfb is already running on the machine
+# is_xvfb_running = subprocess.run(["pgrep", "Xvfb"], capture_output=True)
 
-if is_xvfb_running.returncode == 1:
-    if not IS_APP_EMBED:
-        st.toast("Xvfb was not running...", icon="⚠️")
-    pv.start_xvfb()
-else:
-    if not IS_APP_EMBED:
-        st.toast(f"Xvfb is running! \n\n`PID: {is_xvfb_running.stdout.decode('utf-8')}`", icon="📺")
+# if is_xvfb_running.returncode == 1:
+#     if not IS_APP_EMBED:
+#         st.toast("Xvfb was not running...", icon="⚠️")
+#     pv.start_xvfb()
+# else:
+#     if not IS_APP_EMBED:
+#         st.toast(f"Xvfb is running! \n\n`PID: {is_xvfb_running.stdout.decode('utf-8')}`", icon="📺")
 
 
 # Display logo in the upper left corner

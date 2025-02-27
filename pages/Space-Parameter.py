@@ -16,9 +16,9 @@ config.update("jax_enable_x64", True)
 from pyinn import dataset_classification, dataset_regression, model, train, plot # for debugging
 
 
-# gpu_idx = 1 # set which GPU to run on Athena
-# os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # GPU indexing
-# os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_idx)  # GPU indexing
+gpu_idx = 0 # set which GPU to run on Athena
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # GPU indexing
+os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_idx)  # GPU indexing
 
 # Set page configuration
 st.set_page_config(
@@ -314,7 +314,7 @@ if st.session_state.complete_data == True and st.session_state.complete_train ==
         st.session_state.complete_train = True
 
 
-## plot 
+############################# plot ###############################
 # st.markdown("### Plot trained model")
 if st.session_state.complete_train == True and st.session_state.complete_mesh_file == False:
     st.markdown("### Plot trained model")
