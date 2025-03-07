@@ -87,8 +87,7 @@ class Regression_INN:
                 else: # when the data is not normalized
                     self.grid_dms.append(get_linspace(cls_data.x_data_minmax["min"][idm], cls_data.x_data_minmax["max"][idm], nnode_idm))
                 self.params.append(jax.random.uniform(jax.random.PRNGKey(self.key), (self.nmode, self.cls_data.var, nnode_idm), dtype=jnp.double))
-                numParam += self.nmode*self.cls_data.var*nnode_idm
- 
+                numParam += self.nmode*self.cls_data.var*nnode_idm 
 
         ## Define model
         if self.interp_method == "linear":

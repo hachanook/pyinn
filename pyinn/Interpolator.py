@@ -76,6 +76,7 @@ class NonlinearInterpolator(LinearInterpolator):
     self.Gs = self.vv_get_G(self.ndexes, self.Nodal_patch_nodes_st, self.Nodal_patch_nodes_bool, grid.reshape(-1,1)) # (nelem, npe=2, ndex_max+mbasis, ndex_max+mbasis)
     # self.Gs_inv = jnp.array(np.linalg.inv(self.Gs))
     # print(self.Gs)
+    # print(self.Gs[0,0,:,:4])
     # print(self.Gs.shape)
     self.Gs_inv = jnp.linalg.inv(self.Gs)
     # print(self.Gs_inv)
@@ -357,13 +358,13 @@ class NonlinearInterpolator(LinearInterpolator):
       
     elif self.activation == 'sinusoidal':
       if self.mbasis > 0: # 1st
-        RP = RP.at[self.ndex_max   : self.ndex_max+ 2].set(jnp.array([1 , jnp.sin(xy[0]) ]))   # N 1, sin(x)
+        RP = RP.at[self.ndex_max   : self.ndex_max+ 2].set(jnp.array([1 , jnp.sin(jnp.pi * xy[0]) ]))   # N 1, sin(pi*x)
           
       if self.mbasis > 2: # 2nd
-        P = RP.at[self.ndex_max+ 2: self.ndex_max+ 3].set(jnp.sin(2*xy[0]))   # N sin(2x)
+        RP = RP.at[self.ndex_max+ 2: self.ndex_max+ 3].set(jnp.sin(2*jnp.pi * xy[0]))   # N sin(2pi*x)
           
       if self.mbasis > 3: # 3rd
-        RP = RP.at[self.ndex_max+ 3: self.ndex_max+ 4].set(jnp.sin(3*xy[0]))   # N sin(3x)
+        RP = RP.at[self.ndex_max+ 3: self.ndex_max+ 4].set(jnp.sin(3*jnp.pi * xy[0]))   # N sin(3pi*x)
     
     elif self.activation == 'exponential':
       if self.mbasis > 0: # 1st
