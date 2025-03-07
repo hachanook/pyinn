@@ -10,9 +10,9 @@ MODEL_PARAM:
   p_order: 2
   radial_basis : "cubicSpline" # Activataion functions
   # radial_basis : 'gaussian1'
-  INNactivation : 'polynomial'
+  # INNactivation : 'polynomial'
   # INNactivation : 'sinusoidal'
-  # INNactivation : 'exponential'
+  INNactivation : 'exponential'
   # INNactivation : 'sigmoid'
   # INNactivation : 'tanh'
   # INNactivation : 'gelu'
@@ -37,7 +37,7 @@ DATA_PARAM:
   bool_shuffle : True # whether we shuffle the data
 
 TRAIN_PARAM:
-  num_epochs_INN : 50
+  num_epochs_INN : 100
   num_epochs_MLP : 200
   batch_size : 128
   learning_rate : 1e-3

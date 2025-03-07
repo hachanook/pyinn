@@ -8,9 +8,9 @@ MODEL_PARAM:
   s_patch : 2
   alpha_dil: 20
   p_order: 2
-  radial_basis : "cubicSpline" # Activataion functions
+  radial_basis : "cubicSpline" 
   # radial_basis : 'gaussian1'
-  # INNactivation : 'polynomial'
+  # INNactivation : 'polynomial' # Activataion functions
   INNactivation : 'sinusoidal'
   # INNactivation : 'exponential'
   # INNactivation : 'sigmoid'
