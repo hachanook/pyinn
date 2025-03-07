@@ -24,6 +24,34 @@ config.update("jax_enable_x64", True)
 
 np.set_printoptions(threshold=sys.maxsize, linewidth=1000, suppress=True, precision=4)
 
+################# User setup ###############
+gpu_idx = 0
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # GPU indexing
+os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_idx)  # GPU indexing
+
+# Problem settings
+## INN hyperparameters
+s_patches = [2]         # patch_size
+ps = [-1]               # reproducing polynomial order. [0, 1, 2, 3]. -1 means that p is equal to s.
+alpha_dils = [20]       # dilation parameter
+nelems = [8, 16, 32, 64]         # [8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072]
+elem_types = ['D1LN2N'] # 'D1LN2N'
+
+## PINN hyperparameters
+nlayers = 1
+num_epochs = 2_000
+batch_size = 128
+learning_rate = 1e-1
+
+run_FEM = False
+run_INN = False
+run_PINN = True
+
+plot_bool = True
+non_uniform_mesh_bool = False
+
+#########################################
+
 """# Pre-processing
 
 Gauss quadratures
@@ -609,7 +637,7 @@ class PINN:
             w, b = layer[0], layer[1]
             weights += w.shape[0] * w.shape[1]
             biases += b.shape[0]
-        print(f"FFNN parameters are {weights+biases}")
+        print(f"MLP parameters are {weights+biases}")
 
     # A helper function to randomly initialize weights and biases
     # for a dense neural network layer
@@ -940,26 +968,7 @@ def Solve(A_sp_scipy, b, dof_global, nodes_per_elem, disp_BC_idx, disp_BC):
 
 
 
-"""# Main program""" ############################################################################################
-
-gpu_idx = 0
-os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # GPU indexing
-os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_idx)  # GPU indexing
-
-# Problem settings
-s_patches = [3]         # patch_size
-ps = [-1]               # reproducing polynomial order. [0, 1, 2, 3]. -1 means that p is equal to s.
-alpha_dils = [20]       # dilation parameter
-nelems = [16]         # [8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072]
-elem_types = ['D1LN2N'] # 'D1LN2N'
-
-run_FEM = True
-run_CFEM = True
-run_PINN = True
-
-plot_bool = True
-non_uniform_mesh_bool = False
-
+############################ Main program #########################
 
 # uniform body force
 @jax.jit
@@ -1068,7 +1077,7 @@ for elem_type in elem_types:
 
 
                     #%% ########################## C-HiDeNN ######################
-                    if run_CFEM == True:
+                    if run_INN == True:
 
                         if elem_type != 'D1LN2N':
                             continue
@@ -1123,11 +1132,8 @@ for elem_type in elem_types:
 
 
                     if run_PINN == True:
-                        nlayers = 1
+                        
                         nneurons = nelem  # 
-                        num_epochs = 10_000
-                        batch_size = 128
-                        learning_rate = 1e-1
                         stopping_criteria = 1e-4
                         bc_ic_loss_weight = 10
                         dim = 1
@@ -1176,7 +1182,7 @@ for elem_type in elem_types:
                         line, = ax.plot(x_space_exact, u_exact, label="Exact solution", linewidth=2, color='black')
                         if run_FEM==True:
                             line, = ax.plot(x_space_FEM, disp_FEM, label=f"FEM (p=1)\nError: {H1_norm_FEM:.4e}", linewidth=1, color='blue')
-                        if run_CFEM == True:
+                        if run_INN == True:
                             line, = ax.plot(x_space_CFEM, disp_CFEM, label=f"C-HiDeNN (s={s_patch}, p={p})\nError: {H1_norm_CFEM:.4e}", linewidth=1, color='red')
                         if run_PINN == True:
                             line, = ax.plot(x_space_PINN, disp_PINN, label=f"PINN ({nlayers} layer, {nelem} neuron\nError: {H1_norm_PINN:.4e})", linewidth=1, color='green')
@@ -1209,7 +1215,7 @@ for elem_type in elem_types:
                         # line, = ax.plot(x_space_exact, stress_exact, label="Exact solution", linewidth=2, color='black')
                         # if run_FEM==True:
                         #     line, = ax.plot(x_space_FEM, stress_FEM, label=f"FEM (p=1)\nError: {H1_norm_FEM:.4e}", linewidth=1, color='blue')
-                        # if run_CFEM == True:
+                        # if run_INN == True:
                         #     line, = ax.plot(x_space_CFEM, stress_CFEM, label=f"C-HiDeNN (s={s_patch}, p={p})\nError: {H1_norm_CFEM:.4e}", linewidth=1, color='red')
 
                         # ax.set_xlabel("Position, x", fontsize=20, labelpad=12)

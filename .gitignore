@@ -7,3 +7,4 @@ dist/
 pyinn.egg-info/
 pip
 requirements.txt
+setup.py

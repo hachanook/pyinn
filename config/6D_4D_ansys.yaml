@@ -1,7 +1,7 @@
 MODEL_PARAM: 
 
   ## INN linear
-  nmode : 100
+  nmode : 400 # 50, 100, 200, 300, 400
   nelem : 20 # 
   # nelem : [100,50,40,100,50,40] # for variable discretization
 
@@ -20,7 +20,7 @@ MODEL_PARAM:
 
   ## MLP
   nlayers : 3
-  nneurons : 200
+  nneurons : 400 # 50, 100, 200, 300, 400
   # activation : "relu"
   activation : "sigmoid"
 
@@ -38,8 +38,8 @@ DATA_PARAM:
   
   
 TRAIN_PARAM:
-  num_epochs_INN : 10
-  num_epochs_MLP : 10
+  num_epochs_INN : 100
+  num_epochs_MLP : 1000
   batch_size : 128 # 128
   learning_rate : 1e-3
   bool_train_acc : False
@@ -47,7 +47,8 @@ TRAIN_PARAM:
   validation_period : 1 # if this is greater than num_epochs, validation will not be conducted
   bool_denormalize: False # or True, whether we denormalize when measuring errors
   error_type : "rmse" # rmse or mse
-  patience : 3
+  patience : 100
+  stopping_loss_train: 6e-3
 
 PLOT:
   bool_plot: True

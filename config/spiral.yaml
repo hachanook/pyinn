@@ -19,8 +19,8 @@ MODEL_PARAM:
   # INNactivation : 'gelu'
 
   ## MLP
-  nlayers : 2
-  nneurons : 100
+  nlayers : 4
+  nneurons : 50
   # activation : "relu"
   activation : "sigmoid"
 
@@ -39,17 +39,16 @@ DATA_PARAM:
   
   
 TRAIN_PARAM:
-  num_epochs_INN : 10
-  num_epochs_MLP : 20
+  num_epochs_INN : 5
+  num_epochs_MLP : 2000
   batch_size : 128
   learning_rate : 1e-1
   bool_train_acc : False # measure train accuracy
   
   validation_period : 100
-  validation_period : 1
   bool_denormalize: False # or True, whether we denormalize when measuring errors
   error_type : "accuracy" 
-  patience : 3
+  patience : 10
 
 
 PLOT:

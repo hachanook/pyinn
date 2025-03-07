@@ -2,8 +2,8 @@ MODEL_PARAM:
 
   ## INN linear
   nmode : 10
-  # nelem : 10
-  nelem : [10,12,14,16,10,10,10,10,20,23] # for variable discretization
+  nelem : 4
+  # nelem : [10,12,14,16,10,10,10,10,20,23] # for variable discretization
 
   ## INN nonlinear
   s_patch : 2
@@ -30,7 +30,6 @@ DATA_PARAM:
   output_col : [10,11,12,13,14]
 
   bool_data_generation : True # data is already stored and splitted
-  # data_filenames: ['6D_4D_ansys_1364742.csv'] # original data
   data_size: 100_000
   split_ratio: [0.8,0.2] # [0.7,0.15,0.15]
 
@@ -38,17 +37,19 @@ DATA_PARAM:
   bool_shuffle : True # whether we randomly split the data or not
   
 TRAIN_PARAM:
-  num_epochs_INN : 10
+  num_epochs_INN : 1000
   num_epochs_MLP : 1000
   batch_size : 128 # 128
   learning_rate : 1e-3
   bool_train_acc : False
   
   validation_period : 10 # if this is greater than num_epochs, validation will not be conducted
-  validation_period : 1
+  # validation_period : 1
   bool_denormalize: False # or True, whether we denormalize when measuring errors
-  error_type : "rmse" # or mse
-  patience : 3
+  error_type : "mse" # or mse
+  patience : 10 # for early stopping
+
+  stopping_loss_train: 4e-4
 
 
 PLOT:

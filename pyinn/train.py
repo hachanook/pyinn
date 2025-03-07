@@ -17,6 +17,7 @@ import time
 import torch
 from sklearn.metrics import r2_score, classification_report
 import importlib.util
+import sys
 
 from .model import * ## when using pyinn
 # from model import * ## when debugging
@@ -74,6 +75,10 @@ class Regression_INN:
             self.nelem = jnp.array(config['MODEL_PARAM']['nelem'], dtype=jnp.int64) # (dim,) 1D array of integers
             self.nnode = self.nelem + 1
 
+            if len(self.nelem) != cls_data.dim:
+                print(f"Error: lenth of nelem {len(self.nelem)} is different from input dimension {cls_data.dim}. Check config file.")
+                sys.exit()
+
             ## initialization of trainable parameters
             self.grid_dms, self.params, numParam = [], [], 0
             for idm, nnode_idm in enumerate(self.nnode):
@@ -103,8 +108,11 @@ class Regression_INN:
         # a = self.forward(self.params, x_idata)
         # va = self.v_forward(self.params, x_data)
         
-        if self.interp_method == "linear" or self.interp_method == "nonlinear":
-            print(f"------------INN {config['TD_type']} {self.interp_method} -------------")
+        if self.interp_method == "linear":
+            print(f"------------INN {config['TD_type']} {self.interp_method}, nmode: {config['MODEL_PARAM']['nmode']}, nelem: {config['MODEL_PARAM']['nelem']} -------------")
+            print(f"# of training parameters: {numParam}")
+        elif self.interp_method == "nonlinear":
+            print(f"------------INN {config['TD_type']} {self.interp_method}, nmode: {config['MODEL_PARAM']['nmode']}, nelem: {config['MODEL_PARAM']['nelem']}, s={config['MODEL_PARAM']['s_patch']}, P={config['MODEL_PARAM']['p_order']} -------------")
             print(f"# of training parameters: {numParam}")
 
 
@@ -132,6 +140,7 @@ class Regression_INN:
 
     def get_error_metrics(self, u, u_pred, error_cum, ndata_cum):
         """ Get sum of squared error
+        u: (batch_size, var)
         """
         if jnp.isnan(u_pred).any(): # if the prediction has nan value,
             print(f"[Error] INN prediction has NaN components")
@@ -141,7 +150,8 @@ class Regression_INN:
             u = self.cls_data.denormalize(u, self.cls_data.u_data_minmax)
             u_pred = self.cls_data.denormalize(u_pred, self.cls_data.u_data_minmax)
         error_cum += jnp.sum((u - u_pred)**2)
-        ndata_cum += len(u)
+        ndata_cum += u.shape[0]*u.shape[1]
+        # ndata_cum += len(u)
         return error_cum, ndata_cum # sum of squared error
 
     def inference(self, x_test):
@@ -169,9 +179,11 @@ class Regression_INN:
         ## Train
         start_time_train = time.time()
         errors_val = [] # validation error for every epoch
+        time_per_epochs = [] # training time per epoch
         for epoch in range(self.num_epochs):
             epoch_list_loss, epoch_list_acc = [], [] 
             start_time_epoch = time.time()    
+
             error_cum, ndata_cum = 0,0 # measure train error
             for batch in self.cls_data.train_dataloader:
                 
@@ -179,17 +191,21 @@ class Regression_INN:
                 params, opt_state, loss_train, u_pred_train = self.update_optax(params, opt_state, x_train, u_train)
                 error_cum, ndata_cum = self.get_error_metrics(u_train, u_pred_train, error_cum, ndata_cum)
                 
-            self.params = params
+            
             print(f"Epoch {epoch+1}")
             if self.error_type == 'rmse':
-                print(f"\tTrain RMSE: {jnp.sqrt(error_cum/ndata_cum):.4e}")
+                err_train = jnp.sqrt(error_cum/ndata_cum)
+                print(f"\tTrain RMSE: {err_train:.4e}")
             elif self.error_type == 'mse':
-                print(f"\tTrain MSE: {error_cum/ndata_cum:.4e}")
+                err_train = error_cum/ndata_cum
+                print(f"\tTrain MSE: {err_train:.4e}")
             elif self.error_type == 'accuracy':
-                print(f"\tTrain Accuracy: {error_cum/ndata_cum*100:.2f}%")
+                err_train = error_cum/ndata_cum*100
+                print(f"\tTrain Accuracy: {err_train:.2f}%")
             else:
                 pass
-            print(f"\tTrain took {time.time() - start_time_epoch:.4f} seconds")
+            # print(f"\tTrain took {time.time() - start_time_epoch:.4f} seconds")
+            time_per_epochs.append(time.time() - start_time_epoch) # append training time per epoch
 
             ## Validation
             if (epoch+1)%self.validation_period == 0:
@@ -218,10 +234,14 @@ class Regression_INN:
                     print(f"\tEarly stopping at {epoch+1}-th epoch")
                     print(f"\tValidation losses of the latest epochs are {errors_val[-self.patience:]}")
                     break
+            if "stopping_loss_train" in self.config["TRAIN_PARAM"].keys():
+                if err_train < float(self.config["TRAIN_PARAM"]["stopping_loss_train"]):
+                    break
 
-        print(f"INN training took {time.time() - start_time_train:.4f} seconds")
+        print(f"Training took {time.time() - start_time_train:.4f} seconds/ {np.mean(time_per_epochs):.2f} seconds per epoch")
         # if importlib.util.find_spec("GPUtil") is not None: # report GPU memory usage
         #     mem_report('After training', gpu_idx)
+        self.params = params
 
         ## Test 
         start_time_test = time.time()
