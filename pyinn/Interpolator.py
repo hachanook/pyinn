@@ -41,7 +41,7 @@ class LinearInterpolator:
 class NonlinearInterpolator(LinearInterpolator):
   def __init__(self, grid,
                     s_patch, alpha_dil, p_order, 
-                    mbasis, radial_basis, activation):
+                    mbasis, radial_basis, activation, psi):
     super().__init__(grid) # prob being dropout probability
 
     self.nnode = len(grid)
@@ -73,7 +73,7 @@ class NonlinearInterpolator(LinearInterpolator):
       self.Nodal_patch_nodes_st, self.Nodal_patch_nodes_bool, self.Nodal_patch_nodes_idx, self.ndexes
       ) = self.get_patch_info()       
     
-    self.Gs = self.vv_get_G(self.ndexes, self.Nodal_patch_nodes_st, self.Nodal_patch_nodes_bool, grid.reshape(-1,1)) # (nelem, npe=2, ndex_max+mbasis, ndex_max+mbasis)
+    self.Gs = self.vv_get_G(self.ndexes, self.Nodal_patch_nodes_st, self.Nodal_patch_nodes_bool, grid.reshape(-1,1), psi) # (nelem, npe=2, ndex_max+mbasis, ndex_max+mbasis)
     # self.Gs_inv = jnp.array(np.linalg.inv(self.Gs))
     # print(self.Gs)
     # print(self.Gs.shape)
@@ -83,20 +83,20 @@ class NonlinearInterpolator(LinearInterpolator):
     
 
 
-  def __call__(self, xi, values):
+  def __call__(self, xi, values, psi):
     """
     --- values: (J,) nodal values
     """
   
     ielem, norm_distance = self._find_ielem(xi)
-    result = self.get_phi(xi, ielem, 0, values) * (1-norm_distance) + self.get_phi(xi, ielem, 1, values) * (norm_distance)
+    result = self.get_phi(xi, ielem, 0, values, psi) * (1-norm_distance) + self.get_phi(xi, ielem, 1, values, psi) * (norm_distance)
     return result
 
-  def get_phi(self, xi, ielem, inode, values):
+  def get_phi(self, xi, ielem, inode, values, psi):
     Ginv = self.Gs_inv[ielem, inode]  # (K+P+1, K+P+1) where K: ndex_max
     nodal_patch_nodes = self.Nodal_patch_nodes_st[ielem,inode]
     RP = self.Compute_RadialBasis_1D(xi.reshape(1), self.grid[nodal_patch_nodes].reshape(-1,1), 
-                                     self.ndexes[ielem,inode], self.Nodal_patch_nodes_bool[ielem,inode]) # (K+P+1)
+                                     self.ndexes[ielem,inode], self.Nodal_patch_nodes_bool[ielem,inode], psi) # (K+P+1)
     RP_Ginv = jnp.tensordot(RP, Ginv, axes=(0,1))[:self.ndex_max]
     result = jnp.sum(RP_Ginv * jnp.take(values, nodal_patch_nodes), keepdims=False)
     return result
@@ -309,7 +309,7 @@ class NonlinearInterpolator(LinearInterpolator):
   
 
   @partial(jax.jit, static_argnames=['self']) # This will slower the function
-  def Compute_RadialBasis_1D(self, xy, xv, ndex, nodal_patch_nodes_bool):
+  def Compute_RadialBasis_1D(self, xy, xv, ndex, nodal_patch_nodes_bool, psi):
     """ 
     --- input ---
     # xy: point of interest (dim,)
@@ -319,6 +319,7 @@ class NonlinearInterpolator(LinearInterpolator):
     # nodal_patch_nodes_bool: boolean vector that tells ~~~
     # a_dil: dilation parameter for cubic spline
     # mbasis: number of polynomial terms
+    # psi: (len(psi),) trainable hyperparameters for adaptive INN activation. 
     --- output ---
     RP: [R(x), P(x)] vector, R(x) is the radial basis, P(x) is the polynomial basis, (ndex_max + m_basis,)
     """
@@ -404,13 +405,19 @@ class NonlinearInterpolator(LinearInterpolator):
           
       if self.mbasis > 3: # 3rd
         RP = RP.at[self.ndex_max+ 3: self.ndex_max+ 4].set(jax.nn.gelu(3*xy[0]))   # N exp(3x)
+
+    elif self.activation == 'adaptive':
+      funs = jnp.array([xy[0], jnp.sin(2*jnp.pi*xy[0]), jax.nn.tanh(jnp.pi*xy[0])]) # poly, sin, tanh
+      # psi = jnp.ones_like(funs, dtype=jnp.float64)
+      # psi = jnp.array([0,1,0], dtype=jnp.float64)
+      RP = RP.at[self.ndex_max   : self.ndex_max+ 2].set(jnp.array([1 , jnp.dot(funs, psi) ]))   # N 1, exp(x)
+
     return RP
 
-  v_Compute_RadialBasis_1D = jax.vmap(Compute_RadialBasis_1D, in_axes = (None, 0,None,None,None), out_axes=1)
-  v2_Compute_RadialBasis_1D = jax.vmap(Compute_RadialBasis_1D, in_axes = (None, None,0,0,0), out_axes=0)
+  v_Compute_RadialBasis_1D = jax.vmap(Compute_RadialBasis_1D, in_axes = (None, 0,None,None,None,None), out_axes=1)
 
   @partial(jax.jit, static_argnames=['self']) # unneccessary
-  def get_G(self, ndex, nodal_patch_nodes, nodal_patch_nodes_bool, XY):
+  def get_G(self, ndex, nodal_patch_nodes, nodal_patch_nodes_bool, XY, psi):
     ''' Compute assembled moment matrix G. Refer to Section 2.2 of:
         "Park, Chanwook, et al. "Convolution hierarchical deep-learning neural network 
         (c-hidenn) with graphics processing unit (gpu) acceleration." Computational Mechanics (2023): 1-27."
@@ -429,7 +436,7 @@ class NonlinearInterpolator(LinearInterpolator):
     # nodal_patch_nodes_bool: (ndex_max,)
     G = jnp.zeros((self.ndex_max + self.mbasis, self.ndex_max + self.mbasis), dtype=jnp.double)
     xv = XY[nodal_patch_nodes,:]
-    RPs = self.v_Compute_RadialBasis_1D(xv, xv, ndex, nodal_patch_nodes_bool) # (ndex_max + mbasis, ndex_max)
+    RPs = self.v_Compute_RadialBasis_1D(xv, xv, ndex, nodal_patch_nodes_bool, psi) # (ndex_max + mbasis, ndex_max)
     
     G = G.at[:,:self.ndex_max].set(RPs * nodal_patch_nodes_bool[None,:])                        
     
@@ -440,8 +447,8 @@ class NonlinearInterpolator(LinearInterpolator):
     Imat = jnp.eye(self.ndex_max) * jnp.abs(nodal_patch_nodes_bool-1)[:,None]
     G = G.at[:self.ndex_max,:self.ndex_max].add(Imat)
     return G # G matrix
-  v_get_G = jax.vmap(get_G, in_axes = (None, 0,0,0,None))
-  vv_get_G = jax.vmap(v_get_G, in_axes = (None, 0,0,0,None))
+  v_get_G = jax.vmap(get_G, in_axes = (None, 0,0,0,None,None))
+  vv_get_G = jax.vmap(v_get_G, in_axes = (None, 0,0,0,None,None))
 
      
 

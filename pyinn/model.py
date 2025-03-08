@@ -73,15 +73,15 @@ class INN_linear:
         return Ju_idata_mds_Vdms_vars
 
     
-    def tucker(self, G, factors):
-        """ serior computation of tucker decomposition 
-        --- input ---
-        G: core tensor, (M, M, ..., M) 
-        factors: factor matrices, (dim, M)"""
-        for factor in factors:
-            G = jnp.tensordot(G, factor, axes=[0,0])
-        return jnp.squeeze(G)
-    v_tucker = jax.vmap(tucker, in_axes=(None,None,0)) # returns (var,)
+    # def tucker(self, G, factors):
+    #     """ serior computation of tucker decomposition 
+    #     --- input ---
+    #     G: core tensor, (M, M, ..., M) 
+    #     factors: factor matrices, (dim, M)"""
+    #     for factor in factors:
+    #         G = jnp.tensordot(G, factor, axes=[0,0])
+    #     return jnp.squeeze(G)
+    # v_tucker = jax.vmap(tucker, in_axes=(None,None,0)) # returns (var,)
 
     # @partial(jax.jit, static_argnames=['self'])
     def forward(self, params, x_idata):
@@ -115,19 +115,18 @@ class INN_nonlinear(INN_linear):
         self.radial_basis = config['MODEL_PARAM']['radial_basis']
         self.activation = config['MODEL_PARAM']['INNactivation']
 
-        # self.interpolate = NonlinearInterpolator(grid, self.config)
-
-        # if isinstance(grid_dms, jnp.ndarray): # for the same grids over dimension
-        #     self.interpolate_mds_dms_vars = self.get_Ju_idata_mds_dms_vars
-        # elif isinstance(grid_dms, list):
-        #     self.interpolate_mds_dms_vars = self.get_Ju_idata_mds_Vdms_vars
-        # else:
-        #     print("Error: check the grid type")
-        #     import sys
-        #     exit()
+        # self.interpolate = LinearInterpolator(grid)
+        if isinstance(grid_dms, jnp.ndarray): # for the same grids over dimension
+            self.interpolate_mds_dms_vars = self.get_Ju_idata_mds_dms_vars
+        elif isinstance(grid_dms, list):
+            self.interpolate_mds_dms_vars = self.get_Ju_idata_mds_Vdms_vars
+        else:
+            print("Error: check the grid type")
+            import sys
+            exit()
 
     @partial(jax.jit, static_argnames=['self']) #    , 's_patch', 'alpha_dil', 'p_order', 'radial_basis', 'INNactivation'])
-    def get_Ju_idata_imd_idm_ivar(self, x_idata_idm, grid, u_imd_idm_ivar_nds):
+    def get_Ju_idata_imd_idm_ivar(self, x_idata_idm, grid, u_imd_idm_ivar_nds, psi):
         """ compute interpolation for a single mode, 1D function
         --- input ---
         x_idata_idm: scalar, jnp value / this can be any input
@@ -138,17 +137,49 @@ class INN_nonlinear(INN_linear):
         """
         interpolate = NonlinearInterpolator(grid, 
                                             self.s_patch, self.alpha_dil, self.p_order, 
-                                            self.mbasis, self.radial_basis, self.activation)
+                                            self.mbasis, self.radial_basis, self.activation, psi)
         # Ju_idata_imd_idm_ivar = self.interpolate(x_idata_idm, u_imd_idm_ivar_nds)
-        Ju_idata_imd_idm_ivar = interpolate(x_idata_idm, u_imd_idm_ivar_nds)
+        Ju_idata_imd_idm_ivar = interpolate(x_idata_idm, u_imd_idm_ivar_nds, psi)
         return Ju_idata_imd_idm_ivar
     ## for the same discretization over dimension
-    get_Ju_idata_imd_idm_vars = jax.vmap(get_Ju_idata_imd_idm_ivar, in_axes = (None,None,None,0)) # input: scalar, (J,), (var,J) / output: (var,)
-    get_Ju_idata_imd_dms_vars = jax.vmap(get_Ju_idata_imd_idm_vars, in_axes = (None,0,0,0)) # input: (dim,), (dim,J) (dim,var,J) / output: (dim,var)
-    get_Ju_idata_mds_dms_vars = jax.vmap(get_Ju_idata_imd_dms_vars, in_axes = (None,None,None,0)) # input: (dim,), (dim,J), (M,dim,var,J) / output: (M,dim,var)
+    get_Ju_idata_imd_idm_vars = jax.vmap(get_Ju_idata_imd_idm_ivar, in_axes = (None,None,None,0,None)) # input: scalar, (J,), (var,J) / output: (var,)
+    get_Ju_idata_imd_dms_vars = jax.vmap(get_Ju_idata_imd_idm_vars, in_axes = (None,0,0,0,None)) # input: (dim,), (dim,J) (dim,var,J) / output: (dim,var)
+    get_Ju_idata_mds_dms_vars = jax.vmap(get_Ju_idata_imd_dms_vars, in_axes = (None,None,None,0,None)) # input: (dim,), (dim,J), (M,dim,var,J) / output: (M,dim,var)
     ## for variable discretization over dimension
-    get_Ju_idata_mds_idm_vars = jax.vmap(get_Ju_idata_imd_idm_vars, in_axes = (None,None,None,0)) # input: scalar, (J,), (M,var,J) / output: (M,var)
+    get_Ju_idata_mds_idm_vars = jax.vmap(get_Ju_idata_imd_idm_vars, in_axes = (None,None,None,0,None)) # input: scalar, (J,), (M,var,J) / output: (M,var)
     
+    def get_Ju_idata_mds_Vdms_vars(self, x_idata, grid_dms, params, psi):
+        """ Prediction function
+            --- input ---
+            params: u_mds_dms_vars_nds, a "dim" componented list of (nmode, var, nnode) or (M,var,J)
+            x_idata: x_idata_dms (dim,)
+            --- return ---
+            predicted output (M,dim,var)
+        """
+        Ju_idata_mds_Vdms_vars = jnp.zeros((params[0].shape[0], len(params), params[0].shape[1]), dtype=jnp.float64) # (M,dim,var)
+        for idm, (x_idm, grid_idm, params_idm) in enumerate(zip(x_idata, grid_dms, params)):
+            u_idata_imd_idm_vars = self.get_Ju_idata_mds_idm_vars(x_idm, grid_idm, params_idm, psi) # (M,var)
+            Ju_idata_mds_Vdms_vars = Ju_idata_mds_Vdms_vars.at[:,idm,:].set(u_idata_imd_idm_vars)
+        return Ju_idata_mds_Vdms_vars
+    
+    # @partial(jax.jit, static_argnames=['self'])
+    def forward(self, params, x_idata, psi):
+        """ Prediction function
+            run one forward pass on given input data
+            --- input ---
+            params: u_mds_dms_vars_nds, (nmode, dim, var, nnode) or a "dim" componented list of (nmode, var, nnode)
+            x_idata: x_idata_dms (dim,)
+            --- return ---
+            predicted output (var,)
+        """
+        pred = self.interpolate_mds_dms_vars(x_idata, self.grid_dms, params, psi) # input: (dim,), (dim,J), (M,dim,var,J) / output: (M,dim,var)
+        pred = jnp.prod(pred, axis=1) # output: (M,var)
+        pred = jnp.sum(pred, axis=0) # output: (var,)
+   
+        return pred 
+
+    v_forward = jax.vmap(forward, in_axes=(None,None, 0, None)) # returns (ndata,)
+    vv_forward = jax.vmap(v_forward, in_axes=(None,None, 0, None)) # returns (ndata,)
 
 ## MLP
 def relu(x):

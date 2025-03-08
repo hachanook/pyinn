@@ -7,15 +7,16 @@ MODEL_PARAM:
   ## INN nonlinear
   s_patch : 2
   alpha_dil: 20
-  p_order: 2
+  p_order: 1
   radial_basis : "cubicSpline" # Activataion functions
   # radial_basis : 'gaussian1'
   # INNactivation : 'polynomial'
-  INNactivation : 'sinusoidal'
+  # INNactivation : 'sinusoidal'
   # INNactivation : 'exponential'
   # INNactivation : 'sigmoid'
   # INNactivation : 'tanh'
   # INNactivation : 'gelu'
+  INNactivation : 'adaptive'
   
   ## MLP
   nlayers : 2
@@ -37,16 +38,17 @@ DATA_PARAM:
   bool_shuffle : True # whether we shuffle the data
 
 TRAIN_PARAM:
-  num_epochs_INN : 100
+  num_epochs_INN : 300
   num_epochs_MLP : 200
   batch_size : 128
   learning_rate : 1e-3
   bool_train_acc : True
   
-  validation_period : 1
+  validation_period : 10
   bool_denormalize: False # or True, whether we denormalize when measuring errors
   error_type : "rmse" # or mse
-  patience : 3
+  patience : 10
+  stopping_loss_train: 8e-14
 
 
 PLOT:

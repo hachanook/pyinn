@@ -45,25 +45,9 @@ if run_type == "regression":
 
     ## plot
     plot.plot_regression(regressor, data, config)
-
-
-# --------------------- Classification --------------------------
-elif run_type == "classification": 
-
-    ## data import
-    data = dataset_classification.Data_classification(data_name, config)
     
-    ## train
-    if interp_method == "linear" or interp_method == "nonlinear":
-        classifier = train.Classification_INN(data, config)  # HiDeNN-TD regressor class
-    elif interp_method == "MLP":
-        classifier = train.Classification_MLP(data, config)  # HiDeNN-TD regressor class    
-    classifier.train()  # Train module
-
-    ## plot
-    plot.plot_classification(classifier, data, config)
-
-
+    if regressor.activation == "adaptive" and interp_method == "nonlinear":
+        plot.plot_psi(regressor, data, config)
 
 
     

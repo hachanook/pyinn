@@ -95,7 +95,11 @@ def plot_1D_1D(model, cls_data, plot_in_axis, plot_out_axis):
     
     x_nds = jnp.linspace(xmin, xmax, 101, dtype=jnp.float64).reshape(-1,1) # (101,1)
     if model.interp_method == "linear" or model.interp_method == "nonlinear":
-        U_pred = model.v_forward(model.params, x_nds) # (101,L)
+        if model.activation == "adaptive": # adaptive INN activation
+            U_pred = model.v_forward(model.params, x_nds, model.psi) # (101,L)
+        else:
+            U_pred = model.v_forward(model.params, x_nds) # (101,L)
+
     elif model.interp_method == "MLP":
         U_pred = model.v_forward(model.params, model.activation, x_nds) # (101,L)
     
@@ -119,6 +123,7 @@ def plot_1D_1D(model, cls_data, plot_in_axis, plot_out_axis):
     path_figure = os.path.join(parent_dir, 'plots')
     fig.savefig(os.path.join(path_figure, cls_data.data_name + "_" + model.interp_method) , dpi=300)
     plt.close()
+    
 
 def plot_modes(model, cls_data, plot_in_axis, plot_out_axis):
     """ This function plots multiple subplots in a dimension of (M, I). Each subplot represents 1D plot of input i at mode m.
@@ -363,3 +368,67 @@ def read_mesh_ANSYS(inp_filename):
         elem_type = 'C' + str(d) + 'D' + str(n)
 
     return XY, elem_nodes, elem_type
+
+
+def plot_psi(model, cls_data, config):
+
+    psi_history = np.array(model.psi_history)
+    errors_train = np.array(model.errors_train)
+    epoch = np.arange(len(psi_history)) + 1
+
+    # Create figure and primary y-axis
+    fig, ax1 = plt.subplots(figsize=(10, 6))
+
+    color1 = 'b'
+    color2 = 'r'
+
+    # Plot first two curves on left y-axis
+    ax1.set_xlabel("Epoch", fontsize=24)
+    ax1.set_ylabel(r"$\psi$", color=color1, fontsize=24)
+    ax1.plot(epoch, psi_history[:,0], linestyle='--', color=color1, label=rf'$\psi_{1}$')
+    ax1.plot(epoch, psi_history[:,1], linestyle='-', color=color1, label=rf'$\psi_{2}$')
+    ax1.plot(epoch, psi_history[:,2], linestyle=':', color=color1, label=rf'$\psi_{3}$')
+    ax1.tick_params(axis='y', labelcolor='k', labelsize=16)
+    ax1.tick_params(axis='x', labelcolor='k', labelsize=16)
+
+    # Create secondary y-axis
+    ax2 = ax1.twinx()
+    ax2.set_ylabel("RMSE (log-scale)", color=color2, fontsize=24)
+    ax2.set_yscale('log')  # Set log scale for second y-axis
+    ax2.plot(epoch, errors_train, linestyle='-', color=color2, label=rf'Train RMSE')
+    ax2.tick_params(axis='y', labelcolor='k', labelsize=16)
+    # ax2.yaxis.label.set_fontsize(16)  # Fix for font size not applying
+
+    # Combine legends from both axes
+    lines1, labels1 = ax1.get_legend_handles_labels()
+    lines2, labels2 = ax2.get_legend_handles_labels()
+    ax1.legend(lines1 + lines2, labels1 + labels2, loc='center left', bbox_to_anchor=(1.3, 0.5), fontsize=20)
+
+    # Save figure
+    parent_dir = os.path.abspath(os.getcwd())
+    path_figure = os.path.join(parent_dir, 'plots')
+    plt.tight_layout()
+    fig.savefig(os.path.join(path_figure, cls_data.data_name + "_" + model.interp_method + "_psi") , dpi=300)
+    plt.close()
+
+    # print(psi_history.shape)
+    
+    # plt.figure(figsize=(8, 6))
+    
+    # colors = ['k', 'r', 'b']
+    # for iactivation in range(model.n_activation):
+    #     clr = colors[iactivation]
+        
+    #     plt.plot(psi_history[:,iactivation], linestyle='-', color=clr, label=rf'$\psi_{iactivation+1}$')
+        
+    # plt.xlabel("Epoch", fontsize=24)
+    # plt.ylabel(r"$\psi$", fontsize=24)
+    # plt.xticks(fontsize=20)
+    # plt.yticks(fontsize=20)
+    # plt.legend(shadow=True, fontsize=20, loc='center left', bbox_to_anchor=(1, 0.5))
+    
+    # parent_dir = os.path.abspath(os.getcwd())
+    # path_figure = os.path.join(parent_dir, 'plots')
+    # plt.tight_layout()
+    # plt.savefig(os.path.join(path_figure, cls_data.data_name + "_" + model.interp_method + "_psi") , dpi=300)
+    # plt.close()

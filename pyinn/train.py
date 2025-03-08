@@ -54,6 +54,7 @@ class Regression_INN:
         self.key = 3264
         self.nmode = int(config['MODEL_PARAM']['nmode'])
         self.num_epochs = int(self.config['TRAIN_PARAM']['num_epochs_INN'])
+        self.activation = config['MODEL_PARAM']['INNactivation']
             
         ## Initialize trainable parameters
         if isinstance(config['MODEL_PARAM']['nelem'], int): # same discretization across dimension
@@ -88,7 +89,17 @@ class Regression_INN:
                     self.grid_dms.append(get_linspace(cls_data.x_data_minmax["min"][idm], cls_data.x_data_minmax["max"][idm], nnode_idm))
                 self.params.append(jax.random.uniform(jax.random.PRNGKey(self.key), (self.nmode, self.cls_data.var, nnode_idm), dtype=jnp.double))
                 numParam += self.nmode*self.cls_data.var*nnode_idm
- 
+
+        ## adaptive activation
+        if self.activation == "adaptive":
+            self.n_activation = 3 # number of adaptive actiation functions
+            # self.psi = jax.random.uniform(jax.random.PRNGKey(self.key), (self.n_activation,), dtype=jnp.double,
+            #                                     minval=0.09, maxval=0.11)
+            # self.psi = jnp.array([0,1,0], dtype=jnp.float64)
+            self.psi = jnp.array([0.5,0.5,0.5], dtype=jnp.float64)
+        else:
+            self.psi = 1
+
 
         ## Define model
         if self.interp_method == "linear":
@@ -102,11 +113,7 @@ class Regression_INN:
             self.v_forward = model.v_forward
             self.vv_forward = model.vv_forward
 
-        # ## debug
-        # x_idata = jnp.ones(self.cls_data.dim, dtype=jnp.float64) * 0.5
-        # x_data = jnp.ones((2, self.cls_data.dim), dtype=jnp.float64) * 0.5
-        # a = self.forward(self.params, x_idata)
-        # va = self.v_forward(self.params, x_data)
+        
         
         if self.interp_method == "linear":
             print(f"------------INN {config['TD_type']} {self.interp_method}, nmode: {config['MODEL_PARAM']['nmode']}, nelem: {config['MODEL_PARAM']['nelem']} -------------")
@@ -117,25 +124,33 @@ class Regression_INN:
 
 
     @partial(jax.jit, static_argnames=['self']) # jit necessary
-    def get_loss(self, params, x_data, u_data):
+    def get_loss(self, params, x_data, u_data, psi):
         ''' Compute MSE loss value at (m)th mode given upto (m-1)th mode solution, which is u_pred_old
         --- input ---
         u_p_modes: (nmode, dim, nnode, var)
         u_data: exact u from the data. (ndata_train, var)
         shape_vals_data, patch_nodes_data: defined in "get_HiDeNN_shape_fun"
         '''
-        u_pred = self.v_forward(params, x_data) # (ndata_train, var)
+        u_pred = self.v_forward(params, x_data, psi) # (ndata_train, var)
         loss = ((u_pred- u_data)**2).mean()
         return loss, u_pred
     Grad_get_loss = jax.jit(jax.value_and_grad(get_loss, argnums=1, has_aux=True), static_argnames=['self'])
+    Grad_get_loss_psi = jax.jit(jax.value_and_grad(get_loss, argnums=4, has_aux=True), static_argnames=['self'])
 
 
     @partial(jax.jit, static_argnames=['self']) 
-    def update_optax(self, params, opt_state, x_data, u_data):
-        ((loss, u_pred), grads) = self.Grad_get_loss(params, x_data, u_data)
+    def update_optax(self, params, psi, opt_state, x_data, u_data):
+        ((loss, u_pred), grads) = self.Grad_get_loss(params, x_data, u_data, psi)
         updates, opt_state = self.optimizer.update(grads, opt_state)
         params = optax.apply_updates(params, updates)
-        return params, opt_state, loss, u_pred    
+        return params, opt_state, loss, u_pred  
+
+    @partial(jax.jit, static_argnames=['self']) 
+    def update_optax_psi(self, params, psi, opt_state, x_data, u_data):
+        ((loss, u_pred), grads) = self.Grad_get_loss_psi(params, x_data, u_data, psi)
+        updates, opt_state = self.optimizer.update(grads, opt_state)
+        psi = optax.apply_updates(psi, updates)
+        return psi, opt_state, loss, u_pred     
     
 
     def get_error_metrics(self, u, u_pred, error_cum, ndata_cum):
@@ -155,6 +170,14 @@ class Regression_INN:
         return error_cum, ndata_cum # sum of squared error
 
     def inference(self, x_test):
+        if self.activation == "adaptive":
+            u_pred = self.forward(self.params, x_test[0], self.psi) # (ndata_train, var)
+            u_pred = self.forward(self.params, x_test[0], self.psi) # (ndata_train, var)
+            u_pred = self.forward(self.params, x_test[0], self.psi) # (ndata_train, var)
+            start_time_inference = time.time()
+            u_pred = self.forward(self.params, x_test[0], self.psi) # (ndata_train, var)
+            print(f"\tInference time: {time.time() - start_time_inference:.4f} seconds")       
+        else:
             u_pred = self.forward(self.params, x_test[0]) # (ndata_train, var)
             u_pred = self.forward(self.params, x_test[0]) # (ndata_train, var)
             u_pred = self.forward(self.params, x_test[0]) # (ndata_train, var)
@@ -173,13 +196,19 @@ class Regression_INN:
 
         ## Define optimizer
         params = self.params
+        psi = self.psi
         self.optimizer = optax.adam(self.learning_rate)
         opt_state = self.optimizer.init(params)
+        if self.activation == "adaptive":
+            self.optimizer_psi = optax.adam(1e-2) # learning rate for the psi (adaptive activation)
+            opt_state_psi = self.optimizer_psi.init(psi)
         
         ## Train
         start_time_train = time.time()
         errors_val = [] # validation error for every epoch
         time_per_epochs = [] # training time per epoch
+        if self.activation == "adaptive": 
+            self.psi_history, self.errors_train = [], []
         for epoch in range(self.num_epochs):
             epoch_list_loss, epoch_list_acc = [], [] 
             start_time_epoch = time.time()    
@@ -188,10 +217,15 @@ class Regression_INN:
             for batch in self.cls_data.train_dataloader:
                 
                 x_train, u_train = jnp.array(batch[0]), jnp.array(batch[1])
-                params, opt_state, loss_train, u_pred_train = self.update_optax(params, opt_state, x_train, u_train)
+                params, opt_state, loss_train, u_pred_train = self.update_optax(params, psi, opt_state, x_train, u_train)
                 error_cum, ndata_cum = self.get_error_metrics(u_train, u_pred_train, error_cum, ndata_cum)
-                
             
+                # update psi
+                if self.activation == "adaptive":
+                    psi, opt_state_psi, loss_train, _ = self.update_optax_psi(params, psi, opt_state_psi, x_train, u_train)
+                    psi = jnp.where(psi < 0.01, 0, psi)
+            
+
             print(f"Epoch {epoch+1}")
             if self.error_type == 'rmse':
                 err_train = jnp.sqrt(error_cum/ndata_cum)
@@ -206,13 +240,18 @@ class Regression_INN:
                 pass
             # print(f"\tTrain took {time.time() - start_time_epoch:.4f} seconds")
             time_per_epochs.append(time.time() - start_time_epoch) # append training time per epoch
+            
+            ## save train history for adaptive activation case
+            if self.activation == "adaptive":  # save at the end of epoch
+                self.psi_history.append(psi)
+                self.errors_train.append(err_train)
 
             ## Validation
             if (epoch+1)%self.validation_period == 0:
                 error_cum, ndata_cum = 0,0
                 for batch in self.cls_data.val_dataloader:
                     x_val, u_val = jnp.array(batch[0]), jnp.array(batch[1])
-                    _, _, loss_val, u_pred_val = self.update_optax(params, opt_state, x_val, u_val)
+                    _, _, loss_val, u_pred_val = self.update_optax(params, psi, opt_state, x_val, u_val)
                     error_cum, ndata_cum = self.get_error_metrics(u_val, u_pred_val, error_cum, ndata_cum)
                 
                 if self.error_type == 'rmse':
@@ -242,13 +281,14 @@ class Regression_INN:
         # if importlib.util.find_spec("GPUtil") is not None: # report GPU memory usage
         #     mem_report('After training', gpu_idx)
         self.params = params
+        self.psi = psi
 
         ## Test 
         start_time_test = time.time()
         error_cum, ndata_cum = 0,0
         for batch in self.cls_data.test_dataloader:
             x_test, u_test = jnp.array(batch[0]), jnp.array(batch[1])
-            _, _, _, u_pred_test = self.update_optax(params, opt_state, x_test, u_test)
+            _, _, _, u_pred_test = self.update_optax(params, psi, opt_state, x_test, u_test)
             error_cum, ndata_cum = self.get_error_metrics(u_test, u_pred_test, error_cum, ndata_cum)
         print("Test")
         if self.error_type == 'rmse':
