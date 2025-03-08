@@ -377,32 +377,31 @@ def plot_psi(model, cls_data, config):
     epoch = np.arange(len(psi_history)) + 1
 
     # Create figure and primary y-axis
-    fig, ax1 = plt.subplots(figsize=(10, 6))
+    fig, ax1 = plt.subplots(figsize=(13, 6))
 
     color1 = 'b'
     color2 = 'r'
 
     # Plot first two curves on left y-axis
-    ax1.set_xlabel("Epoch", fontsize=24)
-    ax1.set_ylabel(r"$\psi$", color=color1, fontsize=24)
+    ax1.set_xlabel("Epoch", fontsize=26)
+    ax1.set_ylabel(r"$\psi$", color=color1, fontsize=28)
     ax1.plot(epoch, psi_history[:,0], linestyle='--', color=color1, label=rf'$\psi_{1}$')
     ax1.plot(epoch, psi_history[:,1], linestyle='-', color=color1, label=rf'$\psi_{2}$')
     ax1.plot(epoch, psi_history[:,2], linestyle=':', color=color1, label=rf'$\psi_{3}$')
-    ax1.tick_params(axis='y', labelcolor='k', labelsize=16)
-    ax1.tick_params(axis='x', labelcolor='k', labelsize=16)
+    ax1.tick_params(axis='y', labelcolor='k', labelsize=20)
+    ax1.tick_params(axis='x', labelcolor='k', labelsize=20)
 
     # Create secondary y-axis
     ax2 = ax1.twinx()
-    ax2.set_ylabel("RMSE (log-scale)", color=color2, fontsize=24)
+    ax2.set_ylabel("RMSE (log-scale)", color=color2, fontsize=26)
     ax2.set_yscale('log')  # Set log scale for second y-axis
     ax2.plot(epoch, errors_train, linestyle='-', color=color2, label=rf'Train RMSE')
-    ax2.tick_params(axis='y', labelcolor='k', labelsize=16)
-    # ax2.yaxis.label.set_fontsize(16)  # Fix for font size not applying
+    ax2.tick_params(axis='y', labelcolor='k', labelsize=20)
 
     # Combine legends from both axes
     lines1, labels1 = ax1.get_legend_handles_labels()
     lines2, labels2 = ax2.get_legend_handles_labels()
-    ax1.legend(lines1 + lines2, labels1 + labels2, loc='center left', bbox_to_anchor=(1.3, 0.5), fontsize=20)
+    ax1.legend(lines1 + lines2, labels1 + labels2, loc='center left', bbox_to_anchor=(1.3, 0.5), fontsize=26)
 
     # Save figure
     parent_dir = os.path.abspath(os.getcwd())
