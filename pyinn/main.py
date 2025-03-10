@@ -45,8 +45,6 @@ if run_type == "regression":
 
     ## plot
     plot.plot_regression(regressor, data, config)
-    # if "ansys" in config['data_name']:
-    #     plot_mesh(regressor, data, config)
 
 
 # --------------------- Classification --------------------------
@@ -69,5 +67,4 @@ elif run_type == "classification":
 
 
     
-
 
