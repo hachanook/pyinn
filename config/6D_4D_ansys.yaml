@@ -1,8 +1,8 @@
 MODEL_PARAM: 
 
   ## INN linear
-  nmode : 200 # iterate
-  nelem : 20 
+  nmode : 50 # iterate
+  nelem : 80 
 
   ## INN nonlinear
   s_patch : 4
@@ -19,13 +19,13 @@ MODEL_PARAM:
 
   ## MLP
   nlayers : 3
-  nneurons : 200 # iterate
+  nneurons : 50 # iterate
   # activation : "relu"
   activation : "sigmoid"
 
 DATA_PARAM:
   input_col : [1,2,3,4,5,6]
-  output_col : [7,8,9,10]
+  output_col : [10] # [7,8,9,10]
   
   bool_data_generation : False # data is already stored and splitted
   # data_filenames: ['6D_4D_ansys_train.csv', '6D_4D_ansys_test.csv']
