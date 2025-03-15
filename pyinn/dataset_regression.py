@@ -33,7 +33,7 @@ class Data_regression(Dataset):
         self.data_dir = 'data/'
         self.data_name = data_name
         self.input_col = config['DATA_PARAM']['input_col']
-        self.output_col = config['DATA_PARAM']['output_col']
+        self.output_col = config['DATA_PARAM']['output_col'] 
         self.dim = len(self.input_col) # size of input
         self.var = len(self.output_col) # size of output
         self.bool_normalize = config['DATA_PARAM']['bool_normalize']

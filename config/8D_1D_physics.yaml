@@ -1,13 +1,13 @@
 MODEL_PARAM: 
 
   ## INN linear
-  nmode : 4
-  nelem : 7
+  nmode : 50
+  nelem : 20
 
   ## INN nonlinear
-  s_patch : 5
+  s_patch : 4
   alpha_dil: 20
-  p_order: 3
+  p_order: 1
   radial_basis : "cubicSpline" # Activataion functions
   # radial_basis : 'gaussian1'
   INNactivation : 'polynomial'
@@ -18,8 +18,8 @@ MODEL_PARAM:
   # INNactivation : 'gelu'
 
   ## MLP
-  nlayers : 2
-  nneurons : 30
+  nlayers : 3
+  nneurons : 50
   # activation : "relu"
   activation : "sigmoid"
 
@@ -31,22 +31,22 @@ DATA_PARAM:
   bool_data_generation : True # data is already stored and splitted
   # data_filenames: ['6D_4D_ansys_1364742.csv'] # original data
   data_size: 100_000
-  split_ratio: [0.8,0.2] # [0.7,0.15,0.15]
+  split_ratio: [0.7,0.15,0.15] # [0.7,0.15,0.15]
 
   bool_normalize: True # whether we normalize the input data or not
   bool_shuffle : True # whether we randomly split the data or not
   
 TRAIN_PARAM:
-  num_epochs_INN : 10
-  num_epochs_MLP : 1000
+  num_epochs_INN : 200
+  num_epochs_MLP : 200
   batch_size : 128 # 128
   learning_rate : 1e-3
   bool_train_acc : False
   
-  validation_period : 10 # if this is greater than num_epochs, validation will not be conducted
+  validation_period : 1 # if this is greater than num_epochs, validation will not be conducted
   bool_denormalize: False # or True, whether we denormalize when measuring errors
   error_type : "rmse" # or mse
-  patience : 3
+  patience : 5
 
 
 PLOT:

@@ -50,14 +50,14 @@ def plot_regression(model, cls_data, config):
             # plot_2D_1D(model, cls_data, [0,1], plot_out_axis)
             if config['interp_method'] != "MLP" and isinstance(config['MODEL_PARAM']['nelem'], int):
                 plot_modes(model, cls_data, plot_in_axis, plot_out_axis)
-
-        
+  
 
     else:
         print("\nPlotting deactivated\n")
         # import sys
         # sys.exit()
 
+    plot_loss_convergence(model, cls_data)
 
 
 
@@ -363,3 +363,46 @@ def read_mesh_ANSYS(inp_filename):
         elem_type = 'C' + str(d) + 'D' + str(n)
 
     return XY, elem_nodes, elem_type
+
+
+def plot_loss_convergence(model, cls_data):
+    """ This function plots 2D input and 1D output data. By default, this function should work on original data only
+    plot_in_axis: [axis1]
+    plot_out_axis: [axis1]
+    """
+
+    # copy data from model
+    errors_train = np.array(model.errors_train)
+    errors_val = np.array(model.errors_val)
+    epochs = np.arange(len(errors_train)) + 1 # epoch counts
+
+    fig = plt.figure(figsize=(6,5))
+    gs = gridspec.GridSpec(1, 1)
+    ax1 = fig.add_subplot(gs[0])
+    # plt.subplots_adjust(wspace=0.4)  # Increase the width space between subplots
+
+    ax1.plot(epochs, errors_train, '-', color='k', linewidth = 2,  label='Train loss')
+    ax1.plot(epochs, errors_val, '--', color='k', linewidth = 2,  label='Validation loss')
+    ax1.set_xlabel("Epoch", fontsize=16)
+    ax1.set_ylabel(f"{model.config["TRAIN_PARAM"]["error_type"]}", fontsize=16)
+    ax1.tick_params(axis='both', labelsize=12)
+    ax1.set_yscale('log')
+    ax1.legend(shadow=True, borderpad=1, fontsize=14, loc='best')
+    plt.tight_layout()
+
+    parent_dir = os.path.abspath(os.getcwd())
+    path_figure = os.path.join(parent_dir, 'plots')
+    fig_name = cls_data.data_name + "_" + model.interp_method + "_loss"
+    fig.savefig(os.path.join(path_figure, fig_name) , dpi=300)
+    plt.close()
+
+    # Save the loss data 
+    losses = np.vstack((epochs, errors_train, errors_val)).T # (nepoch, 3)
+    cols = ["epoch", "Train", "Validation"]
+    df = pd.DataFrame(losses, columns=cols)
+
+    # Save the DataFrame to a CSV file
+    parent_dir = os.path.abspath(os.getcwd())
+    csv_filename = fig_name + ".csv"
+    df.to_csv(os.path.join(path_figure, csv_filename), index=False)
+

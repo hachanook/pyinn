@@ -1,8 +1,8 @@
 MODEL_PARAM: 
 
   ## INN linear
-  nmode : 50 # iterate
-  nelem : 80 
+  nmode : 400 # iterate
+  nelem : 50 
 
   ## INN nonlinear
   s_patch : 4
@@ -19,7 +19,7 @@ MODEL_PARAM:
 
   ## MLP
   nlayers : 3
-  nneurons : 50 # iterate
+  nneurons : 400 # iterate
   # activation : "relu"
   activation : "sigmoid"
 
@@ -47,7 +47,7 @@ TRAIN_PARAM:
   validation_period : 1 # if this is greater than num_epochs, validation will not be conducted
   bool_denormalize: False # or True, whether we denormalize when measuring errors
   error_type : "rmse" # rmse or mse
-  patience : 3
+  patience : 5
   # stopping_loss_train : 6e-3
 
 PLOT:

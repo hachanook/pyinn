@@ -177,7 +177,8 @@ class Regression_INN:
         
         ## Train
         start_time_train = time.time()
-        errors_val = [] # validation error for every epoch
+        self.errors_train = [] # training error for every epoch
+        self.errors_val = [] # validation error for every epoch
         time_per_epochs = [] # training time per epoch
         for epoch in range(self.num_epochs):
             epoch_list_loss, epoch_list_acc = [], [] 
@@ -203,6 +204,7 @@ class Regression_INN:
                 print(f"\tTrain Accuracy: {err_train:.2f}%")
             else:
                 pass
+            self.errors_train.append(err_train)
             # print(f"\tTrain took {time.time() - start_time_epoch:.4f} seconds")
             time_per_epochs.append(time.time() - start_time_epoch) # append training time per epoch
 
@@ -215,23 +217,24 @@ class Regression_INN:
                     error_cum, ndata_cum = self.get_error_metrics(u_val, u_pred_val, error_cum, ndata_cum)
                 
                 if self.error_type == 'rmse':
-                    print(f"\tVal RMSE: {jnp.sqrt(error_cum/ndata_cum):.4e}")
-                    errors_val.append(jnp.sqrt(error_cum/ndata_cum))
+                    err_val = jnp.sqrt(error_cum/ndata_cum)
+                    print(f"\tVal RMSE: {err_val:.4e}")
                 elif self.error_type == 'mse':
-                    print(f"\tVal MSE: {error_cum/ndata_cum:.4e}")
-                    errors_val.append(error_cum/ndata_cum)
+                    err_val = error_cum/ndata_cum
+                    print(f"\tVal MSE: {err_val:.4e}")
                 elif self.error_type == 'accuracy':
-                    print(f"\tVal Accuracy: {error_cum/ndata_cum*100:.2f}%")
-                    errors_val.append(error_cum/ndata_cum)
+                    err_val = error_cum/ndata_cum*100
+                    print(f"\tVal Accuracy: {err_val:.2f}%")
                 else:
                     pass
+                self.errors_val.append(err_val)
 
             ## Check early stopping
-            if len(errors_val) > self.patience:
-                early_stopping = np.all(np.subtract(errors_val[-self.patience:], errors_val[-self.patience-1:-1])>0)
+            if len(self.errors_val) > self.patience:
+                early_stopping = np.all(np.subtract(self.errors_val[-self.patience:], self.errors_val[-self.patience-1:-1])>0)
                 if early_stopping: # break the epoch and finish training
                     print(f"\tEarly stopping at {epoch+1}-th epoch")
-                    print(f"\tValidation losses of the latest epochs are {errors_val[-self.patience:]}")
+                    print(f"\tValidation losses of the latest epochs are {self.errors_val[-self.patience:]}")
                     break
             if "stopping_loss_train" in self.config["TRAIN_PARAM"].keys():
                 if err_train < float(self.config["TRAIN_PARAM"]["stopping_loss_train"]):
@@ -283,7 +286,7 @@ class Regression_MLP(Regression_INN):
             w, b = layer[0], layer[1]
             weights += w.shape[0]*w.shape[1]
             biases += b.shape[0]
-        print("------------MLP-------------")
+        print(f"------------ MLP {self.activation}, nlayer: {self.nlayers}, nneuron: {self.nneurons} -------------")
         print(f"# of training parameters: {weights+biases}")
 
         
