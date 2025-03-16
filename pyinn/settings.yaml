@@ -1,5 +1,5 @@
 GPU: 
-  gpu_idx: 1
+  gpu_idx: 5
 
 PROBLEM:
   run_type: "regression" 

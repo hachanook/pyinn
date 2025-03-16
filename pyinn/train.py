@@ -40,7 +40,7 @@ if importlib.util.find_spec("GPUtil") is not None: # for linux & GPU
         print('---GPU {:d} ... Mem Free: {:.0f}MB / {:.0f}MB | Utilization {:3.0f}%\n'.format(gpu_idx, gpu.memoryFree, gpu.memoryTotal, gpu.memoryUtil*100))
 
 def get_linspace(xmin, xmax, nnode):
-    return jnp.linspace(xmin,xmax,nnode, dtype=jnp.float64)
+    return jnp.linspace(xmin,xmax,nnode, dtype=jnp.float32)
 v_get_linspace = jax.vmap(get_linspace, in_axes=(0,0,None))
 
 class Regression_INN:
@@ -68,7 +68,7 @@ class Regression_INN:
         
         ## initialization of trainable parameters
         if cls_data.bool_normalize: # when the data is normalized
-            self.grid_dms = jnp.tile(jnp.linspace(0,1,self.nnode, dtype=jnp.float64), (self.cls_data.dim,1)) # (dim,nnode)
+            self.grid_dms = jnp.tile(jnp.linspace(0,1,self.nnode, dtype=jnp.float32), (self.cls_data.dim,1)) # (dim,nnode)
         else: # when the data is not normalized
             self.grid_dms = v_get_linspace(cls_data.x_data_minmax["min"], cls_data.x_data_minmax["max"], self.nnode)
 
@@ -276,7 +276,7 @@ class Regression_INN:
             
         print(f"\tTest took {time.time() - start_time_test:.4f} seconds") 
 
-        ## Inference
+        ## Inference 
         self.inference(x_test)
 
     def train_r(self):
@@ -383,7 +383,7 @@ class Classification_INN(Regression_INN):
         super().__init__(cls_data, config) # prob being dropout probability
         
         ## classification problem always normalize inputs between 0 and 1
-        self.x_dms_nds = jnp.tile(jnp.linspace(0,1,self.nnode, dtype=jnp.float64), (self.cls_data.dim,1)) # (dim,nnode)
+        self.x_dms_nds = jnp.tile(jnp.linspace(0,1,self.nnode, dtype=jnp.float32), (self.cls_data.dim,1)) # (dim,nnode)
         
         ## initialization of trainable parameters
         self.params = jax.random.uniform(jax.random.PRNGKey(self.key), (self.nmode, self.cls_data.dim, 

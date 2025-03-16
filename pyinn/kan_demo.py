@@ -50,7 +50,7 @@ if run_type == "regression":
         L = 3 # layers
         # M = 50 # neurons
         J = 10 # grid points
-        I,V = 6,4 # inputs/outputs
+        I,V = 6,1 # inputs/outputs
         k = 3 # polynomial order
         print(f"------------KAN -------------")
         print(f"# of training parameters: {(J+k-1)*(M*I+M**2*(L-1)+M*V)}")
@@ -65,3 +65,4 @@ if run_type == "regression":
         # model.to(device)
         model.fit(dataset, opt='LBFGS', steps=regressor.num_epochs, batch=regressor.batch_size)
 
+ 

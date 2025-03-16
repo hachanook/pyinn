@@ -31,11 +31,11 @@ class Data_regression(Dataset):
         
         data_file = self.data_dir + data_name + '_' + str(self.data_size) + '.csv'
         try:
-            data = np.loadtxt(data_file, delimiter=",", dtype=np.float64, skiprows=1)
+            data = np.loadtxt(data_file, delimiter=",", dtype=np.float32, skiprows=1)
         except: 
             print(F"Data file {data_file} dose not exist. We will create the data.")
             data_generation_regression(data_name, self.data_size, self.input_col)
-            data = np.loadtxt(data_file, delimiter=",", dtype=np.float64, skiprows=1)
+            data = np.loadtxt(data_file, delimiter=",", dtype=np.float32, skiprows=1)
         
         self.x_data_org = data[:, self.input_col]
         self.u_data_org = data[:, self.output_col]
@@ -85,11 +85,11 @@ class Data_regression_squential(Dataset):
         
         # data_file = self.data_dir + data_name + '_' + str(self.data_size) + '.csv'
         # try:
-        #     data = np.loadtxt(data_file, delimiter=",", dtype=np.float64, skiprows=1)
+        #     data = np.loadtxt(data_file, delimiter=",", dtype=np.float32, skiprows=1)
         # except: 
         #     print(F"Data file {data_file} dose not exist. We will create the data.")
         #     data_generation_regression(data_name, self.data_size, self.input_col)
-        #     data = np.loadtxt(data_file, delimiter=",", dtype=np.float64, skiprows=1)
+        #     data = np.loadtxt(data_file, delimiter=",", dtype=np.float32, skiprows=1)
         
         # self.x_data_org = data[:, self.input_col]
         # self.u_data_org = data[:, self.output_col]
@@ -158,8 +158,8 @@ def data_generation_regression(data_name: str, data_size: int, input_col: Sequen
 
     elif data_name == "8D_1D_physics": # borehole function; use JAX to create data
 
-        x_min = jnp.array([0.05,    100,  63_070,  990, 63.1, 700, 1120,  9_855], dtype=jnp.double)
-        x_max = jnp.array([0.15, 50_000, 115_600, 1110,  116, 820, 1680, 12_045], dtype=jnp.double)
+        x_min = jnp.array([0.05,    100,  63_070,  990, 63.1, 700, 1120,  9_855], dtype=jnp.float32)
+        x_max = jnp.array([0.15, 50_000, 115_600, 1110,  116, 820, 1680, 12_045], dtype=jnp.float32)
         x_data_org = x_data_org * (x_max-x_min) + x_min
         
         u_data_org = jax.vmap(fun_8D_1D_physics)(x_data_org)
@@ -168,28 +168,28 @@ def data_generation_regression(data_name: str, data_size: int, input_col: Sequen
     elif data_name == "10D_5D_physics": # five physics function; use JAX to create data
 
         ## u1: Borehole function
-        x_min = jnp.array([0.05,    100,  63_070,  990, 63.1, 700, 1120,  9_855], dtype=jnp.double)
-        x_max = jnp.array([0.15, 50_000, 115_600, 1110,  116, 820, 1680, 12_045], dtype=jnp.double)
+        x_min = jnp.array([0.05,    100,  63_070,  990, 63.1, 700, 1120,  9_855], dtype=jnp.float32)
+        x_max = jnp.array([0.15, 50_000, 115_600, 1110,  116, 820, 1680, 12_045], dtype=jnp.float32)
         x1_data_org = x_data_org[:,:8] * (x_max-x_min) + x_min
         
         ## u2: Piston simulation function
-        x_min = jnp.array([30, 0.005, 0.002, 1000, 90_000, 290, 340], dtype=jnp.double)
-        x_max = jnp.array([60, 0.020, 0.010, 5000,110_000, 296, 360], dtype=jnp.double)
+        x_min = jnp.array([30, 0.005, 0.002, 1000, 90_000, 290, 340], dtype=jnp.float32)
+        x_max = jnp.array([60, 0.020, 0.010, 5000,110_000, 296, 360], dtype=jnp.float32)
         x2_data_org = x_data_org[:,:7] * (x_max-x_min) + x_min
         
         ## u3: OTL circuit function
-        x_min = jnp.array([50, 25, 0.5, 1.2, 0.25, 50], dtype=jnp.double)
-        x_max = jnp.array([150,70, 3.0, 2.5, 1.20,300], dtype=jnp.double)
+        x_min = jnp.array([50, 25, 0.5, 1.2, 0.25, 50], dtype=jnp.float32)
+        x_max = jnp.array([150,70, 3.0, 2.5, 1.20,300], dtype=jnp.float32)
         x3_data_org = x_data_org[:,:6] * (x_max-x_min) + x_min
         
         ## u4: Robot arm function
-        x_min = jnp.array([     0.0,      0.0,      0.0,      0.0, 0.0, 0.0, 0.0, 0.0], dtype=jnp.double)
-        x_max = jnp.array([2*jnp.pi, 2*jnp.pi, 2*jnp.pi, 2*jnp.pi, 1.0, 1.0, 1.0, 1.0], dtype=jnp.double)
+        x_min = jnp.array([     0.0,      0.0,      0.0,      0.0, 0.0, 0.0, 0.0, 0.0], dtype=jnp.float32)
+        x_max = jnp.array([2*jnp.pi, 2*jnp.pi, 2*jnp.pi, 2*jnp.pi, 1.0, 1.0, 1.0, 1.0], dtype=jnp.float32)
         x4_data_org = x_data_org[:,:8] * (x_max-x_min) + x_min
         
         ## u5: Wing weight function
-        x_min = jnp.array([150, 220, 6,-10*jnp.pi/180, 16, 0.5, 0.08, 2.5, 1700, 0.025], dtype=jnp.double)
-        x_max = jnp.array([200, 300,10, 10*jnp.pi/180, 45, 1.0, 0.18, 6.0, 2500, 0.080], dtype=jnp.double)
+        x_min = jnp.array([150, 220, 6,-10*jnp.pi/180, 16, 0.5, 0.08, 2.5, 1700, 0.025], dtype=jnp.float32)
+        x_max = jnp.array([200, 300,10, 10*jnp.pi/180, 45, 1.0, 0.18, 6.0, 2500, 0.080], dtype=jnp.float32)
         x5_data_org = x_data_org[:,:10] * (x_max-x_min) + x_min
         
 
@@ -201,8 +201,8 @@ def data_generation_regression(data_name: str, data_size: int, input_col: Sequen
 
         ## define IGA parameters
         
-        x_min = jnp.array([0, 0], dtype=jnp.double)
-        x_max = jnp.array([10, 10], dtype=jnp.double)
+        x_min = jnp.array([0, 0], dtype=jnp.float32)
+        x_max = jnp.array([10, 10], dtype=jnp.float32)
         
         x_data_org = x_data_org * (x_max-x_min) + x_min
         u_data_org = v_fun_IGAMapping2D(x_data_org)
@@ -238,7 +238,7 @@ vv_fun_1D_1D_sine = jax.vmap(v_fun_1D_1D_sine, in_axes = (0)) # output: (ndata, 
 def fun_1D_2D_sine_exp(x_data_org):
     u1 = jnp.sin(2*jnp.pi*x_data_org)
     u2 = jnp.exp(4*x_data_org**2 - 2*x_data_org - 1)
-    return jnp.array([u1,u2], dtype=jnp.double).reshape(-1)
+    return jnp.array([u1,u2], dtype=jnp.float32).reshape(-1)
 v_fun_1D_2D_sine_exp = jax.vmap(fun_1D_2D_sine_exp, in_axes = (0)) # output: (ndata, )
 vv_fun_1D_2D_sine_exp = jax.vmap(v_fun_1D_2D_sine_exp, in_axes = (0)) # output: (ndata, ndata)
 
@@ -266,7 +266,7 @@ def fun_8D_1D_physics(p):
 
     ## u1: Borehole function
     u = 2*jnp.pi* p1 * (p4-p6) * (jnp.log(p2/p3) * (1 + 2*(p7*p1) / (jnp.log(p2/p3)*p3**2*p8) + p1/p5))**(-1)
-    return jnp.array([u], dtype=jnp.double)
+    return jnp.array([u], dtype=jnp.float32)
 
 def fun_10D_5D_physics(x1,x2,x3,x4,x5): 
     
@@ -306,7 +306,7 @@ def fun_10D_5D_physics(x1,x2,x3,x4,x5):
     u5 = ( 0.036*p1**0.758*p2**0.0035 * (p3/(jnp.cos(p4))**2)**0.6 * p5**0.006*p6**0.04 * (100*p7/jnp.cos(p4))**(-0.3)
         * (p8*p9)**0.49 + p1*p10 )
     
-    return jnp.array([u1,u2,u3,u4,u5], dtype=jnp.double)
+    return jnp.array([u1,u2,u3,u4,u5], dtype=jnp.float32)
 
 
 ## IGA mapping
@@ -321,7 +321,7 @@ def NBasis(xi, L):
     N1 = (1-xi)**2
     N2 = 2*xi*(1-xi)
     N3 = xi**2
-    N_all = jnp.array([N1, N2, N3], dtype=jnp.float64)
+    N_all = jnp.array([N1, N2, N3], dtype=jnp.float32)
     return N_all
 
 def MBasis(eta, L):
@@ -329,7 +329,7 @@ def MBasis(eta, L):
     M1 = (1-eta)**2
     M2 = 2*eta*(1-eta)
     M3 = eta**2
-    M_all = jnp.array([M1, M2, M3], dtype=jnp.float64)
+    M_all = jnp.array([M1, M2, M3], dtype=jnp.float32)
     return M_all
 
 def Sum_fun(xieta, L, weights):
@@ -346,18 +346,18 @@ def fun_IGAMapping2D(xieta):
 
     ## IGA parameters
     L = 10
-    controlPts = np.zeros((3,3,2), dtype=np.double)
+    controlPts = np.zeros((3,3,2), dtype=np.float32)
                 
     controlPts[:,:,0] = np.array([[0,   0,  0],
                                     [10, 15, 20],
-                                    [10, 15, 20]], dtype=np.float64)
+                                    [10, 15, 20]], dtype=np.float32)
     controlPts[:,:,1]= np.array([[10, 15, 20],
                                     [10, 15, 20],
-                                    [0,   0,  0]], dtype=np.float64)
+                                    [0,   0,  0]], dtype=np.float32)
     controlPts = jnp.array(controlPts)
     weights = jnp.array([[1, 1, 1],
                         [0.5*jnp.sqrt(2), 0.5*jnp.sqrt(2), 0.5*jnp.sqrt(2)],
-                        [1, 1, 1]], dtype=jnp.float64)
+                        [1, 1, 1]], dtype=jnp.float32)
 
     xi, eta = xieta[0], xieta[1]
     N_all = NBasis(xi, L)

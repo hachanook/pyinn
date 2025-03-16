@@ -25,11 +25,12 @@ MODEL_PARAM:
 
 DATA_PARAM:
   input_col : [1,2,3,4,5,6]
-  output_col : [7,8,9,10]
+  output_col : [10] # [7,8,9,10]
   bool_normalize: True # whether we normalize the input data or not
   bool_random_split : True # whether we randomly split the data or not
-  data_size: 1364742 # 29285 
-  split_ratio: [0.8,0.2] # [0.7,0.15,0.15]
+  # data_size: 1364742 # 29285 
+  data_size: 497
+  split_ratio: [0.7,0.15,0.15] # [0.8,0.2] # [0.7,0.15,0.15]
   
 TRAIN_PARAM:
   num_epochs_INN : 50
@@ -41,7 +42,7 @@ TRAIN_PARAM:
   validation_period : 100 # if this is greater than num_epochs, validation will not be conducted
   bool_denormalize: False # or True, whether we denormalize when measuring errors
   error_type : "rmse" # or mse
-  patience : 3
+  patience : 5
 
 PLOT:
   bool_plot: True
