@@ -9,3 +9,4 @@ pyinn.egg-info/
 pyinn/data/
 pip
 requirements.txt
+model/
