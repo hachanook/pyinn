@@ -51,7 +51,7 @@ class Regression_INN:
         self.interp_method = config['interp_method']
         self.cls_data = cls_data
         self.config = config
-        self.key = 3264
+        self.key = int(time.time())
         self.nmode = int(config['MODEL_PARAM']['nmode'])
         self.num_epochs = int(self.config['TRAIN_PARAM']['num_epochs_INN'])
             
@@ -189,22 +189,21 @@ class Regression_INN:
                 x_train, u_train = jnp.array(batch[0]), jnp.array(batch[1])
                 params, opt_state, loss_train, u_pred_train = self.update_optax(params, opt_state, x_train, u_train)
                 error_cum, ndata_cum = self.get_error_metrics(u_train, u_pred_train, error_cum, ndata_cum)
-                
             
-            print(f"Epoch {epoch+1}")
+            ## measure train error
             if self.error_type == 'rmse':
                 err_train = jnp.sqrt(error_cum/ndata_cum)
-                print(f"\tTrain RMSE: {err_train:.4e}")
             elif self.error_type == 'mse':
                 err_train = error_cum/ndata_cum
-                print(f"\tTrain MSE: {err_train:.4e}")
             elif self.error_type == 'accuracy':
                 err_train = error_cum/ndata_cum*100
-                print(f"\tTrain Accuracy: {err_train:.2f}%")
             else:
                 pass
-            # print(f"\tTrain took {time.time() - start_time_epoch:.4f} seconds")
-            time_per_epochs.append(time.time() - start_time_epoch) # append training time per epoch
+
+            if (epoch+1)%1 == 0:
+                print(f"Epoch {epoch+1}")
+                print(f"\tTrain {self.error_type}: {err_train:.4e}")
+                
 
             ## Validation
             if (epoch+1)%self.validation_period == 0:
@@ -225,6 +224,9 @@ class Regression_INN:
                     errors_val.append(error_cum/ndata_cum)
                 else:
                     pass
+            time_per_epochs.append(time.time() - start_time_epoch) # append training time per epoch
+            print(f"\t{np.mean(time_per_epochs):.2f} seconds per epoch")
+                
 
             ## Check early stopping
             if len(errors_val) > self.patience:

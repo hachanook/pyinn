@@ -28,22 +28,23 @@ DATA_PARAM:
   
   input_col : [0,1,2,3,4] # 0,1 for x,y ; 2,3 for k,P; 4 for time
   output_col : [5] # temperature
-
+  
   bool_data_generation : False # data is already stored and splitted
-  data_size: 100_000
-  split_ratio: [0.8,0.2] # [0.7,0.15,0.15]
+  data_filenames: ['/mnt/a/jgz1751/icml_parse_dataset/train_10_clean.csv', '/mnt/a/jgz1751/icml_parse_dataset/val_clean.csv', '/mnt/a/jgz1751/icml_parse_dataset/test_clean.csv']
+  # data_size: 100_000
+  # split_ratio: [0.8,0.2] # [0.7,0.15,0.15]
 
   bool_normalize: True # whether we normalize the input data or not
   bool_shuffle : True # whether we randomly split the data or not
   
 TRAIN_PARAM:
-  num_epochs_INN : 1000
-  num_epochs_MLP : 1000
+  num_epochs_INN : 100
+  num_epochs_MLP : 100
   batch_size : 128 # 128
   learning_rate : 1e-4
   bool_train_acc : False
   
-  validation_period : 100 # if this is greater than num_epochs, validation will not be conducted
+  validation_period : 1 # if this is greater than num_epochs, validation will not be conducted
   bool_denormalize: False # or True, whether we denormalize when measuring errors
   error_type : "rmse" # or mse
   patience : 10 # for early stopping
