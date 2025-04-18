@@ -96,6 +96,8 @@ def plot_1D_1D(model, cls_data, plot_in_axis, plot_out_axis):
     x_nds = jnp.linspace(xmin, xmax, 101, dtype=jnp.float64).reshape(-1,1) # (101,1)
     if model.interp_method == "linear" or model.interp_method == "nonlinear":
         U_pred = model.v_forward(model.params, x_nds) # (101,L)
+        x_grid = model.grid_dms.T
+        U_grid = model.v_forward(model.params, x_grid) # for grid points
     elif model.interp_method == "MLP":
         U_pred = model.v_forward(model.params, model.activation, x_nds) # (101,L)
     
@@ -108,6 +110,8 @@ def plot_1D_1D(model, cls_data, plot_in_axis, plot_out_axis):
 
     ax1.plot(x_nds, U_exact, '-', color='k', linewidth = 4,  label='Original function')
     ax1.plot(x_nds, U_pred, '-', color='g', linewidth = 4,  label='Prediction')
+    if model.interp_method == "linear" or model.interp_method == "nonlinear":
+        ax1.plot(x_grid, U_grid, 'o', color='r',  markersize=5, label='Grid points')
     ax1.set_xlabel(fr"$x_{str(plot_in_axis[0]+1)}$", fontsize=16)
     ax1.set_ylabel(fr"$u_{str(plot_out_axis[0]+1)}$", fontsize=16)
     ax1.tick_params(axis='both', labelsize=12)
