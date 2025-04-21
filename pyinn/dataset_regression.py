@@ -253,6 +253,21 @@ class Data_regression(Dataset):
     def __len__(self):
         return len(self.x_data_org)
 
+    def normalize(self, x_data=None, u_data=None):
+        """ Denormalize both x_data and u_data
+        x_data: (ndata, I)
+        u_data: (ndata, L)
+        """
+        data_norm = []
+        if x_data is not None:
+            x_data_norm = (x_data - self.x_data_minmax["min"])/ (self.x_data_minmax["max"] - self.x_data_minmax["min"])
+            data_norm.append(x_data_norm)
+        if u_data is not None:
+            u_data_norm = (u_data - self.u_data_minmax["min"])/ (self.u_data_minmax["max"] - self.u_data_minmax["min"])
+            data_norm.append(u_data_norm)
+        return data_norm
+    
+    
     def denormalize(self, x_data=None, u_data=None):
         """ Denormalize both x_data and u_data
         x_data: (ndata, I)
