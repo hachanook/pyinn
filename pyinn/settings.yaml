@@ -6,14 +6,14 @@ PROBLEM:
   # run_type: "classification" 
 
   TD_type: "CP"
-  # interp_method: "linear" # INN
+  interp_method: "linear" # INN
   # interp_method: "nonlinear" # INN
   
-  interp_method: "MLP"
+  # interp_method: "MLP"
 
 DATA:
   ## ----------- regression data -------------
-  # data_name : '1D_1D_sine'  
+  data_name : '1D_1D_sine'  
   # data_name : '1D_1D_exp' 
   # data_name : '1D_2D_sine_exp'
   # data_name : '2D_1D_sine'
@@ -24,7 +24,7 @@ DATA:
   # data_name : '10D_5D_physics' # physcial equation
   # data_name : 'IGAMapping2D' # for IGA inverse mapping; multi-CAD-patch C-IGA paper
   # data_name : 'STP_icml'
-  data_name : 'cavity_flow'
+  # data_name : 'cavity_flow'
 
   ## ----------- classification data -------------
   # data_name : 'spiral'
