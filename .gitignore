@@ -9,3 +9,4 @@ pip
 requirements.txt
 setup.py
 checkpoints/
+logs/
