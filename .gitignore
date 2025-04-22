@@ -8,3 +8,4 @@ pyinn.egg-info/
 pip
 requirements.txt
 setup.py
+checkpoints/
