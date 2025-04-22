@@ -44,22 +44,7 @@ if run_type == "regression":
         regressor = train.Regression_MLP(data, config)  # HiDeNN-TD regressor class
     regressor.train()  # Train module
 
-    ## For Jiachen, this is the inference stage for calibration
-
-    x = jnp.array([0.5,0.5,0.5,0.5,0.5], dtype=jnp.float64) # initial guess, normalized
-    xs = jnp.array([[0.5,0.5,0.5,0.5,0.5],[0.5,0.5,0.5,0.5,0.5]], dtype=jnp.float64) # initial 2 guesses, normalized
-    
-    u = regressor.forward(regressor.params, x) # one output / the trained model only takes normalized input/outupt
-    us = regressor.v_forward(regressor.params, xs) # two outputs; vectorized with jax.vmap 
-
-    ### denormalize
-    x_org, u_org = data.denormalize(x, u)
-    xs_org, us_org = data.denormalize(xs, us)
-
-    ### normalize
-    x_norm, u_norm = data.denormalize(x_org, u_org) # this should be the same as x, u
-    xs_norm, us_norm = data.denormalize(xs_org, us_org) # this should be the same as xs, us
-
+     
     ## plot
     plot.plot_regression(regressor, data, config)
 

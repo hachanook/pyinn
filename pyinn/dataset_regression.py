@@ -119,14 +119,18 @@ class Data_regression(Dataset):
 
 
             elif len(args) == 2: # train and test data are given
-                data_train_file = self.data_dir + args[0]
-                if "icml" in self.data_name:
+                if "mnt" in args[0]: # if the data is stored in /mnt folder
                     data_train_file = args[0]
+                else:
+                    data_train_file = self.data_dir + args[0]
+                
                 data_train = np.loadtxt(data_train_file, delimiter=",", dtype=np.float64, skiprows=1)
 
-                data_test_file = self.data_dir + args[1]
-                if "icml" in self.data_name:
+                if "mnt" in args[0]: # if the data is stored in /mnt folder
                     data_test_file = args[1]
+                else: 
+                    data_test_file = self.data_dir + args[1]
+                    
                 data_val = np.loadtxt(data_test_file, delimiter=",", dtype=np.float64, skiprows=1)
                 data_test = np.loadtxt(data_test_file, delimiter=",", dtype=np.float64, skiprows=1)
                 
@@ -134,19 +138,25 @@ class Data_regression(Dataset):
                 ndata = len(data)
 
             elif len(args) == 3: # train, val, and test data are given
-                data_train_file = self.data_dir + args[0]
-                if "icml" in self.data_name:
+                if "mnt" in args[0]: # if the data is stored in /mnt folder
                     data_train_file = args[0]
+                else:
+                    data_train_file = self.data_dir + args[0]
+                    
                 data_train = np.loadtxt(data_train_file, delimiter=",", dtype=np.float64, skiprows=1)
 
-                data_val_file = self.data_dir + args[1]
-                if "icml" in self.data_name:
+                if "mnt" in args[0]: # if the data is stored in /mnt folder
                     data_val_file = args[1]
+                else:
+                    data_val_file = self.data_dir + args[1]
+                    
                 data_val = np.loadtxt(data_val_file, delimiter=",", dtype=np.float64, skiprows=1)
                 
-                data_test_file = self.data_dir + args[2]
-                if "icml" in self.data_name:
+                if "mnt" in args[0]: # if the data is stored in /mnt folder
                     data_test_file = args[2]
+                else:
+                    data_test_file = self.data_dir + args[2]
+                    
                 data_test = np.loadtxt(data_test_file, delimiter=",", dtype=np.float64, skiprows=1)
                 
                 data = np.concatenate((data_train, data_val, data_test), axis=0)

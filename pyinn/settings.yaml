@@ -1,5 +1,5 @@
 GPU: 
-  gpu_idx: 5 # specify gpu index if there are mutiple GPUs. If not, leave it as it is.
+  gpu_idx: 3 # specify gpu index if there are mutiple GPUs. If not, leave it as it is.
 
 PROBLEM:
   run_type: "regression" 
@@ -7,9 +7,9 @@ PROBLEM:
 
   TD_type: "CP"
   # interp_method: "linear" # INN
-  interp_method: "nonlinear" # INN
+  # interp_method: "nonlinear" # INN
   
-  # interp_method: "MLP"
+  interp_method: "MLP"
 
 DATA:
   ## ----------- regression data -------------
@@ -23,7 +23,8 @@ DATA:
   # data_name : '8D_1D_physis' # borehole equation
   # data_name : '10D_5D_physics' # physcial equation
   # data_name : 'IGAMapping2D' # for IGA inverse mapping; multi-CAD-patch C-IGA paper
-  data_name : 'STP_icml'
+  # data_name : 'STP_icml'
+  data_name : 'cavity_flow'
 
   ## ----------- classification data -------------
   # data_name : 'spiral'
