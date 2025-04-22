@@ -10,8 +10,8 @@ MODEL_PARAM:
   p_order: 2
   radial_basis : "cubicSpline" 
   # radial_basis : 'gaussian1'
-  INNactivation : 'polynomial' # Activataion functions
-  # INNactivation : 'sinusoidal'
+  # INNactivation : 'polynomial' # Activataion functions
+  INNactivation : 'sinusoidal'
   # INNactivation : 'exponential'
   # INNactivation : 'sigmoid'
   # INNactivation : 'tanh'
