@@ -10,7 +10,7 @@ import datetime
 from dataset import HeatDataset
 from utils.callback_wrapper import callback_warpper
 
-def get_args():
+def get_args(): 
     parser = argparse.ArgumentParser(description='Train a PyTorch Lightning Model')
     parser.add_argument('--root', type=str, default='/mnt/a/jgz1751/icml_parse_dataset/', help='Root directory for dataset')
     parser.add_argument('--is_train', type=int, default=1, help='Training or evaluation')
