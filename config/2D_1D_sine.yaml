@@ -1,9 +1,9 @@
 MODEL_PARAM: 
   
   ## INN linear
-  nmode : 3
-  # nelem : 20
-  nelem : [20,25]
+  nmode : 10
+  nelem : 10
+  # nelem : [20,25]
 
   ## INN nonlinear
   s_patch : 2
@@ -13,14 +13,14 @@ MODEL_PARAM:
   # radial_basis : 'gaussian1'
   INNactivation : 'polynomial'
   # INNactivation : 'sinusoidal'
-  # INNactivation : 'exponential'
+  # INNactivation : 'exponential' 
   # INNactivation : 'sigmoid'
   # INNactivation : 'tanh'
   # INNactivation : 'gelu'
 
   ## MLP
-  nlayers : 3
-  nneurons : 20
+  nlayers : 2
+  nneurons : 12
   # activation : "relu"
   activation : "sigmoid"
 
@@ -34,21 +34,21 @@ DATA_PARAM:
   data_size: 10_000
   split_ratio: [0.7,0.15,0.15] # [0.7,0.15,0.15]
   
-  bool_normalize: False # whether we normalize the input data or not
+  bool_normalize: True # whether we normalize the input data or not
   bool_shuffle : True # whether we shuffle the data
   
   
 TRAIN_PARAM:
-  num_epochs_INN : 10
-  num_epochs_MLP : 200
-  batch_size : 50
+  num_epochs_INN : 1000
+  num_epochs_MLP : 1000
+  batch_size : 128
   learning_rate : 1e-3
-  bool_train_acc : True
+  # bool_train_acc : True
   
   validation_period : 1
   bool_denormalize: False # or True, whether we denormalize when measuring errors
   error_type : "rmse" # or mse
-  patience : 3
+  patience : 5
 
 
 PLOT:

@@ -31,7 +31,7 @@ with open(f'./config/{data_name}.yaml','r') as file_dataConfig:
     config['TD_type'] = settings['PROBLEM']["TD_type"]
     
 
-# --------------------- Regression --------------------------3
+# --------------------- Regression ----------------------------
 if run_type == "regression":
     
     ## data import
@@ -43,8 +43,7 @@ if run_type == "regression":
     elif interp_method == "MLP":
         regressor = train.Regression_MLP(data, config)  # HiDeNN-TD regressor class
     regressor.train()  # Train module
-
-     
+      
     ## plot
     plot.plot_regression(regressor, data, config)
 

@@ -45,7 +45,7 @@ TRAIN_PARAM:
   learning_rate : 1e-1
   bool_train_acc : False # measure train accuracy
   
-  validation_period : 100
+  validation_period : 1
   bool_denormalize: False # or True, whether we denormalize when measuring errors
   error_type : "accuracy" 
   patience : 10

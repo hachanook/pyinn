@@ -413,7 +413,7 @@ v_fun_1D_2D_sine_exp = jax.vmap(fun_1D_2D_sine_exp, in_axes = (0)) # output: (nd
 vv_fun_1D_2D_sine_exp = jax.vmap(v_fun_1D_2D_sine_exp, in_axes = (0)) # output: (ndata, ndata)
 
 def fun_2D_1D_sine(x_data_org):
-    u_data_org =  jnp.sin(x_data_org[0]) * jnp.cos(x_data_org[1])
+    u_data_org =  jnp.sin(x_data_org[0] - 2*x_data_org[1]) * jnp.cos(3*x_data_org[0] + x_data_org[1])
     return u_data_org.reshape(1,)
 v_fun_2D_1D_sine = jax.vmap(fun_2D_1D_sine, in_axes = (0)) # output: (ndata, )
 vv_fun_2D_1D_sine = jax.vmap(v_fun_2D_1D_sine, in_axes = (0)) # output: (ndata, ndata)

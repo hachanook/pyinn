@@ -43,7 +43,7 @@ if importlib.util.find_spec("GPUtil") is not None: # for linux & GPU
 
 def get_linspace(xmin, xmax, nnode):
     return jnp.linspace(xmin,xmax,nnode, dtype=jnp.float64)
-v_get_linspace = jax.vmap(get_linspace, in_axes=(0,0,None))
+# v_get_linspace = jax.vmap(get_linspace, in_axes=(0,0,None))
 
 class Regression_INN:
     def __init__(self, cls_data, config):
@@ -63,9 +63,9 @@ class Regression_INN:
             
             ## initialization of trainable parameters
             if cls_data.bool_normalize: # when the data is normalized
-                self.grid_dms = jnp.tile(jnp.linspace(0, 1, self.nnode, dtype=jnp.float64), (self.cls_data.dim, 1)) # (dim, nnode)
+                self.grid_dms = jnp.linspace(0, 1, self.nnode, dtype=jnp.float64) # (nnode,) the most efficient way
             else: # when the data is not normalized
-                self.grid_dms = v_get_linspace(cls_data.x_data_minmax["min"], cls_data.x_data_minmax["max"], self.nnode)
+                self.grid_dms = [get_linspace(xmin, xmax, self.nnode) for (xmin, xmax) in zip(cls_data.x_data_minmax["min"], cls_data.x_data_minmax["max"])]
             self.params = jax.random.uniform(jax.random.PRNGKey(self.key), (self.nmode, self.cls_data.dim, 
                                                 self.cls_data.var, self.nnode), dtype=jnp.double)       
             numParam = self.nmode*self.cls_data.dim*self.cls_data.var*self.nnode
@@ -95,6 +95,7 @@ class Regression_INN:
             self.forward = model.forward
             self.v_forward = model.v_forward
             self.vv_forward = model.vv_forward
+            
         elif self.interp_method == "nonlinear":
             model = INN_nonlinear(self.grid_dms, self.config)
             self.forward = model.forward
@@ -104,14 +105,14 @@ class Regression_INN:
         # ## debug
         # x_idata = jnp.ones(self.cls_data.dim, dtype=jnp.float64) * 0.5
         # x_data = jnp.ones((2, self.cls_data.dim), dtype=jnp.float64) * 0.5
-        # a = self.forward(self.params, x_idata)
-        # va = self.v_forward(self.params, x_data)
+        # a = self.forward(self.params, x_idata) # (var,)
+        # va = self.v_forward(self.params, x_data) # (ndata, var)
         
         if self.interp_method == "linear":
-            print(f"------------INN {config['TD_type']} {self.interp_method}, nmode: {config['MODEL_PARAM']['nmode']}, nelem: {config['MODEL_PARAM']['nelem']} -------------")
+            print(f"------------ INN {config['TD_type']} {self.interp_method}, nmode: {config['MODEL_PARAM']['nmode']}, nelem: {config['MODEL_PARAM']['nelem']} -------------")
             print(f"# of training parameters: {numParam}")
         elif self.interp_method == "nonlinear":
-            print(f"------------INN {config['TD_type']} {self.interp_method}, nmode: {config['MODEL_PARAM']['nmode']}, nelem: {config['MODEL_PARAM']['nelem']}, s={config['MODEL_PARAM']['s_patch']}, P={config['MODEL_PARAM']['p_order']} -------------")
+            print(f"------------ INN {config['TD_type']} {self.interp_method}, nmode: {config['MODEL_PARAM']['nmode']}, nelem: {config['MODEL_PARAM']['nelem']}, s={config['MODEL_PARAM']['s_patch']}, P={config['MODEL_PARAM']['p_order']} -------------")
             print(f"# of training parameters: {numParam}")
 
 
@@ -177,7 +178,9 @@ class Regression_INN:
         
         ## Train
         start_time_train = time.time()
-        errors_val = [] # validation error for every epoch
+        self.errors_train = [] # training error for every epoch
+        self.errors_val = [] # validation error for every epoch
+        self.errors_epoch = [] # epochs where the erros are stored
         time_per_epochs = [] # training time per epoch
         for epoch in range(self.num_epochs):
             epoch_list_loss, epoch_list_acc = [], [] 
@@ -207,6 +210,8 @@ class Regression_INN:
 
             ## Validation
             if (epoch+1)%self.validation_period == 0:
+                self.errors_train.append(err_train)
+                self.errors_epoch.append(epoch+1)
                 error_cum, ndata_cum = 0,0
                 for batch in self.cls_data.val_dataloader:
                     x_val, u_val = jnp.array(batch[0]), jnp.array(batch[1])
@@ -215,13 +220,13 @@ class Regression_INN:
                 
                 if self.error_type == 'rmse':
                     print(f"\tVal RMSE: {jnp.sqrt(error_cum/ndata_cum):.4e}")
-                    errors_val.append(jnp.sqrt(error_cum/ndata_cum))
+                    self.errors_val.append(jnp.sqrt(error_cum/ndata_cum))
                 elif self.error_type == 'mse':
                     print(f"\tVal MSE: {error_cum/ndata_cum:.4e}")
-                    errors_val.append(error_cum/ndata_cum)
+                    self.errors_val.append(error_cum/ndata_cum)
                 elif self.error_type == 'accuracy':
                     print(f"\tVal Accuracy: {error_cum/ndata_cum*100:.2f}%")
-                    errors_val.append(error_cum/ndata_cum)
+                    self.errors_val.append(error_cum/ndata_cum)
                 else:
                     pass
             time_per_epochs.append(time.time() - start_time_epoch) # append training time per epoch
@@ -229,11 +234,11 @@ class Regression_INN:
                 
 
             ## Check early stopping
-            if len(errors_val) > self.patience:
-                early_stopping = np.all(np.subtract(errors_val[-self.patience:], errors_val[-self.patience-1:-1])>0)
+            if len(self.errors_val) > self.patience:
+                early_stopping = np.all(np.subtract(self.errors_val[-self.patience:], self.errors_val[-self.patience-1:-1])>0)
                 if early_stopping: # break the epoch and finish training
                     print(f"\tEarly stopping at {epoch+1}-th epoch")
-                    print(f"\tValidation losses of the latest epochs are {errors_val[-self.patience:]}")
+                    print(f"\tValidation losses of the latest epochs are {self.errors_val[-self.patience:]}")
                     break
             if "stopping_loss_train" in self.config["TRAIN_PARAM"].keys():
                 if err_train < float(self.config["TRAIN_PARAM"]["stopping_loss_train"]):
@@ -269,12 +274,14 @@ class Regression_MLP(Regression_INN):
     def __init__(self, cls_data, config):
         super().__init__(cls_data, config) # prob being dropout probability
         
-        self.forward = forward_MLP
-        self.v_forward = v_forward_MLP
-        self.vv_forward = vv_forward_MLP
+        activation = config['MODEL_PARAM']["activation"]
+        model = MLP(activation)
+        self.forward = model.forward
+        self.v_forward = model.v_forward
+        self.vv_forward = model.vv_forward
         self.nlayers = config['MODEL_PARAM']["nlayers"]
         self.nneurons = config['MODEL_PARAM']["nneurons"]
-        self.activation = config['MODEL_PARAM']["activation"]
+        
         self.num_epochs = int(self.config['TRAIN_PARAM']['num_epochs_MLP'])
 
         ### initialization of trainable parameters
@@ -285,17 +292,27 @@ class Regression_MLP(Regression_INN):
             w, b = layer[0], layer[1]
             weights += w.shape[0]*w.shape[1]
             biases += b.shape[0]
-        print("------------MLP-------------")
+        print(f"------------ MLP, {layer_sizes} -------------")
         print(f"# of training parameters: {weights+biases}")
 
         
-    def random_layer_params(self, m, n, key, scale=1e-2): # m input / n output neurons
-      w_key, b_key = jax.random.split(key)
-      return scale * jax.random.normal(w_key, (n, m)), scale * jax.random.normal(b_key, (n,))
+    # def random_layer_params(self, m, n, key, scale=1e-2): # m input / n output neurons
+    #   w_key, b_key = jax.random.split(key)
+    #   return scale * jax.random.normal(w_key, (m, n)), scale * jax.random.normal(b_key, (n,))
     
-    def init_network_params(self, sizes, key):
-        keys = jax.random.split(key, len(sizes))
-        return [self.random_layer_params(m, n, k) for m, n, k in zip(sizes[:-1], sizes[1:], keys)]
+    # def init_network_params(self, sizes, key):
+    #     keys = jax.random.split(key, len(sizes))
+    #     return [self.random_layer_params(m, n, k) for m, n, k in zip(sizes[:-1], sizes[1:], keys)]
+
+    def init_network_params(self, layer_sizes, key):
+        keys = jax.random.split(key, len(layer_sizes) - 1)
+        params = []
+        for in_dim, out_dim, k in zip(layer_sizes[:-1], layer_sizes[1:], keys):
+            weight_key, bias_key = jax.random.split(k)
+            W = jax.random.normal(weight_key, (in_dim, out_dim)) * jnp.sqrt(2 / in_dim)
+            b = jnp.zeros(out_dim)
+            params.append((W, b))
+        return params
     
     @partial(jax.jit, static_argnames=['self']) # jit necessary
     def get_loss(self, params, x_data, u_data):
@@ -306,17 +323,17 @@ class Regression_MLP(Regression_INN):
         shape_vals_data, patch_nodes_data: defined in "get_HiDeNN_shape_fun"
         '''
         
-        u_pred = self.v_forward(params, self.activation, x_data) # (ndata_train, var)
+        u_pred = self.v_forward(params, x_data) # (ndata_train, var)
         loss = ((u_pred- u_data)**2).mean()
         return loss, u_pred
     Grad_get_loss = jax.jit(jax.value_and_grad(get_loss, argnums=1, has_aux=True), static_argnames=['self'])
 
     def inference(self, x_test):
-        u_pred = self.forward(self.params, self.activation, x_test[0]) # (ndata_train, var)
-        u_pred = self.forward(self.params, self.activation, x_test[0]) # (ndata_train, var)
-        u_pred = self.forward(self.params, self.activation, x_test[0]) # (ndata_train, var)
+        u_pred = self.forward(self.params, x_test[0]) # (ndata_train, var)
+        u_pred = self.forward(self.params, x_test[0]) # (ndata_train, var)
+        u_pred = self.forward(self.params, x_test[0]) # (ndata_train, var)
         start_time_inference = time.time()
-        u_pred = self.forward(self.params, self.activation, x_test[0]) # (ndata_train, var)
+        u_pred = self.forward(self.params, x_test[0]) # (ndata_train, var)
         print(f"\tInference time: {time.time() - start_time_inference:.4f} seconds")    
     
 
@@ -382,7 +399,7 @@ class Classification_MLP(Regression_MLP):
         shape_vals_data, patch_nodes_data: defined in "get_HiDeNN_shape_fun"
         '''
         
-        u_pred = self.v_forward(params, self.activation, x_data) # (ndata_train, var)
+        u_pred = self.v_forward(params, x_data) # (ndata_train, var)
         prediction = u_pred - jax.scipy.special.logsumexp(u_pred, axis=1)[:,None] # (ndata, var = nclass)
         loss = -jnp.mean(jnp.sum(prediction * u_data, axis=1))
         return loss, u_pred

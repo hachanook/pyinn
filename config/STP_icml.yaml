@@ -20,7 +20,7 @@ MODEL_PARAM:
 
   ## MLP
   nlayers : 5
-  nneurons : 50
+  nneurons : 60
   # activation : "relu"
   activation : "sigmoid"
 
@@ -47,12 +47,12 @@ TRAIN_PARAM:
   validation_period : 1 # if this is greater than num_epochs, validation will not be conducted
   bool_denormalize: False # or True, whether we denormalize when measuring errors
   error_type : "rmse" # or mse
-  patience : 10 # for early stopping
+  patience : 5 # for early stopping
 
   stopping_loss_train: 4e-8
 
 
 PLOT:
-  bool_plot: False
-  plot_in_axis: [3,4] # plot input axis
+  bool_plot: True
+  plot_in_axis: [3,4,5,6] # plot input axis
   plot_out_axis: [0] # plot output axis

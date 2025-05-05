@@ -2,7 +2,7 @@ MODEL_PARAM:
   
   ## INN linear
   nmode : 1
-  nelem : 5 # nnode = nelem + 1
+  nelem : 20 # nnode = nelem + 1
 
   ## INN nonlinear
   s_patch : 2
@@ -18,8 +18,8 @@ MODEL_PARAM:
   # INNactivation : 'gelu'
 
   ## MLP
-  nlayers : 3
-  nneurons : 6
+  nlayers : 2
+  nneurons : 10
   # activation : "relu"
   activation : "sigmoid"
 
@@ -32,21 +32,21 @@ DATA_PARAM:
   data_size: 10_000
   split_ratio: [0.7,0.15,0.15] # [0.7,0.15,0.15]
   
-  bool_normalize: False # whether we normalize the input data or not
+  bool_normalize: True # whether we normalize the input data or not
   bool_shuffle : True # whether we shuffle the data
   
 
 TRAIN_PARAM:
-  num_epochs_INN : 100
-  num_epochs_MLP : 100
+  num_epochs_INN : 1000
+  num_epochs_MLP : 1000
   batch_size : 128
   learning_rate : 1e-3
-  bool_train_acc : True
+  # bool_train_acc : True
   
   validation_period : 1
   bool_denormalize: False # or True, whether we denormalize when measuring errors
-  error_type : "mse" # rmse or mse
-  patience : 10
+  error_type : "rmse" # rmse or mse
+  patience : 5
 
 
 PLOT:

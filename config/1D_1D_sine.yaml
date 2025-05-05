@@ -37,7 +37,7 @@ DATA_PARAM:
   bool_shuffle : True # whether we shuffle the data
 
 TRAIN_PARAM:
-  num_epochs_INN : 100
+  num_epochs_INN : 200
   num_epochs_MLP : 200
   batch_size : 128
   learning_rate : 1e-3
