@@ -81,7 +81,9 @@ python ./pyinn/main.py
 ```
 
 ## License
-This project is licensed under the GNU General Public License v3 - see the [LICENSE](https://www.gnu.org/licenses/) for details.
+This repository is licensed under [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/) — non-commercial use only.  
+This code is protected by U.S. Patent Pending.
+For commercial use or licensing, contact: chanwookpark2024@u.northwestern.edu
 
 ## Citations
 If you found this library useful in academic or industry work, we appreciate your support if you consider 1) starring the project on Github, and 2) citing relevant papers:
