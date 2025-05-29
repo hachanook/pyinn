@@ -1,15 +1,14 @@
 MODEL_PARAM: 
   
   ## INN linear
-  # nmode : 10
-  nmode : [5,5] # sequential training
-  nelem : 10
-  # nelem : [20,25] # different grid resolution
+  nmode : [20,20,20,20,20, 20,20,20,20,20, 20,20,20,20,20, 20,20,20,20,20, 20,20,20,20,20, 20,20,20,20,20]
+  nelem : 40
+  # nelem : [20,25]
 
   ## INN nonlinear
   s_patch : 2
   alpha_dil: 20
-  p_order: 2  
+  p_order: 1  
   radial_basis : "cubicSpline" # Activataion functions
   # radial_basis : 'gaussian1'
   INNactivation : 'polynomial'
@@ -20,28 +19,28 @@ MODEL_PARAM:
   # INNactivation : 'gelu'
 
   ## MLP
-  nlayers : 2
-  nneurons : 12
+  nlayers : 5
+  nneurons : 100
   # activation : "relu"
   activation : "sigmoid"
 
 DATA_PARAM:
 
-  input_col : [0,1]
-  output_col : [2]
+  input_col : [0,1,2]
+  output_col : [3,4]
 
-  bool_data_generation : True # data is already stored and splitted
-  # data_filenames: ['6D_4D_ansys_1364742.csv'] # original data
-  data_size: 10_000
-  split_ratio: [0.7,0.15,0.15] # [0.7,0.15,0.15]
+  bool_data_generation : False # data is already stored and splitted
+  data_filenames: ['2D_turbulence.csv'] # original data
+  # data_size: 10_000
+  split_ratio: [0.8,0.10,0.10] # [0.7,0.15,0.15]
   
   bool_normalize: True # whether we normalize the input data or not
   bool_shuffle : True # whether we shuffle the data
   
   
 TRAIN_PARAM:
-  num_epochs_INN : 100
-  num_epochs_MLP : 1000
+  num_epochs_INN : 10
+  num_epochs_MLP : 500
   batch_size : 128
   learning_rate : 1e-3
   # bool_train_acc : True

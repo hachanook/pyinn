@@ -52,42 +52,43 @@ class Regression_INN:
         self.cls_data = cls_data
         self.config = config
         self.key = int(time.time())
-        self.nmode = int(config['MODEL_PARAM']['nmode'])
         self.num_epochs = int(self.config['TRAIN_PARAM']['num_epochs_INN'])
-            
-        ## Initialize trainable parameters
-        if isinstance(config['MODEL_PARAM']['nelem'], int): # same discretization across dimension
-            
-            self.nelem = int(config['MODEL_PARAM']['nelem'])
-            self.nnode = self.nelem + 1
-            
-            ## initialization of trainable parameters
-            if cls_data.bool_normalize: # when the data is normalized
-                self.grid_dms = jnp.linspace(0, 1, self.nnode, dtype=jnp.float64) # (nnode,) the most efficient way
-            else: # when the data is not normalized
-                self.grid_dms = [get_linspace(xmin, xmax, self.nnode) for (xmin, xmax) in zip(cls_data.x_data_minmax["min"], cls_data.x_data_minmax["max"])]
-            self.params = jax.random.uniform(jax.random.PRNGKey(self.key), (self.nmode, self.cls_data.dim, 
-                                                self.cls_data.var, self.nnode), dtype=jnp.double)       
-            numParam = self.nmode*self.cls_data.dim*self.cls_data.var*self.nnode
         
-        elif isinstance(config['MODEL_PARAM']['nelem'], list): # varying discretization across dimension
-
-            self.nelem = jnp.array(config['MODEL_PARAM']['nelem'], dtype=jnp.int64) # (dim,) 1D array of integers
-            self.nnode = self.nelem + 1
-
-            if len(self.nelem) != cls_data.dim:
-                print(f"Error: lenth of nelem {len(self.nelem)} is different from input dimension {cls_data.dim}. Check config file.")
-                sys.exit()
-
-            ## initialization of trainable parameters
-            self.grid_dms, self.params, numParam = [], [], 0
-            for idm, nnode_idm in enumerate(self.nnode):
+        ## Initialize trainable parameters for INN.
+        if 'linear' in self.interp_method: # for INN
+            self.nmode = int(config['MODEL_PARAM']['nmode'])
+            if isinstance(config['MODEL_PARAM']['nelem'], int): # same discretization across dimension
+                
+                self.nelem = int(config['MODEL_PARAM']['nelem'])
+                self.nnode = self.nelem + 1
+                
+                ## initialization of trainable parameters
                 if cls_data.bool_normalize: # when the data is normalized
-                    self.grid_dms.append(jnp.linspace(0, 1, nnode_idm, dtype=jnp.float64))
+                    self.grid_dms = jnp.linspace(0, 1, self.nnode, dtype=jnp.float64) # (nnode,) the most efficient way
                 else: # when the data is not normalized
-                    self.grid_dms.append(get_linspace(cls_data.x_data_minmax["min"][idm], cls_data.x_data_minmax["max"][idm], nnode_idm))
-                self.params.append(jax.random.uniform(jax.random.PRNGKey(self.key), (self.nmode, self.cls_data.var, nnode_idm), dtype=jnp.double))
-                numParam += self.nmode*self.cls_data.var*nnode_idm 
+                    self.grid_dms = [get_linspace(xmin, xmax, self.nnode) for (xmin, xmax) in zip(cls_data.x_data_minmax["min"], cls_data.x_data_minmax["max"])]
+                self.params = jax.random.uniform(jax.random.PRNGKey(self.key), (self.nmode, self.cls_data.dim, 
+                                                    self.cls_data.var, self.nnode), dtype=jnp.double)       
+                numParam = self.nmode*self.cls_data.dim*self.cls_data.var*self.nnode
+            
+            elif isinstance(config['MODEL_PARAM']['nelem'], list): # varying discretization across dimension
+
+                self.nelem = jnp.array(config['MODEL_PARAM']['nelem'], dtype=jnp.int64) # (dim,) 1D array of integers
+                self.nnode = self.nelem + 1
+
+                if len(self.nelem) != cls_data.dim:
+                    print(f"Error: lenth of nelem {len(self.nelem)} is different from input dimension {cls_data.dim}. Check config file.")
+                    sys.exit()
+
+                ## initialization of trainable parameters
+                self.grid_dms, self.params, numParam = [], [], 0
+                for idm, nnode_idm in enumerate(self.nnode):
+                    if cls_data.bool_normalize: # when the data is normalized
+                        self.grid_dms.append(jnp.linspace(0, 1, nnode_idm, dtype=jnp.float64))
+                    else: # when the data is not normalized
+                        self.grid_dms.append(get_linspace(cls_data.x_data_minmax["min"][idm], cls_data.x_data_minmax["max"][idm], nnode_idm))
+                    self.params.append(jax.random.uniform(jax.random.PRNGKey(self.key), (self.nmode, self.cls_data.var, nnode_idm), dtype=jnp.double))
+                    numParam += self.nmode*self.cls_data.var*nnode_idm 
 
         ## Define model
         if self.interp_method == "linear":
@@ -269,6 +270,58 @@ class Regression_INN:
         ## Inference
         self.inference(x_test)
 
+class Regression_INN_sequential(Regression_INN):
+    def __init__(self, cls_data, config, params_prev):
+        super().__init__(cls_data, config) # prob being dropout probability
+
+        self.params_prev = params_prev # trained parameters from previous sequences
+        
+        ## set the params to be zero WE SHOULD NOT MAKE THIS ZERO BECUASE TD WILL MULTIPLY WITH ZEROS
+        
+        if isinstance(self.params, list):
+            params = self.params # list
+            scale = 0.1**(1/len(self.params)) # 1/dim
+            self.params = [param*scale for param in params]
+        else:
+            scale = 0.1**(1/self.params.shape[1]) # 1/dim
+            self.params = self.params*scale
+
+    @partial(jax.jit, static_argnames=['self']) # jit necessary
+    def get_loss(self, params, x_data, u_data):
+        ''' Compute MSE loss value at (m)th mode given upto (m-1)th mode solution, which is u_pred_old
+        --- input ---
+        u_p_modes: (nmode, dim, nnode, var)
+        u_data: exact u from the data. (ndata_train, var)
+        shape_vals_data, patch_nodes_data: defined in "get_HiDeNN_shape_fun"
+        '''
+        ## augment params from previous sequence
+        params = jnp.concatenate([self.params_prev, params], axis=0)
+
+        u_pred = self.v_forward(params, x_data) # (ndata_train, var)
+        loss = ((u_pred- u_data)**2).mean()
+        return loss, u_pred
+    Grad_get_loss = jax.jit(jax.value_and_grad(get_loss, argnums=1, has_aux=True), static_argnames=['self'])
+
+
+    def inference(self, x_test):
+        
+        ## augment params from previous sequence
+        params = jnp.concatenate([self.params_prev, self.params], axis=0)
+
+        u_pred = self.forward(params, x_test[0]) # (ndata_train, var)
+        u_pred = self.forward(params, x_test[0]) # (ndata_train, var)
+        u_pred = self.forward(params, x_test[0]) # (ndata_train, var)
+        start_time_inference = time.time()
+        u_pred = self.forward(params, x_test[0]) # (ndata_train, var)
+        print(f"\tInference time: {time.time() - start_time_inference:.4f} seconds")      
+
+
+        
+
+
+
+        
+
 
 class Regression_MLP(Regression_INN):
     def __init__(self, cls_data, config):
@@ -295,16 +348,18 @@ class Regression_MLP(Regression_INN):
         print(f"------------ MLP, {layer_sizes} -------------")
         print(f"# of training parameters: {weights+biases}")
 
-        
+    
     # def random_layer_params(self, m, n, key, scale=1e-2): # m input / n output neurons
     #   w_key, b_key = jax.random.split(key)
     #   return scale * jax.random.normal(w_key, (m, n)), scale * jax.random.normal(b_key, (n,))
     
     # def init_network_params(self, sizes, key):
+    #     # original method
     #     keys = jax.random.split(key, len(sizes))
     #     return [self.random_layer_params(m, n, k) for m, n, k in zip(sizes[:-1], sizes[1:], keys)]
 
     def init_network_params(self, layer_sizes, key):
+        # what ChatGPT suggested
         keys = jax.random.split(key, len(layer_sizes) - 1)
         params = []
         for in_dim, out_dim, k in zip(layer_sizes[:-1], layer_sizes[1:], keys):

@@ -4,8 +4,8 @@ INN trainer
 Copyright (C) 2024  Chanwook Park
  Northwestern University, Evanston, Illinois, US, chanwookpark2024@u.northwestern.edu
 """
-from pyinn import dataset_classification, dataset_regression, model, train, plot # with pyinn library
-# import dataset_classification, dataset_regression, model, train, plot # for debugging
+# from pyinn import dataset_classification, dataset_regression, model, train, plot # with pyinn library
+import dataset_classification, dataset_regression, model, train, plot # for debugging
 from jax import config
 config.update("jax_enable_x64", True)
 import os
@@ -37,6 +37,8 @@ for run_type in run_types:
                     config['TD_type'] = settings['PROBLEM']["TD_type"]
                     config['TRAIN_PARAM']['num_epochs_INN'] = 2
                     config['TRAIN_PARAM']['num_epochs_MLP'] = 2
+                    if isinstance(config['MODEL_PARAM']['nmode'], list):
+                        config['MODEL_PARAM']['nmode'] = config['MODEL_PARAM']['nmode'][0]
 
                 # --------------------- Regression --------------------------3
                     

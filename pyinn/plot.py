@@ -2,6 +2,7 @@ import numpy as np
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
+import matplotlib.animation as animation
 import os
 # from .model import * ## when using pyinn
 # from .dataset_regression import *
@@ -51,10 +52,14 @@ def plot_regression(model, cls_data, config):
             if config['interp_method'] != "MLP" and isinstance(config['MODEL_PARAM']['nelem'], int):
                 plot_modes(model, cls_data, plot_in_axis, plot_out_axis)
 
+        elif "turbulence" in cls_data.data_name:
+            plot_turbulence(model, cls_data, plot_in_axis, plot_out_axis)
+
+        
+
         ## plot loss landscape
         plot_loss_landscape(model, cls_data) 
 
-        
 
     else:
         print("\nPlotting deactivated\n")
@@ -237,8 +242,6 @@ def plot_1D_2D(model, cls_data, plot_in_axis, plot_out_axis, color_map="viridis"
     fig.savefig(os.path.join(path_figure, cls_data.data_name + "_" + model.interp_method) , dpi=300)
     plt.close()
 
-    # ## plot loss landscape
-    # plot_loss_landscape(model, cls_data) 
 
 
 def plot_loss_landscape(model, cls_data):
@@ -254,7 +257,8 @@ def plot_loss_landscape(model, cls_data):
     ax1.set_xlabel('Epoch', fontsize=16)
     ax1.set_ylabel('Loss', fontsize=16)
     ax1.tick_params(axis='both', labelsize=12)
-    ax1.set_xlim(0, model.config['TRAIN_PARAM']['num_epochs_INN'])
+    nepoch = model.errors_epoch[-1]
+    ax1.set_xlim(0, nepoch)
     ax1.set_yscale('log')
     ax1.set_ylim(1e-4, 1e0)
     # ax1.set_title('INN prediction', fontsize=16)
@@ -263,7 +267,7 @@ def plot_loss_landscape(model, cls_data):
 
     parent_dir = os.path.abspath(os.getcwd())
     path_figure = os.path.join(parent_dir, 'plots')
-    fig.savefig(os.path.join(path_figure, cls_data.data_name + "_" + model.interp_method + "_loss") , dpi=300)
+    fig.savefig(os.path.join(path_figure, cls_data.data_name + "_" + model.interp_method + f"_loss_{nepoch}epoch") , dpi=300)
     plt.close()
 
     
@@ -321,6 +325,67 @@ def plot_2D_1D(model, cls_data, plot_in_axis, plot_out_axis, color_map="viridis"
     path_figure = os.path.join(parent_dir, 'plots')
     fig.savefig(os.path.join(path_figure, cls_data.data_name + f"_{TD_type}_" + model.interp_method) , dpi=300)
     plt.close()
+
+
+def plot_turbulence(model, cls_data, plot_in_axis, plot_out_axis):
+
+    size = 256
+    outer_steps = 200
+
+    data = cls_data.data # (200*256*256, 5)
+    x_data_org = data[:,:3] # (200*256*256, 3) for x,y,t
+    x_data = cls_data.normalize(x_data = x_data_org)[0]
+    
+    nblock = 1000 # number of blocks
+    ndata = x_data_org.shape[0]
+    data_idx_list = jnp.array_split(jnp.arange(ndata, dtype=jnp.int64), nblock, axis=0)
+    x_data_list = jnp.array_split(x_data, nblock, axis=0)
+    u_data = jnp.zeros((ndata, 2), dtype=jnp.float64)
+    for data_idx_block, x_data_block in zip(data_idx_list, x_data_list):
+        u_data_block = model.v_forward(model.params, x_data_block) # (200*256*256, 2)
+        u_data = u_data.at[data_idx_block,:].set(u_data_block)
+    u_data_org = cls_data.denormalize(u_data = u_data)[0]
+
+    # Reshape u and v trajectories for visualization
+    u_traj_reshaped = u_data_org[:,0].reshape(outer_steps, size, size)
+    v_traj_reshaped = u_data_org[:,1].reshape(outer_steps, size, size)
+
+    # Create a figure and axes for the animation
+    fig, (ax_u, ax_v) = plt.subplots(1, 2, figsize=(12, 6))
+    fig.suptitle("Time Evolution of u and v")
+
+    # Initialize the plots
+    u_plot = ax_u.imshow(u_traj_reshaped[0], origin='lower', extent=(0, 2 * jnp.pi, 0, 2 * jnp.pi), cmap='viridis')
+    v_plot = ax_v.imshow(v_traj_reshaped[0], origin='lower', extent=(0, 2 * jnp.pi, 0, 2 * jnp.pi), cmap='viridis')
+
+    ax_u.set_title("u velocity")
+    ax_v.set_title("v velocity")
+    ax_u.set_xlabel("x")
+    ax_u.set_ylabel("y")
+    ax_v.set_xlabel("x")
+    ax_v.set_ylabel("y")
+
+    # Add colorbars
+    fig.colorbar(u_plot, ax=ax_u)
+    fig.colorbar(v_plot, ax=ax_v)
+
+    # Update function for the animation
+    def update(frame):
+        u_plot.set_data(u_traj_reshaped[frame])
+        v_plot.set_data(v_traj_reshaped[frame])
+        return u_plot, v_plot
+
+    # Create the animation
+    ani = animation.FuncAnimation(fig, update, frames=outer_steps, interval=50, blit=True)
+
+    # Save the animation as a video file
+    parent_dir = os.path.abspath(os.getcwd())
+    path_figure = os.path.join(parent_dir, 'plots')
+    ani.save(os.path.join(path_figure, cls_data.data_name + "_" + model.interp_method + "_timeseries.gif"), writer="ffmpeg", fps=20)
+
+    # Close the plot to avoid displaying it
+    plt.close(fig)
+
 
 
 def plot_2D_classification(model, cls_data, plot_in_axis, plot_out_axis):

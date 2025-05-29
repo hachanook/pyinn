@@ -20,7 +20,7 @@ MODEL_PARAM:
 
   ## MLP
   nlayers : 5
-  nneurons : 60
+  nneurons : 50
   # activation : "relu"
   activation : "sigmoid"
 
@@ -39,9 +39,9 @@ DATA_PARAM:
   
 TRAIN_PARAM:
   num_epochs_INN : 100
-  num_epochs_MLP : 100
-  batch_size : 512 # 128
-  learning_rate : 1e-4
+  num_epochs_MLP : 500
+  batch_size : 128 # 128
+  learning_rate : 1e-3
   bool_train_acc : False
   
   validation_period : 1 # if this is greater than num_epochs, validation will not be conducted
