@@ -2,7 +2,7 @@ MODEL_PARAM:
   
   ## INN linear
   nmode : 1
-  nelem : 5 # nnode = nelem + 1
+  nseg : 5 # nnode = nelem + 1
 
   ## INN nonlinear
   s_patch : 2

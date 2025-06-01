@@ -45,7 +45,7 @@ class NonlinearInterpolator(LinearInterpolator):
     super().__init__(grid) # prob being dropout probability
 
     self.nnode = len(grid)
-    self.nelem = self.nnode - 1
+    self.nseg = self.nnode - 1
     self.s_patch = s_patch
     self.alpha_dil = alpha_dil
     self.p_order = p_order
@@ -55,10 +55,10 @@ class NonlinearInterpolator(LinearInterpolator):
     
     ## compute G_inv
     self.nodes_per_elem = 2
-    self.d_c = 1.0/self.nelem     # characteristic length in physical coord.
+    self.d_c = 1.0/self.nseg     # characteristic length in physical coord.
     self.a_dil = self.alpha_dil * self.d_c
 
-    self.Elem_nodes_host = np.zeros([self.nelem, self.nodes_per_elem], dtype=np.int64)
+    self.Elem_nodes_host = np.zeros([self.nseg, self.nodes_per_elem], dtype=np.int64)
     for j in range(1, self.nnode):
       self.Elem_nodes_host[j-1, 0] = j-1
       self.Elem_nodes_host[j-1, 1] = j 
@@ -73,7 +73,7 @@ class NonlinearInterpolator(LinearInterpolator):
       self.Nodal_patch_nodes_st, self.Nodal_patch_nodes_bool, self.Nodal_patch_nodes_idx, self.ndexes
       ) = self.get_patch_info()       
     
-    self.Gs = self.vv_get_G(self.ndexes, self.Nodal_patch_nodes_st, self.Nodal_patch_nodes_bool, grid.reshape(-1,1)) # (nelem, npe=2, ndex_max+mbasis, ndex_max+mbasis)
+    self.Gs = self.vv_get_G(self.ndexes, self.Nodal_patch_nodes_st, self.Nodal_patch_nodes_bool, grid.reshape(-1,1)) # (nseg, npe=2, ndex_max+mbasis, ndex_max+mbasis)
     # self.Gs_inv = jnp.array(np.linalg.inv(self.Gs))
     # print(self.Gs)
     # print(self.Gs[0,0,:,:4])
@@ -105,7 +105,7 @@ class NonlinearInterpolator(LinearInterpolator):
   def get_adj_mat(self):
     ''' Compute Adjacency matrix from the Graph theory
     --- input ---
-    Elem_nodes_host: elemental connectivity stored in CPU as numpy array, (nelem, nodes_per_elem)
+    Elem_nodes_host: elemental connectivity stored in CPU as numpy array, (nseg, nodes_per_elem)
     nnode: number of nodes, scalar integer
     s_patch: patch size s, scalar integer
     --- output ---
@@ -152,8 +152,8 @@ class NonlinearInterpolator(LinearInterpolator):
     --- input ---
     indices, indptr: sparce matrix form of the Adjacency matrix
     s_patch: patch size s
-    Elem_nodes: elemental connectivity stored in CPU as numpy array, (nelem, nodes_per_elem)
-    nelem, nodes_per_elem, dim: scalar integers..
+    Elem_nodes: elemental connectivity stored in CPU as numpy array, (nseg, nodes_per_elem)
+    nseg, nodes_per_elem, dim: scalar integers..
     --- output ---
     edex_max: maximum number of elemental patch nodes
     ndex_max: maximum number of nodal patch nodes
@@ -161,8 +161,8 @@ class NonlinearInterpolator(LinearInterpolator):
     
     dim = 1
     edex_max = (2+2*self.s_patch)**dim # estimated value of edex_max
-    edexes = np.zeros(self.nelem, dtype=np.int64) # (num_elements, )
-    ndexes = np.zeros((self.nelem, self.nodes_per_elem), dtype=np.int64) # static, (nelem, nodes_per_elem)
+    edexes = np.zeros(self.nseg, dtype=np.int64) # (num_elements, )
+    ndexes = np.zeros((self.nseg, self.nodes_per_elem), dtype=np.int64) # static, (nseg, nodes_per_elem)
     
     for ielem, elem_nodes in enumerate(self.Elem_nodes_host):
       if len(elem_nodes) == 2 and dim == 1: # 1D Linear element
@@ -182,28 +182,28 @@ class NonlinearInterpolator(LinearInterpolator):
     indices, indptr: sparce matrix form of the Adjacency matrix
     edex_max: maximum number of elemental patch nodes
     ndex_max: maximum number of nodal patch nodes
-    Elem_nodes: elemental connectivity stored in CPU as numpy array, (nelem, nodes_per_elem)
-    nelem, nodes_per_elem, dim: scalar integers..
+    Elem_nodes: elemental connectivity stored in CPU as numpy array, (nseg, nodes_per_elem)
+    nseg, nodes_per_elem, dim: scalar integers..
     --- output ---
-    Elemental_patch_nodes_st: elemental patch nodes, (nelem, edex_max)
-    edexes: number of patch nodes for each element, (nelem,)
-    Nodal_patch_nodes_st: nodal patch nodes for each element, (nelem, nodes_per_elem, ndex_max)
+    Elemental_patch_nodes_st: elemental patch nodes, (nseg, edex_max)
+    edexes: number of patch nodes for each element, (nseg,)
+    Nodal_patch_nodes_st: nodal patch nodes for each element, (nseg, nodes_per_elem, ndex_max)
     Nodal_patch_nodes_bool: the same shape as Nodal_patch_nodes_st, returns 1 if the node has non-zero convolution patch function value, 
                             returns 0 if the node has zero convolution patch function value.
     Nodal_patch_nodes_idx: the same shape as Nodal_patch_nodes_st, stores nodal index in the corresponding elemental patch nodes
-    ndexes: number of patch nodes for each node, and each element, (nelem, nodes_per_elem)
+    ndexes: number of patch nodes for each node, and each element, (nseg, nodes_per_elem)
     '''    
     dim = 1
     
     # Assign memory to variables
     ## Elemental patch
-    Elemental_patch_nodes_st = np.zeros((self.nelem, self.edex_max), dtype=np.int64) # edex_max should be grater than 100!
-    edexes = np.zeros(self.nelem, dtype=np.int64) # (num_elements, )
+    Elemental_patch_nodes_st = np.zeros((self.nseg, self.edex_max), dtype=np.int64) # edex_max should be grater than 100!
+    edexes = np.zeros(self.nseg, dtype=np.int64) # (num_elements, )
     ## Nodal patch
-    Nodal_patch_nodes_st = (-1)*np.ones((self.nelem, self.nodes_per_elem, self.ndex_max), dtype=np.int64) # static, (nelem, nodes_per_elem, ndex_max)
-    Nodal_patch_nodes_bool = np.zeros((self.nelem, self.nodes_per_elem, self.ndex_max), dtype=np.int64) # static, (nelem, nodes_per_elem, ndex_max)
-    Nodal_patch_nodes_idx = (-1)*np.ones((self.nelem, self.nodes_per_elem, self.ndex_max), dtype=np.int64) # static, (nelem, nodes_per_elem, ndex_max)
-    ndexes = np.zeros((self.nelem, self.nodes_per_elem), dtype=np.int64) # static, (nelem, nodes_per_elem)
+    Nodal_patch_nodes_st = (-1)*np.ones((self.nseg, self.nodes_per_elem, self.ndex_max), dtype=np.int64) # static, (nseg, nodes_per_elem, ndex_max)
+    Nodal_patch_nodes_bool = np.zeros((self.nseg, self.nodes_per_elem, self.ndex_max), dtype=np.int64) # static, (nseg, nodes_per_elem, ndex_max)
+    Nodal_patch_nodes_idx = (-1)*np.ones((self.nseg, self.nodes_per_elem, self.ndex_max), dtype=np.int64) # static, (nseg, nodes_per_elem, ndex_max)
+    ndexes = np.zeros((self.nseg, self.nodes_per_elem), dtype=np.int64) # static, (nseg, nodes_per_elem)
     
     
     for ielem, elem_nodes in enumerate(self.Elem_nodes_host):

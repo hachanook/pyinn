@@ -5,6 +5,8 @@ assets/
 build/
 dist/
 pyinn.egg-info/
+tutorials/data/
+tutorials/plots/
 pip
 requirements.txt
 setup.py

@@ -2,8 +2,8 @@ MODEL_PARAM:
   
   ## INN linear
   nmode : 20
-  nelem : 100
-  # nelem : [100,50,40] # for variable discretization
+  nseg : 100
+  # nseg : [100,50,40] # for variable discretization
 
   ## INN nonlinear
   s_patch : 2

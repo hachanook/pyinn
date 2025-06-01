@@ -13,9 +13,9 @@ PROBLEM:
 
 DATA:
   ## ----------- regression data -------------
-  data_name : '1D_1D_sine'  
+  # data_name : '1D_1D_sine'  
   # data_name : '1D_1D_exp' 
-  # data_name : '1D_2D_sine_exp'
+  data_name : '1D_2D_sine_exp'
   # data_name : '2D_1D_sine'
   # data_name : '2D_1D_exp' 
   # data_name : '3D_1D_exp'

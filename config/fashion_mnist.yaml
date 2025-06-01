@@ -1,6 +1,6 @@
 MODEL_PARAM: 
   nmode : 30
-  nelem : 1
+  nseg : 1
   
   ## MLP
   nlayers : 3
@@ -14,7 +14,7 @@ DATA_PARAM:
   bool_data_generation : True # data is already stored and splitted
   split_ratio : [60000,10000]
 
-  bool_normalize : False # whether we normalize the input data or not
+  bool_normalize : True # whether we normalize the input data or not
   bool_image : True # this is not an image data
   bool_shuffle : False
   

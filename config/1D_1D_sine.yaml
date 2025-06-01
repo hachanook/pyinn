@@ -1,8 +1,8 @@
 MODEL_PARAM: 
   
   ## INN linear
-  nmode : 1
-  nelem : 5
+  nmode : [1,1]
+  nseg : 5
   
   ## INN nonlinear
   s_patch : 2
