@@ -35,8 +35,10 @@ for run_type in run_types:
                     config = yaml.safe_load(file_dataConfig)
                     config['interp_method'] = interp_method
                     config['TD_type'] = settings['PROBLEM']["TD_type"]
-                    config['TRAIN_PARAM']['num_epochs_INN'] = int(config['TRAIN_PARAM']['validation_period'] * 2)
-                    config['TRAIN_PARAM']['num_epochs_MLP'] = int(config['TRAIN_PARAM']['validation_period'] * 2)
+                    config['TRAIN_PARAM']['num_epochs_INN'] = 2
+                    config['TRAIN_PARAM']['num_epochs_MLP'] = 2
+                    if isinstance(config['MODEL_PARAM']['nmode'], list):
+                        config['MODEL_PARAM']['nmode'] = config['MODEL_PARAM']['nmode'][0]
 
                 # --------------------- Regression --------------------------3
                     
@@ -64,8 +66,8 @@ for run_type in run_types:
                     config = yaml.safe_load(file_dataConfig)
                     config['interp_method'] = interp_method
                     config['TD_type'] = settings['PROBLEM']["TD_type"]
-                    config['TRAIN_PARAM']['num_epochs_INN'] = int(config['TRAIN_PARAM']['validation_period'] * 2)
-                    config['TRAIN_PARAM']['num_epochs_MLP'] = int(config['TRAIN_PARAM']['validation_period'] * 2)
+                    config['TRAIN_PARAM']['num_epochs_INN'] = 2
+                    config['TRAIN_PARAM']['num_epochs_MLP'] = 2
 
                 ## data import
                 data = dataset_classification.Data_classification(data_name, config)

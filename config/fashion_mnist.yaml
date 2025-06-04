@@ -1,6 +1,6 @@
 MODEL_PARAM: 
   nmode : 30
-  nelem : 1
+  nseg : 1
   
   ## MLP
   nlayers : 3

@@ -33,7 +33,7 @@ class Data_regression(Dataset):
         self.data_dir = 'data/'
         self.data_name = data_name
         self.input_col = config['DATA_PARAM']['input_col']
-        self.output_col = config['DATA_PARAM']['output_col'] 
+        self.output_col = config['DATA_PARAM']['output_col']
         self.dim = len(self.input_col) # size of input
         self.var = len(self.output_col) # size of output
         self.bool_normalize = config['DATA_PARAM']['bool_normalize']
@@ -54,6 +54,7 @@ class Data_regression(Dataset):
                 data_generation_regression(data_name, self.data_size, self.input_col)
                 data = np.loadtxt(data_file, delimiter=",", dtype=np.float64, skiprows=1)
             ndata = len(data)
+            
 
             ## shuffle
             if self.bool_shuffle:
@@ -88,7 +89,8 @@ class Data_regression(Dataset):
                 data_file = self.data_dir + args[0]
                 data = np.loadtxt(data_file, delimiter=",", dtype=np.float64, skiprows=1)
                 ndata = len(data)
- 
+                self.data = data # save this for video plotting for turbulence flow
+
                 ## shuffle
                 if self.bool_shuffle:
                     indices = np.arange(ndata)
@@ -119,10 +121,18 @@ class Data_regression(Dataset):
 
 
             elif len(args) == 2: # train and test data are given
-                data_train_file = self.data_dir + args[0]
+                if "mnt" in args[0]: # if the data is stored in /mnt folder
+                    data_train_file = args[0]
+                else:
+                    data_train_file = self.data_dir + args[0]
+                
                 data_train = np.loadtxt(data_train_file, delimiter=",", dtype=np.float64, skiprows=1)
 
-                data_test_file = self.data_dir + args[1]
+                if "mnt" in args[0]: # if the data is stored in /mnt folder
+                    data_test_file = args[1]
+                else: 
+                    data_test_file = self.data_dir + args[1]
+                    
                 data_val = np.loadtxt(data_test_file, delimiter=",", dtype=np.float64, skiprows=1)
                 data_test = np.loadtxt(data_test_file, delimiter=",", dtype=np.float64, skiprows=1)
                 
@@ -130,13 +140,25 @@ class Data_regression(Dataset):
                 ndata = len(data)
 
             elif len(args) == 3: # train, val, and test data are given
-                data_train_file = self.data_dir + args[0]
+                if "mnt" in args[0]: # if the data is stored in /mnt folder
+                    data_train_file = args[0]
+                else:
+                    data_train_file = self.data_dir + args[0]
+                    
                 data_train = np.loadtxt(data_train_file, delimiter=",", dtype=np.float64, skiprows=1)
 
-                data_val_file = self.data_dir + args[1]
+                if "mnt" in args[0]: # if the data is stored in /mnt folder
+                    data_val_file = args[1]
+                else:
+                    data_val_file = self.data_dir + args[1]
+                    
                 data_val = np.loadtxt(data_val_file, delimiter=",", dtype=np.float64, skiprows=1)
                 
-                data_test_file = self.data_dir + args[2]
+                if "mnt" in args[0]: # if the data is stored in /mnt folder
+                    data_test_file = args[2]
+                else:
+                    data_test_file = self.data_dir + args[2]
+                    
                 data_test = np.loadtxt(data_test_file, delimiter=",", dtype=np.float64, skiprows=1)
                 
                 data = np.concatenate((data_train, data_val, data_test), axis=0)
@@ -201,8 +223,8 @@ class Data_regression(Dataset):
         ################# Data loading end ################
 
         ## divide into input and output data
-        self.x_data_org = data[:, self.input_col]
-        self.u_data_org = data[:, self.output_col]
+        x_data_org = data[:, self.input_col]
+        u_data_org = data[:, self.output_col]
         x_data_train_org = data_train[:, self.input_col]
         u_data_train_org = data_train[:, self.output_col]
         x_data_val_org = data_val[:, self.input_col]
@@ -211,8 +233,11 @@ class Data_regression(Dataset):
         u_data_test_org = data_test[:, self.output_col]
 
         ## normalize data
-        self.x_data_minmax = {"min" : self.x_data_org.min(axis=0), "max" : self.x_data_org.max(axis=0)}
-        self.u_data_minmax = {"min" : self.u_data_org.min(axis=0), "max" : self.u_data_org.max(axis=0)}
+        self.x_data_minmax = {"min" : x_data_org.min(axis=0), "max" : x_data_org.max(axis=0)}
+        self.u_data_minmax = {"min" : u_data_org.min(axis=0), "max" : u_data_org.max(axis=0)} # normalize w.r.t. entire data
+        # self.x_data_minmax = {"min" : x_data_train_org.min(axis=0), "max" : x_data_train_org.max(axis=0)}
+        # self.u_data_minmax = {"min" : u_data_train_org.min(axis=0), "max" : u_data_train_org.max(axis=0)} # normalize w.r.t. train data
+
         if self.bool_normalize:    
             self.x_data_train = (x_data_train_org - self.x_data_minmax["min"]) / (self.x_data_minmax["max"] - self.x_data_minmax["min"])
             self.u_data_train = (u_data_train_org - self.u_data_minmax["min"]) / (self.u_data_minmax["max"] - self.u_data_minmax["min"])
@@ -241,8 +266,23 @@ class Data_regression(Dataset):
         print(f'loaded {ndata} datapoints from {data_name} dataset')
         
     def __len__(self):
-        return len(self.x_data_org)
+        return len(self.x_data_train)+len(self.x_data_val)+len(self.x_data_test)
 
+    def normalize(self, x_data=None, u_data=None):
+        """ Denormalize both x_data and u_data
+        x_data: (ndata, I)
+        u_data: (ndata, L)
+        """
+        data_norm = []
+        if x_data is not None:
+            x_data_norm = (x_data - self.x_data_minmax["min"])/ (self.x_data_minmax["max"] - self.x_data_minmax["min"])
+            data_norm.append(x_data_norm)
+        if u_data is not None:
+            u_data_norm = (u_data - self.u_data_minmax["min"])/ (self.u_data_minmax["max"] - self.u_data_minmax["min"])
+            data_norm.append(u_data_norm)
+        return data_norm
+    
+    
     def denormalize(self, x_data=None, u_data=None):
         """ Denormalize both x_data and u_data
         x_data: (ndata, I)
@@ -290,6 +330,13 @@ def data_generation_regression(data_name: str, data_size: int, input_col: Sequen
     elif data_name == "3D_1D_exp":
         u_data_org = v_fun_3D_1D_exp(x_data_org)
         cols = ['x1','x2','x3','u']
+    
+    elif data_name == "4D_1D_heat_transfer":
+        x_min = jnp.array([-2, -2, 0,  1], dtype=jnp.double)
+        x_max = jnp.array([2, 2, 0.04, 4], dtype=jnp.double)
+        x_data_org = x_data_org * (x_max-x_min) + x_min
+        u_data_org = v_fun_4D_1D_heat_transfer(x_data_org)
+        cols = ['x1','x2','t','k','u']
 
     elif data_name == "8D_1D_physics": # borehole function; use JAX to create data
 
@@ -378,7 +425,7 @@ v_fun_1D_2D_sine_exp = jax.vmap(fun_1D_2D_sine_exp, in_axes = (0)) # output: (nd
 vv_fun_1D_2D_sine_exp = jax.vmap(v_fun_1D_2D_sine_exp, in_axes = (0)) # output: (ndata, ndata)
 
 def fun_2D_1D_sine(x_data_org):
-    u_data_org =  jnp.sin(x_data_org[0]) * jnp.cos(x_data_org[1])
+    u_data_org =  jnp.sin(x_data_org[0] - 2*x_data_org[1]) * jnp.cos(3*x_data_org[0] + x_data_org[1])
     return u_data_org.reshape(1,)
 v_fun_2D_1D_sine = jax.vmap(fun_2D_1D_sine, in_axes = (0)) # output: (ndata, )
 vv_fun_2D_1D_sine = jax.vmap(v_fun_2D_1D_sine, in_axes = (0)) # output: (ndata, ndata)
@@ -394,6 +441,12 @@ def fun_3D_1D_exp(x_data_org):
     return u_data_org.reshape(1,)
 v_fun_3D_1D_exp = jax.vmap(fun_3D_1D_exp, in_axes = (0)) # output: (ndata, )
 vv_fun_3D_1D_exp = jax.vmap(v_fun_3D_1D_exp, in_axes = (0)) # output: (ndata, ndata)
+
+def fun_4D_1D_heat_transfer(x_data_org):
+    u_data_org =  (1 - jnp.exp(-15*x_data_org[3]*x_data_org[2])) * jnp.exp(-25*x_data_org[0]**2-25*x_data_org[1]**2)
+    return u_data_org.reshape(1,)
+v_fun_4D_1D_heat_transfer = jax.vmap(fun_4D_1D_heat_transfer, in_axes = (0)) # output: (ndata, )
+vv_fun_4D_1D_heat_transfer = jax.vmap(v_fun_4D_1D_heat_transfer, in_axes = (0)) # output: (ndata, ndata)
 
 
 def fun_8D_1D_physics(p): 

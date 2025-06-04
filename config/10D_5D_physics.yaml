@@ -2,7 +2,7 @@ MODEL_PARAM:
 
   ## INN linear
   nmode : 3
-  nelem : 10
+  nseg : 10
 
   ## INN nonlinear
   s_patch : 2

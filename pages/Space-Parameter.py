@@ -16,7 +16,7 @@ config.update("jax_enable_x64", True)
 from pyinn import dataset_classification, dataset_regression, model, train, plot # for debugging
 
 
-gpu_idx = 0 # set which GPU to run on Athena
+gpu_idx = 7 # set which GPU to run on Athena
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # GPU indexing
 os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_idx)  # GPU indexing
 
@@ -222,10 +222,10 @@ if st.session_state.complete_config_input == True and st.session_state.complete_
     # Additional user inputs
     if model_type == "INN":
         st.session_state.interp_method = "nonlinear" # use nonlinear INN as default
-        nelem = st.number_input("Number of elements per dimension:", min_value=1, step=1, help="Specify the number of elements per dimension.", value=None)
+        nseg = st.number_input("Number of segments per dimension:", min_value=1, step=1, help="Specify the number of segments per dimension.", value=None)
         nmode = st.number_input("Number of modes of CP decomposition:", min_value=1, step=1, help="Specify the number of modes of CP decomposition.", value=None)
-        while nelem is None or nmode is None :
-            # st.warning("Please enter nelem and nmode to proceed...")
+        while nseg is None or nmode is None :
+            # st.warning("Please enter nseg and nmode to proceed...")
             time.sleep(1)
             # st.rerun()
     elif model_type == "MLP":
@@ -237,7 +237,7 @@ if st.session_state.complete_config_input == True and st.session_state.complete_
             time.sleep(1)
             # st.rerun()    
 
-    config = {"MODEL_PARAM": {"nelem": 20, 
+    config = {"MODEL_PARAM": {"nseg": 20, 
                                 "nmode": 100, 
                                 "s_patch": 4, 
                                 "alpha_dil": 20, 
@@ -260,7 +260,7 @@ if st.session_state.complete_config_input == True and st.session_state.complete_
                             "validation_period": 1,
                             "bool_denormalize": False,
                             "error_type": "rmse",
-                            "patience": 3},
+                            "patience": 5},
             "PLOT": {"bool_plot": False, 
                         "plot_in_axis": [3,4], 
                         "plot_out_axis": [0]}}
@@ -271,8 +271,8 @@ if st.session_state.complete_config_input == True and st.session_state.complete_
     config["interp_method"] = st.session_state.interp_method
     config["data_name"] = data_name
     config["TD_type"] = "CP"
-    if (st.session_state.interp_method == "INN" or "nonlinear") and 'nelem' in globals():
-        config["MODEL_PARAM"]["nelem"] = nelem
+    if (st.session_state.interp_method == "INN" or "nonlinear") and 'nseg' in globals():
+        config["MODEL_PARAM"]["nseg"] = nseg
         config["MODEL_PARAM"]["nmode"] = nmode
     elif st.session_state.interp_method == "MLP" and 'nlayers' in globals():
         config["MODEL_PARAM"]["nlayers"] = nlayers
@@ -412,10 +412,16 @@ if st.session_state.complete_config_plot:
             mesh.point_data[f'u_{i+1}'] = U_pred_org[:, i]
 
         plotter = pv.Plotter()
-        plotter.add_mesh(mesh, scalars=f"u_{output_idx}", show_edges=True, color="lightblue", cmap="viridis", 
-                        show_scalar_bar=True, clim= (np.min(U_pred_org[:,output_idx-1]), 
-                                                        np.max(U_pred_org[:,output_idx-1])), 
-                        scalar_bar_args={"title": f"{st.session_state.output_label}"})
+        plotter.add_mesh(
+            mesh, 
+            scalars=f"u_{output_idx}", 
+            show_edges=False,  # Remove element boundaries
+            color="lightblue", 
+            cmap="viridis", 
+            show_scalar_bar=True, 
+            clim= (np.min(U_pred_org[:,output_idx-1]), 
+            np.max(U_pred_org[:,output_idx-1])), 
+            scalar_bar_args={"title": f"{st.session_state.output_label}"})
         # plotter.add_axes()         
         plotter.view_isometric()            
         # Display the mesh using stpyvista Plotter
@@ -440,10 +446,23 @@ if st.session_state.complete_config_plot:
             mesh_ref.point_data[f'u_{i+1}'] = U_ref_org[:, i]
 
         plotter_ref = pv.Plotter()
-        plotter_ref.add_mesh(mesh_ref, scalars=f"u_{output_idx}", show_edges=True, color="lightblue", cmap="viridis", 
-                        show_scalar_bar=True, clim= (np.min(U_pred_org[:,output_idx-1]), 
-                                                        np.max(U_pred_org[:,output_idx-1])), 
-                            scalar_bar_args={"title": f"{st.session_state.output_label}"})
+        plotter_ref.add_mesh(
+            mesh_ref,
+            scalars=f"u_{output_idx}",
+            show_edges=False,  # Remove element boundaries
+            color="lightblue",
+            cmap="viridis",
+            show_scalar_bar=True,
+            clim=(np.min(U_pred_org[:, output_idx - 1]), np.max(U_pred_org[:, output_idx - 1])),
+            scalar_bar_args={
+            "title": f"{st.session_state.output_label}",
+            "width": 0.03  # Reduce scalar bar width (default is 0.05)
+            }
+        )
+        # plotter_ref.add_mesh(mesh_ref, scalars=f"u_{output_idx}", show_edges=True, color="lightblue", cmap="viridis", 
+        #                 show_scalar_bar=True, clim= (np.min(U_pred_org[:,output_idx-1]), 
+        #                                                 np.max(U_pred_org[:,output_idx-1])), 
+        #                     scalar_bar_args={"title": f"{st.session_state.output_label}"})
         # plotter.add_axes()         
         plotter_ref.view_isometric()            
         # Display the mesh using stpyvista Plotter

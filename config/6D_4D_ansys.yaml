@@ -1,11 +1,11 @@
 MODEL_PARAM: 
 
   ## INN linear
-  nmode : 400 # iterate
-  nelem : 50 
+  nmode : 60 
+  nseg : 40 
 
   ## INN nonlinear
-  s_patch : 4
+  s_patch : 2
   alpha_dil: 20
   p_order: 1
   radial_basis : "cubicSpline" # Activataion functions
@@ -25,12 +25,13 @@ MODEL_PARAM:
 
 DATA_PARAM:
   input_col : [1,2,3,4,5,6]
-  output_col : [10] # [7,8,9,10]
+  output_col : [7,8,9,10] # [7,8,9,10]
   
   bool_data_generation : False # data is already stored and splitted
   # data_filenames: ['6D_4D_ansys_train.csv', '6D_4D_ansys_test.csv']
+  data_filenames: ['6D_4D_ansys_test.csv']
   # data_filenames: ['6D_4D_ansys_1364742.csv'] # original data
-  data_filenames: ['6D_4D_ansys_497.csv'] # original data of the new 497 dataset
+  # data_filenames: ['6D_4D_ansys_497.csv'] # original data of the new 497 dataset
   split_ratio: [0.7,0.15,0.15] # [0.7,0.15,0.15]
 
   bool_normalize: True # whether we normalize the input data or not
