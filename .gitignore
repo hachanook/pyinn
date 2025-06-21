@@ -10,3 +10,4 @@ tutorials/plots/
 pip
 requirements.txt
 setup.py
+docker/

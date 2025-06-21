@@ -80,6 +80,35 @@ pip install pyinn
 python ./pyinn/main.py
 ```
 
+## Docker Usage
+
+For easy deployment and reproducible environments, we provide Docker support:
+
+### Quick Start with Docker
+
+```bash
+# Use pre-built image from Docker Hub
+docker run chanwookpark2024/pyinn:latest
+
+# Or build locally
+docker build -f docker/Dockerfile -t pyinn .
+docker run pyinn
+```
+
+### Run Jupyter Tutorials with Docker
+
+```bash
+# Linux/macOS
+./docker/run_jupyter.sh
+
+# Windows
+docker\run_jupyter.bat
+
+# Then open http://localhost:8888 in your browser
+```
+
+See the [`docker/`](docker/) directory for complete Docker setup instructions.
+
 ## License
 This repository is licensed under [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/) — non-commercial use only.  
 This code is protected by U.S. Patent Pending.
