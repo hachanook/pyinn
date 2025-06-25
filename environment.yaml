@@ -12,6 +12,11 @@ dependencies:
   - pandas>=1.5
   - pytorch>=2.0
   - torchvision>=0.15
+  - jupyter
+  - jupyterlab
+  - notebook
+  - ipykernel
+  - ipywidgets
   - pip
   - pip:
     - jax[cpu]>=0.4.0
