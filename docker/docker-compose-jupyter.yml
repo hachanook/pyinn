@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  pyinn-jupyter:
+    build: 
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: pyinn-jupyter
+    volumes:
+      - ../tutorials:/app/tutorials
+      - ../data:/app/data
+      - ../plots:/app/plots
+      - ../config:/app/config
+    ports:
+      - "8888:8888"
+    working_dir: /app
+    command: conda run -n pyinn-env jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root --notebook-dir=/app
+    restart: unless-stopped 

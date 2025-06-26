@@ -170,19 +170,19 @@ if __name__ == "__main__":
     ############################### Configuration ############################
 
     # GPU settings
-    gpu_idx = 5
+    gpu_idx = 0
     os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # GPU indexing
     os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_idx)  # GPU indexing
 
     # PDE settings
-    PDE_type = "1D_static_heat_conduction" # PDE type
-    # PDE_type = "4D_SPT_heat_conduction" # PDE type
+    # PDE_type = "1D_static_heat_conduction" # PDE type
+    PDE_type = "4D_SPT_heat_conduction" # PDE type
 
     
     # Model settings
 
-    # model_type = "MLP"
-    model_type = "INN_nonlinear"
+    model_type = "MLP"
+    # model_type = "INN_nonlinear"
 
     config_MLP = {
         'nlayers' : 2,
@@ -206,8 +206,8 @@ if __name__ == "__main__":
     # Training settings
     learning_rate = 1e-4 # 1e-2 works well for MLP
     batch_size = 100 # 1000 works well for MLP
-    epochs = 200_000 # 10_000 works well for MLP
-    n_cp_PDE = 100 
+    epochs = 20_000 # 10_000 works well for MLP
+    n_cp_PDE = 1_000 
 
 ##########################################################################
     
@@ -332,13 +332,16 @@ if __name__ == "__main__":
         # input dimension
         dim = 4 # number of input dimensions
         var = 1 # number of output variables
-        x_s_idx = [0,1]
-        x_p_idx = [2]
-        x_t_idx = [3]
-        x_minmax = [[-2.0, 2.0],
-                    [-2.0, 2.0],
-                    [0, 0.04],
-                    [1, 4]] # list of minmax for each dimension
+    
+        # x_minmax = [[-2.0, 2.0], # x
+        #             [-2.0, 2.0], # y
+        #             [1, 4], # k
+        #             [0, 0.04]] # t
+        x_minmax = [[-2.0, 2.0], # x
+                    [-2.0, 2.0], # y
+                    [1, 4], # k
+                    [0, 1]] # t
+        # list of minmax for each dimension
 
         # Define collocation points
         ## PDE collocation points
@@ -378,8 +381,13 @@ if __name__ == "__main__":
             g_u: (var, dim)
             gg_u: (var, dim, dim)
             f: (var,) - source term
+            x: x[0], 
+            y: x[1], 
+            k: x[2], 
+            t: x[3]
             --- output ---
             PDE residual: scalar
+            
             """
             k = x[2]
             u_t = g_u[0, 3]
@@ -399,9 +407,11 @@ if __name__ == "__main__":
             k = xs[2]
             t = xs[3]
 
-            f = k*(15 * jnp.exp(-15*k*t)
-                   - (1 - jnp.exp(-15*k*t))*(2500*(x**2+y**2)-100)
-                    ) * jnp.exp(-25*(x**2+y**2))
+            # f = k*(15 * jnp.exp(-15*k*t)
+            #        - (1 - jnp.exp(-15*k*t))*(2500*(x**2+y**2)-100)
+            #         ) * jnp.exp(-25*(x**2+y**2))
+            f = 15*k*jnp.exp(-15*k*t)*jnp.exp(-25*(x**2+y**2)) + 50*k**2*(2-50*x**2-50*y**2)*jnp.exp(-25*(x**2+y**2))
+
             return jnp.array([f], dtype=jnp.float64) # (var,)
         
         def IC_func(u, g_u, gg_u):
@@ -441,7 +451,8 @@ if __name__ == "__main__":
             k = xs[2]
             t = xs[3]
 
-            u = (1-jnp.exp(-15*k*t))*jnp.exp(-25*(x**2+y**2))
+            # u = (1-jnp.exp(-15*k*t))*jnp.exp(-25*(x**2+y**2))
+            u = k * (1-jnp.exp(-15*t))*jnp.exp(-25*(x**2+y**2))
 
             return jnp.array([u], dtype=jnp.float64) # (var,)
         
@@ -608,6 +619,7 @@ if __name__ == "__main__":
         XY = jnp.dstack((X, Y)) # (101,101,2)
         k=2.0
         t=0.04
+        t=1
         XYkt = jnp.concatenate((XY, jnp.full((101,101,1), k), jnp.full((101,101,1), t)), axis=2) # (101,101,dim=4)
         U_pred = model.vv_forward(pinn.params, XYkt) # (101,101,L)
 
@@ -619,12 +631,11 @@ if __name__ == "__main__":
         ax2 = fig.add_subplot(gs[1])
         plt.subplots_adjust(wspace=0.4)  # Increase the width space between subplots
 
-        color_map="viridis"
+        color_map = "viridis"
+        
         surf1 = ax1.pcolormesh(X, Y, U_pred[:,:,0], cmap=color_map, vmin=umin, vmax=umax)
         ax1.set_xlabel(f"x", fontsize=16)
         ax1.set_ylabel(f"y", fontsize=16)
-        ax1.set_xticks([-2, -1, 0, 1, 2])
-        ax1.set_yticks([-2, -1, 0, 1, 2])
         ax1.tick_params(axis='both', labelsize=12)
         cbar1 = fig.colorbar(surf1, shrink=0.8, aspect=20, pad=0.02)
         cbar1.set_label(f'u', fontsize=14)
@@ -634,13 +645,21 @@ if __name__ == "__main__":
         surf2 = ax2.pcolormesh(X, Y, U_exact[:,:,0], cmap=color_map, vmin=umin, vmax=umax)
         ax2.set_xlabel(f"x", fontsize=16)
         ax2.set_ylabel(f"y", fontsize=16)
-        ax1.set_xticks([-2, -1, 0, 1, 2])
-        ax1.set_yticks([-2, -1, 0, 1, 2])
         ax2.tick_params(axis='both', labelsize=12)
         cbar2 = fig.colorbar(surf2, shrink=0.8, aspect=20, pad=0.02)
         cbar2.set_label(f'u', fontsize=14)
         cbar2.ax.tick_params(labelsize=12)
         ax2.set_title('Original function', fontsize=16)
+
+        # Set shared major ticks for both axes
+        major_ticks = [-2, -1, 0, 1, 2]
+        ax1.set_xticks(major_ticks)
+        ax1.set_yticks(major_ticks)
+        ax2.set_xticks(major_ticks)
+        ax2.set_yticks(major_ticks)
+        # Remove minor ticks
+        ax1.minorticks_off()
+        ax2.minorticks_off()
 
         parent_dir = os.path.abspath(os.getcwd())
         path_figure = os.path.join(parent_dir, 'plots')
