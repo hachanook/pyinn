@@ -30,7 +30,7 @@ def main():
     
     # Set CUDA device to 0 if available
     if torch.cuda.is_available():
-        torch.cuda.set_device(0)
+        torch.cuda.set_device(4)
         print(f"CUDA device set to: {torch.cuda.get_device_name(0)}")
     
     print("=== GNN for Finite Element Analysis ===")
@@ -267,8 +267,8 @@ def demo_single_prediction():
         targ = tensor_to_numpy(mesh_data.y[i])
         
         # Print normalized predictions and targets
-        print(f"{i:4d} | {pred[0]:8.6f} {pred[1]:8.6f} {pred[2]:8.6f} {pred[3]:8.1f} | "
-              f"{targ[0]:8.6f} {targ[1]:8.6f} {targ[2]:8.6f} {targ[3]:8.1f}")
+        print(f"{i:4d} | {pred[0]:8.4f} {pred[1]:8.4f} {pred[2]:8.4f} {pred[3]:8.4e} | "
+              f"{targ[0]:8.4f} {targ[1]:8.4f} {targ[2]:8.4f} {targ[3]:8.4e}")
 
     print("\n" + "-" * 25 + "Denormalized" + "-" * 25)
     for i in range(min(5, mesh_data.x.shape[0])):
@@ -280,8 +280,8 @@ def demo_single_prediction():
         denorm_targ = dataset.denormalize_predictions(targ.reshape(1, -1)).flatten()
         
         # Print denormalized predictions and targets
-        print(f"{i:4d} | {denorm_pred[0]:8.6f} {denorm_pred[1]:8.6f} {denorm_pred[2]:8.6f} {denorm_pred[3]:8.1f} | "
-              f"{denorm_targ[0]:8.6f} {denorm_targ[1]:8.6f} {denorm_targ[2]:8.6f} {denorm_targ[3]:8.1f}")
+        print(f"{i:4d} | {denorm_pred[0]:8.4e} {denorm_pred[1]:8.4e} {denorm_pred[2]:8.4e} {denorm_pred[3]:8.4e} | "
+              f"{denorm_targ[0]:8.4e} {denorm_targ[1]:8.4e} {denorm_targ[2]:8.4e} {denorm_targ[3]:8.4e}")
 
 
 if __name__ == "__main__":

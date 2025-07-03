@@ -212,8 +212,8 @@ class GNNTrainer:
     def plot_training_history(self):
         """Plot training and validation loss history"""
         plt.figure(figsize=(6, 5))  
-        plt.plot(self.train_losses, '-', label='Training Loss', color='k', linewidth=2)
-        plt.plot(self.val_losses, '--', label='Validation Loss', color='g', linewidth=2)
+        plt.plot(self.train_losses, '-', label='Training Loss', color='k', linewidth=3)
+        plt.plot(self.val_losses, '--', label='Validation Loss', color='g', linewidth=3)
         plt.xlabel('Epoch', fontsize=16)
         plt.ylabel('Loss', fontsize=16)
         

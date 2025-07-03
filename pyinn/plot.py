@@ -260,7 +260,8 @@ def plot_loss_landscape(model, cls_data):
     ax1.tick_params(axis='both', labelsize=12)
     nepoch = model.errors_epoch[-1]
     ax1.set_xlim(0, nepoch)
-    ax1.set_yscale('log')
+    ax1.set_yscale('log') 
+    ax1.grid(True, alpha=0.3)
     min_loss = min(np.min(model.errors_train), np.min(model.errors_val))
     if min_loss < 1e-4:
         ax1.set_ylim(min_loss * 0.5, 1e0)
