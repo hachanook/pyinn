@@ -1,14 +1,14 @@
 MODEL_PARAM: 
 
   ## INN linear
-  nmode : 400 # 50, 100, 200, 300, 400
-  nseg : 20 # 
+  nmode : [10,10,10,10] # 50, 100, 200, 300, 400
+  nseg : 40 # 
   # nseg : [100,50,40,100,50,40] # for variable discretization
 
   ## INN nonlinear
-  s_patch : 4
+  s_patch : 2
   alpha_dil: 20
-  p_order: 1
+  p_order: 2
   radial_basis : "cubicSpline" # Activataion functions
   # radial_basis : 'gaussian1'
   INNactivation : 'polynomial' 
@@ -25,13 +25,14 @@ MODEL_PARAM:
   activation : "sigmoid"
 
 DATA_PARAM:
-  input_col : [1,2,3,4,5,6]
+  input_col : [1,2,3] # [1,2,3,4,5,6]
   output_col : [7,8,9,10]
   
   bool_data_generation : False # data is already stored and splitted
   # data_filenames: ['6D_4D_ansys_train.csv', '6D_4D_ansys_test.csv']
-  data_filenames: ['6D_4D_ansys_1364742.csv'] # original data
-  split_ratio: [0.7,0.15,0.15] # [0.7,0.15,0.15]
+  # data_filenames: ['6D_4D_ansys_1364742.csv'] # original data
+  data_filenames: ['6D_4D_ansys_29285.csv'] # original data
+  split_ratio: [1.0] # [0.7,0.15,0.15]
 
   bool_normalize: True # whether we normalize the input data or not
   bool_shuffle : True # whether we shuffle the data

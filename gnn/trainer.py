@@ -211,15 +211,17 @@ class GNNTrainer:
     
     def plot_training_history(self):
         """Plot training and validation loss history"""
-        plt.figure(figsize=(10, 6))
-        plt.plot(self.train_losses, label='Training Loss', color='blue')
-        plt.plot(self.val_losses, label='Validation Loss', color='red')
-        plt.xlabel('Epoch')
-        plt.ylabel('Loss')
-        plt.title('Training History')
-        plt.legend()
-        plt.grid(True)
+        plt.figure(figsize=(6, 5))
+        plt.plot(self.train_losses, label='Training Loss', color='black', linewidth=2)
+        plt.plot(self.val_losses, label='Validation Loss', color='green', linewidth=2)
+        plt.xlabel('Epoch', fontsize=16)
+        plt.ylabel('Loss', fontsize=16)
+        # plt.title('Training History', fontsize=16, fontweight='bold')
+        plt.legend(fontsize=14)
+        plt.grid(True, alpha=0.3)
         plt.yscale('log')
+        plt.xticks(fontsize=12)
+        plt.yticks(fontsize=12)
         
         # Save plot
         plot_path = os.path.join(self.output_dir, 'training_history.png')

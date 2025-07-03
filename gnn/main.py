@@ -18,6 +18,7 @@ from model import create_mpnn_model
 from trainer import create_trainer
 from utils import move_data_to_model_device, tensor_to_numpy
 import os
+import time
 
 
 def main():
@@ -88,7 +89,10 @@ def main():
     
     # Train the model
     print("\n4. Starting training...")
+    start_time = time.time()
     trainer.train(config['num_epochs'])
+    training_time = time.time() - start_time
+    print(f"\nTotal training time: {training_time:.2f} seconds ({training_time/60:.2f} minutes)")
     
     # Evaluate the model
     print("\n5. Evaluating model...")
@@ -111,20 +115,50 @@ def main():
     print(f"\n=== Denormalized Results ===")
     print(f"Original scale RMSE: {np.sqrt(np.mean((denorm_predictions - denorm_targets)**2)):.6f}")
     
+    # Measure inference time
+    print("\n6. Measuring inference time...")
+    inference_time = measure_inference_time(model, mesh_data)
+    print(f"Average inference time per forward pass: {inference_time:.6f} seconds")
+    
     # Visualize results
-    print("\n6. Creating visualizations...")
+    print("\n7. Creating visualizations...")
     visualize_results(predictions, targets, config['output_dir'])
     
     print("\n=== Training Complete ===")
     print(f"Results saved to: {config['output_dir']}")
+    print(f"Training time: {training_time:.2f} seconds")
+    print(f"Inference time per forward pass: {inference_time:.6f} seconds")
+
+
+def measure_inference_time(model, data, num_runs=100):
+    """Measure average inference time for a single forward pass"""
+    model.eval()
+    
+    # Move data to the same device as the model
+    data = move_data_to_model_device(data, model)
+    
+    # Warm up
+    with torch.no_grad():
+        for _ in range(10):
+            _ = model(data)
+    
+    # Measure inference time
+    start_time = time.time()
+    with torch.no_grad():
+        for _ in range(num_runs):
+            _ = model(data)
+    end_time = time.time()
+    
+    avg_time = (end_time - start_time) / num_runs
+    return avg_time
 
 
 def visualize_results(predictions, targets, output_dir):
     """Create visualization plots for the results"""
     
     # Create subplots for each output
-    fig, axes = plt.subplots(2, 2, figsize=(12, 10))
-    fig.suptitle('GNN Predictions vs Targets', fontsize=16)
+    fig, axes = plt.subplots(2, 2, figsize=(14, 12))
+    fig.suptitle('GNN Predictions vs Targets', fontsize=18, fontweight='bold')
     
     output_names = ['u', 'v', 'w', 'von_mises']
     
@@ -133,28 +167,31 @@ def visualize_results(predictions, targets, output_dir):
         targ = targets[:, i].numpy()
         
         # Scatter plot
-        ax.scatter(targ, pred, alpha=0.6, s=10)
+        ax.scatter(targ, pred, alpha=0.6, s=15)
         
         # Perfect prediction line
         min_val = min(pred.min(), targ.min())
         max_val = max(pred.max(), targ.max())
-        ax.plot([min_val, max_val], [min_val, max_val], 'r--', alpha=0.8)
+        ax.plot([min_val, max_val], [min_val, max_val], 'r--', alpha=0.8, linewidth=2)
         
         # Calculate R² score
         correlation = np.corrcoef(targ, pred)[0, 1]
-        ax.set_xlabel(f'Target {name}')
-        ax.set_ylabel(f'Predicted {name}')
-        ax.set_title(f'{name.upper()} (R² = {correlation:.3f})')
+        ax.set_xlabel(f'Target {name}', fontsize=14)
+        ax.set_ylabel(f'Predicted {name}', fontsize=14)
+        ax.set_title(f'{name.upper()} (R² = {correlation:.3f})', fontsize=16, fontweight='bold')
         ax.grid(True, alpha=0.3)
+        ax.tick_params(axis='both', which='major', labelsize=12)
     
     plt.tight_layout()
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    output_dir = os.path.join(script_dir, output_dir)
     plt.savefig(os.path.join(output_dir, 'predictions_vs_targets.png'), 
                 dpi=300, bbox_inches='tight')
     plt.close()
     
     # Create error distribution plots
-    fig, axes = plt.subplots(2, 2, figsize=(12, 10))
-    fig.suptitle('Prediction Error Distributions', fontsize=16)
+    fig, axes = plt.subplots(2, 2, figsize=(14, 12))
+    fig.suptitle('Prediction Error Distributions', fontsize=18, fontweight='bold')
     
     for i, (ax, name) in enumerate(zip(axes.flat, output_names)):
         pred = predictions[:, i].numpy()
@@ -162,11 +199,12 @@ def visualize_results(predictions, targets, output_dir):
         errors = pred - targ
         
         ax.hist(errors, bins=50, alpha=0.7, edgecolor='black')
-        ax.axvline(0, color='red', linestyle='--', alpha=0.8)
-        ax.set_xlabel(f'Error ({name})')
-        ax.set_ylabel('Frequency')
-        ax.set_title(f'{name.upper()} Error Distribution')
+        ax.axvline(0, color='red', linestyle='--', alpha=0.8, linewidth=2)
+        ax.set_xlabel(f'Error ({name})', fontsize=14)
+        ax.set_ylabel('Frequency', fontsize=14)
+        ax.set_title(f'{name.upper()} Error Distribution', fontsize=16, fontweight='bold')
         ax.grid(True, alpha=0.3)
+        ax.tick_params(axis='both', which='major', labelsize=12)
     
     plt.tight_layout()
     plt.savefig(os.path.join(output_dir, 'error_distributions.png'), 

@@ -1,0 +1,17 @@
+{
+  "batch_size": 1,
+  "learning_rate": 0.001,
+  "weight_decay": 1e-05,
+  "output_dir": "gnn_outputs",
+  "save_interval": 10,
+  "node_input_dim": 3,
+  "edge_input_dim": 4,
+  "hidden_dim": 64,
+  "latent_dim": 32,
+  "num_message_passing": 3,
+  "output_dim": 4,
+  "num_epochs": 100,
+  "nodes_csv_path": "./gnn/data/nodes.csv",
+  "elements_csv_path": "./gnn/data/mesh_data/element_connectivity.csv",
+  "normalization": "minmax"
+}

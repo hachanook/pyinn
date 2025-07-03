@@ -16,8 +16,8 @@ from typing import (Any, Callable, Iterable, List, Optional, Sequence, Tuple,
 from jax.scipy.interpolate import RegularGridInterpolator
 import sys
 
-from .Interpolator import LinearInterpolator, NonlinearInterpolator ## when using pyinn package
-# from Interpolator import LinearInterpolator, NonlinearInterpolator ## when debugging
+# from .Interpolator import LinearInterpolator, NonlinearInterpolator ## when using pyinn package
+from Interpolator import LinearInterpolator, NonlinearInterpolator ## when debugging
 # from pyinn.Interpolator import LinearInterpolator, NonlinearInterpolator ## when debugging on streamlit
 
 class INN_linear:

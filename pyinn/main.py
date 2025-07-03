@@ -4,8 +4,8 @@ INN trainer
 Copyright (C) 2024  Chanwook Park
  Northwestern University, Evanston, Illinois, US, chanwookpark2024@u.northwestern.edu
 """
-from pyinn import dataset_classification, dataset_regression, model, train, plot # with pyinn library
-# import dataset_classification, dataset_regression, model, train, plot # for debugging
+# from pyinn import dataset_classification, dataset_regression, model, train, plot # with pyinn library
+import dataset_classification, dataset_regression, model, train, plot # for debugging
 from jax import config
 import jax.numpy as jnp
 config.update("jax_enable_x64", True)

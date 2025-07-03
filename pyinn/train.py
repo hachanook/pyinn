@@ -19,8 +19,8 @@ from sklearn.metrics import r2_score, classification_report
 import importlib.util
 import sys
 
-from .model import * ## when using pyinn
-# from model import * ## when debugging
+# from .model import * ## when using pyinn
+from model import * ## when debugging
 # from pyinn.model import * ## when debugging on streamlit
 
 if importlib.util.find_spec("GPUtil") is not None: # for linux & GPU
