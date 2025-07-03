@@ -1,0 +1,45 @@
+# GNN Trainer Configuration for Finite Element Analysis
+
+# Model Architecture
+model:
+  node_input_dim: 3          # Node features: x, y, z coordinates
+  edge_input_dim: 4          # Edge features: 3D vector + length
+  hidden_dim: 64             # Hidden dimension for all MLPs
+  latent_dim: 32             # Latent space dimension
+  num_message_passing: 3     # Number of message passing operations
+  output_dim: 4              # Output: u, v, w, von Mises stress
+
+# Training Parameters
+training:
+  batch_size: 16             # Batch size for training
+  learning_rate: 0.001       # Learning rate
+  weight_decay: 1e-5         # Weight decay for regularization
+  num_epochs: 100            # Number of training epochs
+  save_interval: 10          # Save checkpoint every N epochs
+  patience: 20               # Early stopping patience
+
+# Dataset Parameters
+dataset:
+  num_samples: 500           # Number of training samples
+  num_nodes: 20              # Number of nodes per mesh
+  train_ratio: 0.8           # Train/validation split ratio
+  random_seed: 42            # Random seed for reproducibility
+
+# Output Configuration
+output:
+  output_dir: "gnn_outputs"  # Directory for saving results (relative to gnn folder)
+  save_model: true           # Save final model
+  save_plots: true           # Save training plots
+  save_checkpoints: true     # Save training checkpoints
+
+# Hardware Configuration
+hardware:
+  device: "auto"             # "auto", "cpu", or "cuda"
+  num_workers: 4             # Number of data loading workers
+
+# Advanced Options
+advanced:
+  use_amp: false             # Use automatic mixed precision
+  gradient_clipping: 1.0     # Gradient clipping value (None to disable)
+  scheduler_factor: 0.5      # Learning rate scheduler factor
+  scheduler_patience: 10     # Learning rate scheduler patience 
