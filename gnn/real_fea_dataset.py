@@ -23,8 +23,10 @@ class RealFEADataset(Dataset):
     def _load_data(self):
         """Load node and element data from CSV files"""
         print("Loading real FEA data...")
+        script_dir = os.path.dirname(os.path.abspath(__file__))
         
         # Load node data
+        self.nodes_csv_path = os.path.join(script_dir, self.nodes_csv_path)
         nodes_df = pd.read_csv(self.nodes_csv_path)
         print(f"Loaded {len(nodes_df)} nodes from {self.nodes_csv_path}")
         
@@ -35,6 +37,7 @@ class RealFEADataset(Dataset):
         self.targets = nodes_df.iloc[:, [7, 8, 9, 10]].values.astype(np.float32)
         
         # Load element connectivity
+        self.elements_csv_path = os.path.join(script_dir, self.elements_csv_path)
         elements_df = pd.read_csv(self.elements_csv_path)
         print(f"Loaded {len(elements_df)} elements from {self.elements_csv_path}")
         

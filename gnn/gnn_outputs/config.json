@@ -11,7 +11,7 @@
   "num_message_passing": 3,
   "output_dim": 4,
   "num_epochs": 100,
-  "nodes_csv_path": "./gnn/data/nodes.csv",
-  "elements_csv_path": "./gnn/data/mesh_data/element_connectivity.csv",
+  "nodes_csv_path": "data/nodes.csv",
+  "elements_csv_path": "data/element_connectivity.csv",
   "normalization": "minmax"
 }

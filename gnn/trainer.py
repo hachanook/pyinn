@@ -148,11 +148,11 @@ class GNNTrainer:
             
             # Training
             train_loss = self.train_epoch()
-            self.train_losses.append(train_loss)
+            self.train_losses.append(train_loss**0.5) # RMSE
             
             # Validation (using same model state as training for fair comparison)
             val_loss = self.validate()
-            self.val_losses.append(val_loss)
+            self.val_losses.append(val_loss**0.5) # RMSE
             
             # Learning rate scheduling
             self.scheduler.step(val_loss)
@@ -211,11 +211,28 @@ class GNNTrainer:
     
     def plot_training_history(self):
         """Plot training and validation loss history"""
-        plt.figure(figsize=(6, 5))
-        plt.plot(self.train_losses, label='Training Loss', color='black', linewidth=2)
-        plt.plot(self.val_losses, label='Validation Loss', color='green', linewidth=2)
+        plt.figure(figsize=(6, 5))  
+        plt.plot(self.train_losses, '-', label='Training Loss', color='k', linewidth=2)
+        plt.plot(self.val_losses, '--', label='Validation Loss', color='g', linewidth=2)
         plt.xlabel('Epoch', fontsize=16)
         plt.ylabel('Loss', fontsize=16)
+        
+        # Safely calculate minimum loss with additional checks
+        try:
+            train_min = min(self.train_losses) if self.train_losses else 1e-4
+            val_min = min(self.val_losses) if self.val_losses else 1e-4
+            min_loss = min(train_min, val_min)
+            
+            # Ensure min_loss is a valid number
+            if not np.isfinite(min_loss) or min_loss <= 0:
+                min_loss = 1e-4
+        except (ValueError, TypeError):
+            min_loss = 1e-4
+        
+        if min_loss < 1e-4:
+            plt.ylim(min_loss * 0.5, 1e0)
+        else:
+            plt.ylim(1e-4, 1e0)
         # plt.title('Training History', fontsize=16, fontweight='bold')
         plt.legend(fontsize=14)
         plt.grid(True, alpha=0.3)

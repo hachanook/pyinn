@@ -114,6 +114,11 @@ class Data_regression(Dataset):
                     data_train = data[:train_end]
                     data_val = data[train_end:val_end]
                     data_test = data[val_end:]
+                
+                elif len(split_ratio) == 1 and split_ratio[0] == 1.0: # train, val, test, and entire data are given
+                    data_train = data
+                    data_val = data
+                    data_test = data
 
                 else:
                     print(f"Error took place while loading data. Check split ratio")

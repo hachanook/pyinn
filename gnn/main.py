@@ -52,8 +52,8 @@ def main():
         'num_epochs': 100,        # Number of training epochs
         
         # Dataset parameters
-        'nodes_csv_path': './gnn/data/nodes.csv',  # Path to nodes CSV file
-        'elements_csv_path': './gnn/data/mesh_data/element_connectivity.csv',  # Path to elements CSV file
+        'nodes_csv_path': 'data/nodes.csv',  # Path to nodes CSV file
+        'elements_csv_path': 'data/element_connectivity.csv',  # Path to elements CSV file
         'normalization': 'minmax',  # Normalization method: 'minmax' or 'zscore'
         
         # Output parameters
@@ -219,8 +219,8 @@ def demo_single_prediction():
     # Load the real FEA dataset
     from real_fea_dataset import create_real_fea_dataset
     dataset = create_real_fea_dataset(
-        nodes_csv_path='./gnn/data/nodes.csv',
-        elements_csv_path='./gnn/data/mesh_data/element_connectivity.csv',
+        nodes_csv_path='data/nodes.csv',
+        elements_csv_path='data/element_connectivity.csv',
         normalization='minmax'  # Use minmax normalization for demo
     )
     mesh_data = dataset[0]
@@ -261,7 +261,16 @@ def demo_single_prediction():
     # Show some sample predictions (denormalized)
     print("\nSample predictions (first 5 nodes, denormalized):")
     print("Node | Predicted (u,v,w,σ) | Target (u,v,w,σ)")
-    print("-" * 50)
+    print("-" * 25 + "Normalized" + "-" * 25)
+    for i in range(min(5, mesh_data.x.shape[0])):
+        pred = tensor_to_numpy(prediction[i])
+        targ = tensor_to_numpy(mesh_data.y[i])
+        
+        # Print normalized predictions and targets
+        print(f"{i:4d} | {pred[0]:8.6f} {pred[1]:8.6f} {pred[2]:8.6f} {pred[3]:8.1f} | "
+              f"{targ[0]:8.6f} {targ[1]:8.6f} {targ[2]:8.6f} {targ[3]:8.1f}")
+
+    print("\n" + "-" * 25 + "Denormalized" + "-" * 25)
     for i in range(min(5, mesh_data.x.shape[0])):
         pred = tensor_to_numpy(prediction[i])
         targ = tensor_to_numpy(mesh_data.y[i])
@@ -270,6 +279,7 @@ def demo_single_prediction():
         denorm_pred = dataset.denormalize_predictions(pred.reshape(1, -1)).flatten()
         denorm_targ = dataset.denormalize_predictions(targ.reshape(1, -1)).flatten()
         
+        # Print denormalized predictions and targets
         print(f"{i:4d} | {denorm_pred[0]:8.6f} {denorm_pred[1]:8.6f} {denorm_pred[2]:8.6f} {denorm_pred[3]:8.1f} | "
               f"{denorm_targ[0]:8.6f} {denorm_targ[1]:8.6f} {denorm_targ[2]:8.6f} {denorm_targ[3]:8.1f}")
 
