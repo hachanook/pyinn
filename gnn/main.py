@@ -30,7 +30,7 @@ def main():
     
     # Set CUDA device to 0 if available
     if torch.cuda.is_available():
-        torch.cuda.set_device(4)
+        torch.cuda.set_device(3)
         print(f"CUDA device set to: {torch.cuda.get_device_name(0)}")
     
     print("=== GNN for Finite Element Analysis ===")
@@ -43,7 +43,7 @@ def main():
         'hidden_dim': 64,         # Hidden dimension for MLPs
         'latent_dim': 32,         # Latent space dimension
         'num_message_passing': 3, # Number of message passing operations
-        'output_dim': 4,          # u, v, w, von Mises stress
+        'output_dim': 3,          # u, v, w, von Mises stress
         
         # Training parameters
         'batch_size': 1,          # Batch size (single mesh)
@@ -160,7 +160,8 @@ def visualize_results(predictions, targets, output_dir):
     fig, axes = plt.subplots(2, 2, figsize=(14, 12))
     fig.suptitle('GNN Predictions vs Targets', fontsize=18, fontweight='bold')
     
-    output_names = ['u', 'v', 'w', 'von_mises']
+    # output_names = ['u', 'v', 'w', 'von_mises']
+    output_names = ['u', 'v', 'w']
     
     for i, (ax, name) in enumerate(zip(axes.flat, output_names)):
         pred = predictions[:, i].numpy()
@@ -232,7 +233,7 @@ def demo_single_prediction():
         'hidden_dim': 64,
         'latent_dim': 32,
         'num_message_passing': 3,
-        'output_dim': 4
+        'output_dim': 3 # 4
     }
     
     model = create_mpnn_model(config)
@@ -267,8 +268,10 @@ def demo_single_prediction():
         targ = tensor_to_numpy(mesh_data.y[i])
         
         # Print normalized predictions and targets
-        print(f"{i:4d} | {pred[0]:8.4f} {pred[1]:8.4f} {pred[2]:8.4f} {pred[3]:8.4e} | "
-              f"{targ[0]:8.4f} {targ[1]:8.4f} {targ[2]:8.4f} {targ[3]:8.4e}")
+        # print(f"{i:4d} | {pred[0]:8.4f} {pred[1]:8.4f} {pred[2]:8.4f} {pred[3]:8.4e} | "
+        #       f"{targ[0]:8.4f} {targ[1]:8.4f} {targ[2]:8.4f} {targ[3]:8.4e}")
+        print(f"{i:4d} | {pred[0]:8.4f} {pred[1]:8.4f} {pred[2]:8.4f} | "
+              f"{targ[0]:8.4f} {targ[1]:8.4f} {targ[2]:8.4f} ")
 
     print("\n" + "-" * 25 + "Denormalized" + "-" * 25)
     for i in range(min(5, mesh_data.x.shape[0])):
@@ -280,8 +283,11 @@ def demo_single_prediction():
         denorm_targ = dataset.denormalize_predictions(targ.reshape(1, -1)).flatten()
         
         # Print denormalized predictions and targets
-        print(f"{i:4d} | {denorm_pred[0]:8.4e} {denorm_pred[1]:8.4e} {denorm_pred[2]:8.4e} {denorm_pred[3]:8.4e} | "
-              f"{denorm_targ[0]:8.4e} {denorm_targ[1]:8.4e} {denorm_targ[2]:8.4e} {denorm_targ[3]:8.4e}")
+        # print(f"{i:4d} | {denorm_pred[0]:8.4e} {denorm_pred[1]:8.4e} {denorm_pred[2]:8.4e} {denorm_pred[3]:8.4e} | "
+        #       f"{denorm_targ[0]:8.4e} {denorm_targ[1]:8.4e} {denorm_targ[2]:8.4e} {denorm_targ[3]:8.4e}")
+
+        print(f"{i:4d} | {denorm_pred[0]:8.4e} {denorm_pred[1]:8.4e} {denorm_pred[2]:8.4e} | "
+              f"{denorm_targ[0]:8.4e} {denorm_targ[1]:8.4e} {denorm_targ[2]:8.4e}")
 
 
 if __name__ == "__main__":

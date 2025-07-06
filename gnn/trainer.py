@@ -289,7 +289,7 @@ class GNNTrainer:
                 'u': relative_errors[0],
                 'v': relative_errors[1], 
                 'w': relative_errors[2],
-                'von_mises': relative_errors[3]
+                # 'von_mises': relative_errors[3]
             }
         }
         

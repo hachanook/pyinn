@@ -9,7 +9,7 @@
   "hidden_dim": 64,
   "latent_dim": 32,
   "num_message_passing": 3,
-  "output_dim": 4,
+  "output_dim": 3,
   "num_epochs": 100,
   "nodes_csv_path": "data/nodes.csv",
   "elements_csv_path": "data/element_connectivity.csv",

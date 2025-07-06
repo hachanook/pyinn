@@ -34,7 +34,7 @@ class RealFEADataset(Dataset):
         self.node_coords = nodes_df.iloc[:, [1, 2, 3]].values.astype(np.float32)
         
         # Extract target values (columns 7, 8, 9, 10: U-X, U-Y, U-Z, S-EQV)
-        self.targets = nodes_df.iloc[:, [7, 8, 9, 10]].values.astype(np.float32)
+        self.targets = nodes_df.iloc[:, [7, 8, 9]].values.astype(np.float32)
         
         # Load element connectivity
         self.elements_csv_path = os.path.join(script_dir, self.elements_csv_path)
