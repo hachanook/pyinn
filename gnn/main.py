@@ -40,8 +40,8 @@ def main():
         # Model parameters
         'node_input_dim': 3,      # x, y, z coordinates
         'edge_input_dim': 4,      # 3D vector + length
-        'hidden_dim': 64,         # Hidden dimension for MLPs
-        'latent_dim': 32,         # Latent space dimension
+        'hidden_dim': 16,         # Hidden dimension for MLPs
+        'latent_dim': 4,         # Latent space dimension
         'num_message_passing': 3, # Number of message passing operations
         'output_dim': 3,          # u, v, w, von Mises stress
         
@@ -49,7 +49,7 @@ def main():
         'batch_size': 1,          # Batch size (single mesh)
         'learning_rate': 0.001,   # Learning rate
         'weight_decay': 1e-5,     # Weight decay
-        'num_epochs': 100,        # Number of training epochs
+        'num_epochs': 500,        # Number of training epochs
         
         # Dataset parameters
         'nodes_csv_path': 'data/nodes.csv',  # Path to nodes CSV file
@@ -58,7 +58,7 @@ def main():
         
         # Output parameters
         'output_dir': 'gnn_outputs',  # This will be relative to the gnn directory
-        'save_interval': 10
+        'save_interval': 100
     }
     
     print(f"Configuration: {config}")
@@ -230,8 +230,8 @@ def demo_single_prediction():
     config = {
         'node_input_dim': 3,
         'edge_input_dim': 4,
-        'hidden_dim': 64,
-        'latent_dim': 32,
+        'hidden_dim': 16, # 64
+        'latent_dim': 4, # 8
         'num_message_passing': 3,
         'output_dim': 3 # 4
     }

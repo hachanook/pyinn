@@ -21,7 +21,7 @@ MODEL_PARAM:
 
   ## MLP
   nlayers : 3
-  nneurons : 50 # 50, 100, 200, 300, 400
+  nneurons : 40 # 50, 100, 200, 300, 400
   # activation : "relu"
   activation : "sigmoid"
 
