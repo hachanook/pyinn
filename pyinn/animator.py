@@ -5,6 +5,12 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from typing import Tuple, Callable
 import os
+from model_utils import load_saved_model, create_model_from_saved_data
+
+# GPU Configuration - Set to use only GPU index 0
+gpu_idx = 1  # set which GPU to run on
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # GPU indexing
+os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_idx)  # GPU indexing  
 
 # Physical constants and parameters
 THERMAL_DIFFUSIVITY = 1.0  # m^2/s
@@ -84,7 +90,7 @@ def create_heat_diffusion_function() -> Callable:
     
     return heat_diffusion_solution
 
-def create_mesh_grid(nx: int = 50, ny: int = 20) -> Tuple[jnp.ndarray, jnp.ndarray]:
+def create_mesh_grid(nx: int = 50, ny: int = 20, xmin: float = 0, xmax: float = 10, ymin: float = 0, ymax: float = 1) -> Tuple[jnp.ndarray, jnp.ndarray]:
     """
     Create uniform mesh grid for the x-y domain.
     
@@ -95,48 +101,63 @@ def create_mesh_grid(nx: int = 50, ny: int = 20) -> Tuple[jnp.ndarray, jnp.ndarr
     Returns:
         Tuple of (X, Y) mesh grids
     """
-    x = jnp.linspace(0, 10, nx)
-    y = jnp.linspace(0, 1, ny)
+    x = jnp.linspace(xmin, xmax, nx)
+    y = jnp.linspace(ymin, ymax, ny)
     X, Y = jnp.meshgrid(x, y)
     return X, Y
 
-def create_animation(output_path: str = "../plots/heat_diffusion_animation.gif"):
-    """
+def create_animation():
+    """ 
     Create and save animation of the heat diffusion process.
     
     Args:
         output_path: Path to save the animation video
     """
-    # Create the heat diffusion function
-    heat_func = create_heat_diffusion_function()
+    # # Create the heat diffusion function
+    # heat_func = create_heat_diffusion_function()
+
+    # Load the model
+    data_name = "LAM"
+    # interp_method = "nonlinear"
+    interp_method = "MLP"
+    run_type = "regression"
+    output_path = f"./plots/{data_name}_{interp_method}_animation.gif"
+    model_data = load_saved_model(data_name, interp_method)
+    model = create_model_from_saved_data(model_data, run_type)
+
+    forward = model.forward
+    v_forward = model.v_forward
+
     
     # Vectorize the function for mesh grid computation (flatten and reshape approach)
-    vectorized_heat_func = jax.vmap(heat_func, in_axes=(0, 0, None))
+    # vectorized_heat_func = jax.vmap(heat_func, in_axes=(0, 0, None))
+    xmin, xmax = 0.0, 1.0
+    ymin, ymax = 0.0, 1.0
+    tmin, tmax = 0.01, 1.0
+    dt = tmin
+    u_min, u_max = 0.0, 1.0
     
     # Create mesh grid
-    X, Y = create_mesh_grid()
+    X, Y = create_mesh_grid(nx=200, ny=200, xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax)
     
     # Time parameters
-    t_start = 0.001  # Start slightly after 0 to avoid singularity
-    t_end = 0.1
-    dt = 0.001
-    time_steps = jnp.arange(t_start, t_end + dt, dt)
+    time_steps = jnp.arange(tmin, tmax + dt, dt)
     
     # Set up the figure and axis
     fig, ax = plt.subplots(figsize=(12, 4))
     
     # Initialize the plot
-    im = ax.imshow(np.zeros_like(X), extent=[0, 10, 0, 1], origin='lower', 
-                   cmap='jet', vmin=0, vmax=150, aspect='auto')
+    im = ax.imshow(np.zeros_like(X), extent=(xmin, xmax, ymin, ymax), origin='lower', 
+                   cmap='jet', vmin=u_min, vmax=u_max, aspect='auto')
     
     # Add colorbar
     cbar = plt.colorbar(im, ax=ax, shrink=0.8)
-    cbar.set_label('Temperature (°C)', rotation=270, labelpad=20)
+    cbar.set_label('Concentration H2', rotation=270, labelpad=20)
     
     # Set labels and title
-    ax.set_xlabel('x (m)')
-    ax.set_ylabel('y (m)')
-    ax.set_title('2D Transient Heat Diffusion')
+    ax.set_xlabel('z')
+    ax.set_ylabel('y')
+    # ax.set_title('2D Transient Heat Diffusion')
     
     # Text to show current time
     time_text = ax.text(0.02, 0.95, '', transform=ax.transAxes, fontsize=12, 
@@ -150,8 +171,11 @@ def create_animation(output_path: str = "../plots/heat_diffusion_animation.gif")
         # Flatten X and Y, compute temperature, then reshape back
         X_flat = X.flatten()
         Y_flat = Y.flatten()
-        temperature_flat = vectorized_heat_func(X_flat, Y_flat, t)
-        temperature = temperature_flat.reshape(X.shape)
+        XY_flat = jnp.stack([X_flat, Y_flat], axis=1)
+        XY_flat = jnp.concatenate([XY_flat, jnp.ones((XY_flat.shape[0], 1)) * t], axis=1) # (ndata, dim=3)
+
+        temperature_flat = v_forward(model_data['params'], XY_flat) # (ndata, var)
+        temperature = temperature_flat.reshape(X.shape) # note: this only works for var=1 case.
         
         # Update the image
         im.set_array(np.array(temperature))
@@ -181,53 +205,53 @@ def create_animation(output_path: str = "../plots/heat_diffusion_animation.gif")
     
     return anim
 
-def demonstrate_vectorization():
-    """
-    Demonstrate the vectorization capabilities of the heat diffusion function.
-    """
-    print("Demonstrating JAX vectorization...")
+# def demonstrate_vectorization():
+#     """
+#     Demonstrate the vectorization capabilities of the heat diffusion function.
+#     """
+#     print("Demonstrating JAX vectorization...")
     
-    # Create the heat diffusion function
-    heat_func = create_heat_diffusion_function()
+#     # Create the heat diffusion function
+#     heat_func = create_heat_diffusion_function()
     
-    # Test single point evaluation
-    x_single = 5.0
-    y_single = 0.5
-    t_single = 0.05
+#     # Test single point evaluation
+#     x_single = 5.0
+#     y_single = 0.5
+#     t_single = 0.05
     
-    temp_single = heat_func(x_single, y_single, t_single)
-    print(f"Temperature at ({x_single}, {y_single}) at t={t_single}: {temp_single:.2f}°C")
+#     temp_single = heat_func(x_single, y_single, t_single)
+#     print(f"Temperature at ({x_single}, {y_single}) at t={t_single}: {temp_single:.2f}°C")
     
-    # Test vectorized evaluation
-    x_vec = jnp.array([1.0, 3.0, 5.0, 7.0, 9.0])
-    y_vec = jnp.array([0.2, 0.4, 0.5, 0.6, 0.8])
-    t_vec = jnp.array([0.01, 0.02, 0.03, 0.04, 0.05])
+#     # Test vectorized evaluation
+#     x_vec = jnp.array([1.0, 3.0, 5.0, 7.0, 9.0])
+#     y_vec = jnp.array([0.2, 0.4, 0.5, 0.6, 0.8])
+#     t_vec = jnp.array([0.01, 0.02, 0.03, 0.04, 0.05])
     
-    # Vectorize over all dimensions
-    vmap_func = jax.vmap(heat_func, in_axes=(0, 0, 0))
-    temp_vec = vmap_func(x_vec, y_vec, t_vec)
+#     # Vectorize over all dimensions
+#     vmap_func = jax.vmap(heat_func, in_axes=(0, 0, 0))
+#     temp_vec = vmap_func(x_vec, y_vec, t_vec)
     
-    print("\nVectorized evaluation:")
-    for i in range(len(x_vec)):
-        print(f"  Temperature at ({x_vec[i]}, {y_vec[i]}) at t={t_vec[i]}: {temp_vec[i]:.2f}°C")
+#     print("\nVectorized evaluation:")
+#     for i in range(len(x_vec)):
+#         print(f"  Temperature at ({x_vec[i]}, {y_vec[i]}) at t={t_vec[i]}: {temp_vec[i]:.2f}°C")
     
-    # Test mesh grid evaluation
-    X, Y = create_mesh_grid(nx=20, ny=10)
-    t_mesh = 0.05
+#     # Test mesh grid evaluation
+#     X, Y = create_mesh_grid(nx=20, ny=10)
+#     t_mesh = 0.05
     
-    # Vectorize for mesh evaluation (flatten and reshape approach)
-    mesh_vmap = jax.vmap(heat_func, in_axes=(0, 0, None))
-    X_flat = X.flatten()
-    Y_flat = Y.flatten()
-    temp_mesh_flat = mesh_vmap(X_flat, Y_flat, t_mesh)
-    temp_mesh = temp_mesh_flat.reshape(X.shape)
+#     # Vectorize for mesh evaluation (flatten and reshape approach)
+#     mesh_vmap = jax.vmap(heat_func, in_axes=(0, 0, None))
+#     X_flat = X.flatten()
+#     Y_flat = Y.flatten()
+#     temp_mesh_flat = mesh_vmap(X_flat, Y_flat, t_mesh)
+#     temp_mesh = temp_mesh_flat.reshape(X.shape)
     
-    print(f"\nMesh grid evaluation shape: {temp_mesh.shape}")
-    print(f"Temperature range: {jnp.min(temp_mesh):.2f}°C to {jnp.max(temp_mesh):.2f}°C")
+#     print(f"\nMesh grid evaluation shape: {temp_mesh.shape}")
+#     print(f"Temperature range: {jnp.min(temp_mesh):.2f}°C to {jnp.max(temp_mesh):.2f}°C")
 
 if __name__ == "__main__":
-    # Demonstrate vectorization
-    demonstrate_vectorization()
+    # # Demonstrate vectorization
+    # demonstrate_vectorization()
     
     # Create and save animation
     create_animation()

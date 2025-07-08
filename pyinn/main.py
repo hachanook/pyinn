@@ -3,6 +3,8 @@ INN trainer
 ----------------------------------------------------------------------------------
 Copyright (C) 2024  Chanwook Park
  Northwestern University, Evanston, Illinois, US, chanwookpark2024@u.northwestern.edu
+
+Model utilities are available in model_utils.py
 """
 # from pyinn import dataset_classification, dataset_regression, model, train, plot # with pyinn library
 import dataset_classification, dataset_regression, model, train, plot # for debugging
@@ -11,6 +13,7 @@ import jax.numpy as jnp
 config.update("jax_enable_x64", True)
 import os
 import yaml
+from model_utils import save_model_data
 
 # %% User Set up
 with open('./pyinn/settings.yaml','r') as file:
@@ -74,9 +77,23 @@ if run_type == "regression":
             regressor = train.Regression_INN(data, config) 
             regressor.train()  # Train module
 
+
     elif interp_method == "MLP":
         regressor = train.Regression_MLP(data, config) 
         regressor.train()  # Train module
+
+    ## Save model
+    if config['TRAIN_PARAM']['bool_save_model']:
+        # Get params from the appropriate source
+        if 'params' in locals():
+            model_params = params
+        else:
+            model_params = regressor.params
+        
+        # Save model data using utility function
+        save_model_data(config, data, model_params, data_name, interp_method)
+
+        
       
     ## plot
     plot.plot_regression(regressor, data, config)
@@ -95,10 +112,10 @@ elif run_type == "classification":
         classifier = train.Classification_MLP(data, config)  # HiDeNN-TD regressor class    
     classifier.train()  # Train module
 
+    ## Save model
+    if config['TRAIN_PARAM']['bool_save_model']:
+        # Save model data using utility function
+        save_model_data(config, data, classifier.params, data_name, interp_method)
+
     ## plot
     plot.plot_classification(classifier, data, config)
-
-
-
-
-    
