@@ -6,12 +6,21 @@ import os
 from matplotlib.colors import Normalize
 from tqdm import tqdm
 
-def create_LAM_data_animation():
+# GPU Configuration - Set to use only GPU index 0
+gpu_idx = 1  # set which GPU to run on
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # GPU indexing
+os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_idx)  # GPU indexing  
+
+def create_LAM_data_animation(use_normalized_concentration=True):
     """
     Create an animation of the LAM concentration data showing time evolution.
     
     Reads data from ../data/all_concentration_data.csv and creates a scatter plot
     animation showing concentration_h2 evolution over time steps 1-100.
+    
+    Args:
+        use_normalized_concentration (bool): If True, plot normalized H2 concentration [0,1].
+                                           If False, plot original H2 concentration values.
     
     The animation shows:
     - Scatter plot with z-coordinate on x-axis and y-coordinate on y-axis
@@ -51,6 +60,7 @@ def create_LAM_data_animation():
     df['z_norm'] = (df['z'] - z_min) / (z_max - z_min)
     df['concentration_h2_norm'] = (df['concentration_h2'] - concentration_min) / (concentration_max - concentration_min)
     
+    
     # Print original and normalized ranges
     print(f"Original coordinate ranges:")
     print(f"  y: [{y_min:.6f}, {y_max:.6f}]")
@@ -65,29 +75,37 @@ def create_LAM_data_animation():
     print(f"Total data points: {len(df):,}")
     print(f"Time range: [{df['t'].min():.0f}, {df['t'].max():.0f}]")
     
-    # Set up the figure
-    fig, ax = plt.subplots(figsize=(12, 4))
+    # Set up the figure with more height to accommodate larger labels
+    fig, ax = plt.subplots(figsize=(12, 5))
     
     # Initialize scatter plot
     scatter = ax.scatter([], [], c=[], cmap='jet', s=20, alpha=0.7)
     
-    # Set up colorbar for normalized values [0,1]
-    norm = Normalize(vmin=0, vmax=1)
+    # Set up colorbar based on concentration type
+    if use_normalized_concentration:
+        norm = Normalize(vmin=0, vmax=1)
+        cbar_label = 'Normalized Concentration H2'
+        title_suffix = 'Normalized H2 Concentration Evolution'
+    else:
+        norm = Normalize(vmin=concentration_min, vmax=concentration_max)
+        cbar_label = 'Concentration H2'
+        title_suffix = 'H2 Concentration Evolution'
+    
     scatter.set_norm(norm)
     cbar = plt.colorbar(scatter, ax=ax, shrink=0.8)
-    cbar.set_label('Normalized Concentration H2', rotation=270, labelpad=20, fontsize=12)
+    cbar.set_label(cbar_label, rotation=270, labelpad=20, fontsize=20)
     
     # Set labels and title
-    ax.set_xlabel('Normalized z', fontsize=12)
-    ax.set_ylabel('Normalized y', fontsize=12)
-    ax.set_title('LAM Data: Normalized H2 Concentration Evolution', fontsize=14)
+    ax.set_xlabel('Normalized z', fontsize=20)
+    ax.set_ylabel('Normalized y', fontsize=20)
+    # ax.set_title(f'LAM Data: {title_suffix}', fontsize=14)
     
     # Set axis limits for normalized coordinates [0,1]
     ax.set_xlim(-0.05, 1.05)  # Small padding around [0,1]
     ax.set_ylim(-0.05, 1.05)  # Small padding around [0,1]
     
     # Text to show current time step
-    time_text = ax.text(0.02, 0.95, '', transform=ax.transAxes, fontsize=12,
+    time_text = ax.text(0.02, 0.95, '', transform=ax.transAxes, fontsize=18,
                        bbox=dict(boxstyle="round,pad=0.3", facecolor="white", alpha=0.8))
     
     def animate(frame):
@@ -97,12 +115,18 @@ def create_LAM_data_animation():
         # Filter data for current time step
         time_data = df[df['t'] == t]
         
-        # Update scatter plot data with normalized values
+        # Update scatter plot data with normalized coordinates
         scatter.set_offsets(np.column_stack([time_data['z_norm'], time_data['y_norm']]))
-        scatter.set_array(time_data['concentration_h2_norm'])
+        
+        # Use appropriate concentration values based on the boolean flag
+        if use_normalized_concentration:
+            scatter.set_array(time_data['concentration_h2_norm'])
+        else:
+            scatter.set_array(time_data['concentration_h2'])
         
         # Update time text
-        time_text.set_text(f'Time Step: {int(t)}')
+        # time_text.set_text(f'Time Step: {int(t)}')
+        time_text.set_text(f'Time: {float(t)*0.001:.3f} s') # in the original time domain
         
         return [scatter, time_text]
     
@@ -115,7 +139,8 @@ def create_LAM_data_animation():
     print("Saving animation (this may take a while)...")
     
     # Ensure output directory exists
-    output_path = "./plots/LAM_data_animation.gif"
+    output_suffix = "normalized" if use_normalized_concentration else "original"
+    output_path = f"./plots/LAM_data_animation_{output_suffix}.gif"
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     
     # Save animation
@@ -125,10 +150,19 @@ def create_LAM_data_animation():
     print(f"Animation saved successfully!")
     print(f"Animation shows {len(time_steps)} time steps from {min(time_steps)} to {max(time_steps)}")
     print(f"Data points per frame: ~{len(df) // len(time_steps)}")
+    print(f"Concentration type: {'Normalized' if use_normalized_concentration else 'Original'}")
+    
+    # Adjust layout to prevent label cutoff
+    plt.tight_layout()
     
     return anim
 
 if __name__ == "__main__":
-    # Create the animation
-    animation_obj = create_LAM_data_animation()
+    # Create both versions of the animation
+    # print("Creating animation with normalized H2 concentration...")
+    # animation_obj_normalized = create_LAM_data_animation(use_normalized_concentration=True)
+    
+    print("\nCreating animation with original H2 concentration...")
+    animation_obj_original = create_LAM_data_animation(use_normalized_concentration=False)
+    
     plt.show() 

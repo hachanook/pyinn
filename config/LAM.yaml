@@ -2,14 +2,14 @@ MODEL_PARAM:
 
   ## INN linear
   # nmode : [10,10,10,10] # 50, 100, 200, 300, 400
-  nmode : 5
+  nmode : [5,5,5,5,5]
   nseg : 40 # 
   # nseg : [100,50,40,100,50,40] # for variable discretization
 
   ## INN nonlinear
-  s_patch : 2
+  s_patch : 4
   alpha_dil: 20
-  p_order: 2
+  p_order: 1
   radial_basis : "cubicSpline" # Activataion functions
   # radial_basis : 'gaussian1'
   INNactivation : 'polynomial' 
@@ -39,7 +39,7 @@ DATA_PARAM:
   
 TRAIN_PARAM:
   num_epochs_INN : 10
-  num_epochs_MLP : 10
+  num_epochs_MLP : 50
   batch_size : 128 # 128
   learning_rate : 1e-3
   bool_train_acc : False
