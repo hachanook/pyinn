@@ -53,6 +53,8 @@ class Regression_INN:
         self.config = config
         self.key = int(time.time())
         self.num_epochs = int(self.config['TRAIN_PARAM']['num_epochs_INN'])
+        # self.scale = int(config['MODEL_PARAM']['nmode'])/100
+        self.scale = 1
         
         ## Initialize trainable parameters for INN.
         if 'linear' in self.interp_method: # for INN
@@ -62,13 +64,15 @@ class Regression_INN:
                 self.nseg = int(config['MODEL_PARAM']['nseg'])
                 self.nnode = self.nseg + 1
                 
+                
+                
                 ## initialization of trainable parameters
                 if cls_data.bool_normalize: # when the data is normalized
                     self.grid_dms = jnp.linspace(0, 1, self.nnode, dtype=jnp.float64) # (nnode,) the most efficient way
                 else: # when the data is not normalized
                     self.grid_dms = [get_linspace(xmin, xmax, self.nnode) for (xmin, xmax) in zip(cls_data.x_data_minmax["min"], cls_data.x_data_minmax["max"])]
                 self.params = jax.random.uniform(jax.random.PRNGKey(self.key), (self.nmode, self.cls_data.dim, 
-                                                    self.cls_data.var, self.nnode), dtype=jnp.double)       
+                                                    self.cls_data.var, self.nnode), dtype=jnp.double) / self.scale
                 numParam = self.nmode*self.cls_data.dim*self.cls_data.var*self.nnode
             
             elif isinstance(config['MODEL_PARAM']['nseg'], list): # varying discretization across dimension
@@ -87,7 +91,7 @@ class Regression_INN:
                         self.grid_dms.append(jnp.linspace(0, 1, nnode_idm, dtype=jnp.float64))
                     else: # when the data is not normalized
                         self.grid_dms.append(get_linspace(cls_data.x_data_minmax["min"][idm], cls_data.x_data_minmax["max"][idm], nnode_idm))
-                    self.params.append(jax.random.uniform(jax.random.PRNGKey(self.key), (self.nmode, self.cls_data.var, nnode_idm), dtype=jnp.double))
+                    self.params.append(jax.random.uniform(jax.random.PRNGKey(self.key), (self.nmode, self.cls_data.var, nnode_idm), dtype=jnp.double) / self.scale)
                     numParam += self.nmode*self.cls_data.var*nnode_idm 
 
         ## Define model

@@ -140,7 +140,29 @@ class Data_regression(Dataset):
                     
                 data_val = np.loadtxt(data_test_file, delimiter=",", dtype=np.float64, skiprows=1)
                 data_test = np.loadtxt(data_test_file, delimiter=",", dtype=np.float64, skiprows=1)
+
+                # if config['DATA_PARAM']['bool_timeseries']:
+                #     # Filter data_train to only include rows where timestep (column index 2) matches the specified timestep
+                #     timestep = config['DATA_PARAM']['timestep']
+                #     time_col = config['DATA_PARAM']['time_col']
+                #     data_train = data_train[data_train[:, time_col] == timestep]
+                #     data_val = data_val[data_val[:, time_col] == timestep]
+                #     data_test = data_test[data_test[:, time_col] == timestep]
+            
+                #     # Remove the time series column (column index 2)
+                #     data_train = np.delete(data_train, time_col, axis=1)
+                #     data_val = np.delete(data_val, time_col, axis=1)
+                #     data_test = np.delete(data_test, time_col, axis=1)
+
+                #     # Reset model parameters
+                #     self.dim -= 1 # size of input
+                #     self.input_col.remove(time_col)
+                #     self.input_col = [col - 1 if col > time_col else col for col in self.input_col]
+                #     self.output_col = [col - 1 if col > time_col else col for col in self.output_col]
+                    
+
                 
+
                 data = np.concatenate((data_train, data_val), axis=0)
                 ndata = len(data)
 

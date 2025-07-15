@@ -1,13 +1,14 @@
 MODEL_PARAM: 
 
   ## INN linear
-  # nmode : [10,10,10,10] # 50, 100, 200, 300, 400
-  nmode : [5,5,5,5,5]
-  nseg : 40 # 
-  # nseg : [100,50,40,100,50,40] # for variable discretization
-
+  nmode : 100
+  # nmode : [10,10] # 50, 100, 200, 300, 400
+  nseg : 10 # 
+  # nseg : [20,20,10,10] # for variable discretization, (z, y, t, flow rate)
+  # nseg : [20,20,5]
+  
   ## INN nonlinear
-  s_patch : 4
+  s_patch : 3
   alpha_dil: 20
   p_order: 1
   radial_basis : "cubicSpline" # Activataion functions
@@ -20,18 +21,21 @@ MODEL_PARAM:
   # INNactivation : 'gelu'
 
   ## MLP
-  nlayers : 3
-  nneurons : 40 # 50, 100, 200, 300, 400
+  nlayers : 5
+  nneurons : 1400 # 50, 100, 200, 300, 400
   # activation : "relu"
   activation : "sigmoid"
 
 DATA_PARAM:
-  input_col : [1,0,2] # (z,y,t)
-  output_col : [3]
+  input_col : [1,0,2,3] # (z,y,t,flow rate)
+  output_col : [4] # concentration
   
   bool_data_generation : False # data is already stored and splitted
-  data_filenames: ['all_concentration_data.csv'] # original data
-  split_ratio: [0.8,0.1,0.1] # [0.7,0.15,0.15]
+  # data_filenames: ['all_concentration_data.csv'] # original data
+  # data_filenames: ['all_concentration_data_train10.csv','all_concentration_data_test.csv'] # original data
+  # data_filenames: ['all_concentration_data_train20.csv','all_concentration_data_test.csv'] # original data
+  data_filenames: ['all_concentration_data_train20.csv','all_concentration_data_Case_6.csv'] # original data
+  # split_ratio: [0.8,0.1,0.1] # [0.7,0.15,0.15]
 
   bool_normalize: True # whether we normalize the input data or not
   bool_shuffle : True # whether we shuffle the data
@@ -47,7 +51,7 @@ TRAIN_PARAM:
   validation_period : 1 # if this is greater than num_epochs, validation will not be conducted
   bool_denormalize: False # or True, whether we denormalize when measuring errors
   error_type : "rmse" # rmse or mse
-  patience : 5
+  patience : 10
   stopping_loss_train: 6e-5
 
   bool_save_model: True

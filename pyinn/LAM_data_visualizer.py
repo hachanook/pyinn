@@ -34,11 +34,14 @@ def create_LAM_data_animation(use_normalized_concentration=True):
     
     # Read the data
     print("Reading LAM concentration data...")
-    data_path = "./data/all_concentration_data.csv"
+    # data_path = "./data/all_concentration_data.csv"
+    # data_path = "./data/all_concentration_data_test.csv"   
+    data_path = "./data/all_concentration_data_Case_6.csv"
     df = pd.read_csv(data_path)
     
     # Verify column names
-    expected_columns = ['y', 'z', 't', 'concentration_h2']
+    # expected_columns = ['y', 'z', 't', 'concentration_h2']
+    expected_columns = ['y', 'z', 't', 'sample_value', 'concentration_h2']
     if not all(col in df.columns for col in expected_columns):
         raise ValueError(f"Expected columns {expected_columns}, found {list(df.columns)}")
     
@@ -52,8 +55,10 @@ def create_LAM_data_animation(use_normalized_concentration=True):
     # Get original ranges for normalization
     y_min, y_max = df['y'].min(), df['y'].max()
     z_min, z_max = df['z'].min(), df['z'].max()
-    concentration_min = float(df['concentration_h2'].min())
-    concentration_max = float(df['concentration_h2'].max())
+    # concentration_min = float(df['concentration_h2'].min())
+    # concentration_max = float(df['concentration_h2'].max())
+    concentration_min = 0.0
+    concentration_max = 3.99e-2
     
     # Create normalized columns
     df['y_norm'] = (df['y'] - y_min) / (y_max - y_min)
@@ -62,6 +67,7 @@ def create_LAM_data_animation(use_normalized_concentration=True):
     
     
     # Print original and normalized ranges
+    print(f"Flow rate of inlet 2: {df['sample_value'].min()}")
     print(f"Original coordinate ranges:")
     print(f"  y: [{y_min:.6f}, {y_max:.6f}]")
     print(f"  z: [{z_min:.6f}, {z_max:.6f}]")
@@ -79,7 +85,8 @@ def create_LAM_data_animation(use_normalized_concentration=True):
     fig, ax = plt.subplots(figsize=(12, 5))
     
     # Initialize scatter plot
-    scatter = ax.scatter([], [], c=[], cmap='jet', s=20, alpha=0.7)
+    marker_size = 100
+    scatter = ax.scatter([], [], c=[], cmap='jet', s=marker_size, alpha=0.7, edgecolors='none')
     
     # Set up colorbar based on concentration type
     if use_normalized_concentration:
@@ -123,6 +130,10 @@ def create_LAM_data_animation(use_normalized_concentration=True):
             scatter.set_array(time_data['concentration_h2_norm'])
         else:
             scatter.set_array(time_data['concentration_h2'])
+        
+        # Ensure marker properties are maintained
+        scatter.set_sizes([marker_size] * len(time_data))  # Set marker size for all points
+        scatter.set_edgecolor('none')  # Remove marker edges
         
         # Update time text
         # time_text.set_text(f'Time Step: {int(t)}')

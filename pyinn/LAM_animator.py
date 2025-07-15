@@ -8,7 +8,7 @@ import os
 from model_utils import load_saved_model, create_model_from_saved_data
 
 # GPU Configuration - Set to use only GPU index 0
-gpu_idx = 2  # set which GPU to run on
+gpu_idx = 1  # set which GPU to run on
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # GPU indexing
 os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_idx)  # GPU indexing  
 
@@ -62,6 +62,9 @@ def create_animation(use_normalized_concentration=True):
     ymin, ymax = 0.0, 1.0
     tmin, tmax = 0.01, 1.0
     dt = tmin
+    flow_rate_original = 0.0035814925119519 # this is the flow rate of testing data
+    flow_rate_normalized = (flow_rate_original - model_data["x_data_minmax"]["min"][3]
+    ) / (model_data["x_data_minmax"]["max"][3] - model_data["x_data_minmax"]["min"][3])
     
     # Set concentration range based on the boolean flag
     if use_normalized_concentration:
@@ -76,7 +79,7 @@ def create_animation(use_normalized_concentration=True):
         title_suffix = 'H2 Concentration Evolution'
     
     # Create mesh grid
-    X, Y = create_mesh_grid(nx=200, ny=200, xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax)
+    X, Y = create_mesh_grid(nx=100, ny=100, xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax)
     
     # Time parameters
     time_steps = jnp.arange(tmin, tmax + dt, dt) # in the normalized time domain
@@ -105,26 +108,28 @@ def create_animation(use_normalized_concentration=True):
         """Animation function for matplotlib FuncAnimation."""
         t = time_steps[frame] # in the normalized time domain
         
-        # Compute temperature field at current time
-        # Flatten X and Y, compute temperature, then reshape back
+        # Compute concentration field at current time
+        # Flatten X and Y, compute concentration, then reshape back
         X_flat = X.flatten()
         Y_flat = Y.flatten()
         XY_flat = jnp.stack([X_flat, Y_flat], axis=1)
-        XY_flat = jnp.concatenate([XY_flat, jnp.ones((XY_flat.shape[0], 1)) * t], axis=1) # (ndata, dim=3)
+        XY_flat = jnp.concatenate([XY_flat, 
+                    jnp.ones((XY_flat.shape[0], 1)) * t,
+                    jnp.ones((XY_flat.shape[0], 1)) * flow_rate_normalized], axis=1) # (ndata, dim=4)
 
-        temperature_flat = v_forward(model_data['params'], XY_flat) # (ndata, var)
+        concentration_flat = v_forward(model_data['params'], XY_flat) # (ndata, var)
         
         # Denormalize if needed
         if not use_normalized_concentration:
             # Denormalize using the min/max values from model data
             u_min_val = model_data["u_data_minmax"]["min"].item()
             u_max_val = model_data["u_data_minmax"]["max"].item()
-            temperature_flat = temperature_flat * (u_max_val - u_min_val) + u_min_val
+            concentration_flat = concentration_flat * (u_max_val - u_min_val) + u_min_val
         
-        temperature = temperature_flat.reshape(X.shape) # note: this only works for var=1 case.
+        concentration = concentration_flat.reshape(X.shape) # note: this only works for var=1 case.
         
         # Update the image
-        im.set_array(np.array(temperature))
+        im.set_array(np.array(concentration))
         
         # Update time text
         time_text.set_text(f'Time: {t*0.1:.3f} s') # in the original time domain
