@@ -12,3 +12,4 @@ requirements.txt
 setup.py
 docker/
 pyinn/model_saved
+GenTen/

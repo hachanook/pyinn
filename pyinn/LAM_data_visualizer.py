@@ -35,8 +35,8 @@ def create_LAM_data_animation(use_normalized_concentration=True):
     # Read the data
     print("Reading LAM concentration data...")
     # data_path = "./data/all_concentration_data.csv"
-    # data_path = "./data/all_concentration_data_test.csv"   
-    data_path = "./data/all_concentration_data_Case_6.csv"
+    data_path = "./data/all_concentration_data_test.csv"   
+    # data_path = "./data/all_concentration_data_Case_6.csv"
     df = pd.read_csv(data_path)
     
     # Verify column names

@@ -1,5 +1,5 @@
 GPU: 
-  gpu_idx: 1 # specify gpu index if there are mutiple GPUs. If not, leave it as it is.
+  gpu_idx: 4 # specify gpu index if there are mutiple GPUs. If not, leave it as it is.
 
 PROBLEM:
   run_type: "regression" 
@@ -7,8 +7,8 @@ PROBLEM:
 
   TD_type: "CP"
   # interp_method: "linear" # INN
-  interp_method: "nonlinear" # INN
-  # interp_method: "MLP"
+  # interp_method: "nonlinear" # INN
+  interp_method: "MLP"
 
 DATA:
   ## ----------- regression data -------------

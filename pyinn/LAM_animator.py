@@ -41,8 +41,8 @@ def create_animation(use_normalized_concentration=True):
 
     # Load the model
     data_name = "LAM"
-    interp_method = "nonlinear"
-    # interp_method = "MLP"
+    # interp_method = "nonlinear"
+    interp_method = "MLP"
     run_type = "regression"
     
     # Set output path based on concentration type
