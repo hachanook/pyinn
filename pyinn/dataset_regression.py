@@ -81,13 +81,25 @@ class Data_regression(Dataset):
                 print(f"Error took place while generating data. Check split ratio")
                 sys.exit()
 
-
         elif self.bool_data_generation == False and 'data_filenames' in config['DATA_PARAM'].keys(): # stored data
             args = config['DATA_PARAM']['data_filenames']
 
             if len(args) == 1: # the entire data is provided
-                data_file = self.data_dir + args[0]
-                data = np.loadtxt(data_file, delimiter=",", dtype=np.float64, skiprows=1)
+
+                if "mnt" in args[0]: # if the data is stored in /mnt folder
+                    data_file = args[0]
+                else:
+                    data_file = self.data_dir + args[0]
+
+                # Read CSV and filter numeric columns only
+                df = pd.read_csv(data_file)
+                
+                # Select only numeric columns
+                numeric_columns = df.select_dtypes(include=[np.number]).columns
+                df_numeric = df[numeric_columns]
+                
+                # Convert to numpy array
+                data = df_numeric.values.astype(np.float64)
                 ndata = len(data)
                 self.data = data # save this for video plotting for turbulence flow
 
@@ -126,20 +138,29 @@ class Data_regression(Dataset):
 
 
             elif len(args) == 2: # train and test data are given
+
                 if "mnt" in args[0]: # if the data is stored in /mnt folder
                     data_train_file = args[0]
                 else:
                     data_train_file = self.data_dir + args[0]
-                
-                data_train = np.loadtxt(data_train_file, delimiter=",", dtype=np.float64, skiprows=1)
+
+                # Read CSV and filter numeric columns only
+                df_train = pd.read_csv(data_train_file)
+                numeric_columns = df_train.select_dtypes(include=[np.number]).columns
+                df_train_numeric = df_train[numeric_columns]
+                data_train = df_train_numeric.values.astype(np.float64)
 
                 if "mnt" in args[0]: # if the data is stored in /mnt folder
                     data_test_file = args[1]
                 else: 
                     data_test_file = self.data_dir + args[1]
                     
-                data_val = np.loadtxt(data_test_file, delimiter=",", dtype=np.float64, skiprows=1)
-                data_test = np.loadtxt(data_test_file, delimiter=",", dtype=np.float64, skiprows=1)
+                # Read CSV and filter numeric columns only
+                df_test = pd.read_csv(data_test_file)
+                numeric_columns = df_test.select_dtypes(include=[np.number]).columns
+                df_test_numeric = df_test[numeric_columns]
+                data_val = df_test_numeric.values.astype(np.float64)
+                data_test = df_test_numeric.values.astype(np.float64)
 
                 # if config['DATA_PARAM']['bool_timeseries']:
                 #     # Filter data_train to only include rows where timestep (column index 2) matches the specified timestep
@@ -172,21 +193,33 @@ class Data_regression(Dataset):
                 else:
                     data_train_file = self.data_dir + args[0]
                     
-                data_train = np.loadtxt(data_train_file, delimiter=",", dtype=np.float64, skiprows=1)
+                # Read CSV and filter numeric columns only
+                df_train = pd.read_csv(data_train_file)
+                numeric_columns = df_train.select_dtypes(include=[np.number]).columns
+                df_train_numeric = df_train[numeric_columns]
+                data_train = df_train_numeric.values.astype(np.float64)
 
                 if "mnt" in args[0]: # if the data is stored in /mnt folder
                     data_val_file = args[1]
                 else:
                     data_val_file = self.data_dir + args[1]
                     
-                data_val = np.loadtxt(data_val_file, delimiter=",", dtype=np.float64, skiprows=1)
+                # Read CSV and filter numeric columns only
+                df_val = pd.read_csv(data_val_file)
+                numeric_columns = df_val.select_dtypes(include=[np.number]).columns
+                df_val_numeric = df_val[numeric_columns]
+                data_val = df_val_numeric.values.astype(np.float64)
                 
                 if "mnt" in args[0]: # if the data is stored in /mnt folder
                     data_test_file = args[2]
                 else:
                     data_test_file = self.data_dir + args[2]
                     
-                data_test = np.loadtxt(data_test_file, delimiter=",", dtype=np.float64, skiprows=1)
+                # Read CSV and filter numeric columns only
+                df_test = pd.read_csv(data_test_file)
+                numeric_columns = df_test.select_dtypes(include=[np.number]).columns
+                df_test_numeric = df_test[numeric_columns]
+                data_test = df_test_numeric.values.astype(np.float64)
                 
                 data = np.concatenate((data_train, data_val, data_test), axis=0)
                 ndata = len(data)
@@ -251,7 +284,7 @@ class Data_regression(Dataset):
                 data_test = data_list[2]
                 data = np.concatenate((data_train, data_val, data_test), axis=0)
                 ndata = len(data)
-
+        
         ################# Data loading end ################
 
         ## divide into input and output data

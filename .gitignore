@@ -13,3 +13,4 @@ setup.py
 docker/
 pyinn/model_saved
 GenTen/
+CLAUDE.md

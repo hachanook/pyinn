@@ -22,7 +22,7 @@ with open('./pyinn/settings.yaml','r') as file:
 gpu_idx = settings['GPU']['gpu_idx']  # set which GPU to run on Athena
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # GPU indexing
 os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_idx)  # GPU indexing
-
+ 
 run_type = settings['PROBLEM']["run_type"] 
 interp_method = settings['PROBLEM']["interp_method"]
 data_name = settings['DATA']["data_name"] 
