@@ -6,6 +6,7 @@ saved INN models.
 """
 
 import os
+import csv
 import pickle
 import glob
 import jax.numpy as jnp
@@ -57,6 +58,39 @@ def save_model_data(config, data, params, data_name, interp_method):
         pickle.dump(model_data, f)
     
     print(f"Model saved to: {model_path}")
+
+def save_errors_val(errors_val, data_name, interp_method):
+    """
+    Save validation errors to a CSV file with the same base name as the model .pkl.
+
+    Args:
+        errors_val (list): List of validation errors per epoch
+        data_name (str): Name of the dataset
+        interp_method (str): Interpolation method used
+    """
+    model_save_dir = './pyinn/model_saved'
+    os.makedirs(model_save_dir, exist_ok=True)
+
+    # Match the model filename used in save_model_data, but with .csv extension
+    model_filename = f"{data_name}_{interp_method}_errors_val.pkl"
+    csv_filename = os.path.splitext(model_filename)[0] + ".csv"
+    csv_path = os.path.join(model_save_dir, csv_filename)
+
+    # Write header and one value per row
+    with open(csv_path, 'w', newline='') as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow(['errors_val'])
+        for v in errors_val:
+            try:
+                writer.writerow([float(v)])
+            except Exception:
+                # Fallback for non-scalar types
+                try:
+                    writer.writerow([float(jnp.asarray(v))])
+                except Exception:
+                    writer.writerow([v])
+
+    print(f"Validation errors saved to: {csv_path}")
 
 def load_saved_model(data_name, interp_method):
     """

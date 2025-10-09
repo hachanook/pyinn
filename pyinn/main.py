@@ -13,7 +13,7 @@ import jax.numpy as jnp
 config.update("jax_enable_x64", True)
 import os
 import yaml
-from model_utils import save_model_data
+from model_utils import save_model_data, save_errors_val
 
 # %% User Set up
 with open('./pyinn/settings.yaml','r') as file:
@@ -79,7 +79,15 @@ if run_type == "regression":
 
 
     elif interp_method == "MLP":
-        regressor = train.Regression_MLP(data, config) 
+        regressor = train.Regression_MLP(data, config)
+        regressor.train()  # Train module
+
+    elif interp_method == "KAN":
+        regressor = train.Regression_KAN(data, config)
+        regressor.train()  # Train module
+
+    elif interp_method == "FNO":
+        regressor = train.Regression_FNO(data, config)
         regressor.train()  # Train module
 
     ## Save model
@@ -92,6 +100,8 @@ if run_type == "regression":
         
         # Save model data using utility function
         save_model_data(config, data, model_params, data_name, interp_method)
+        # Save validation errors CSV matching the model filename
+        save_errors_val(regressor.errors_val, data_name, interp_method)
 
         
       
@@ -109,7 +119,11 @@ elif run_type == "classification":
     if interp_method == "linear" or interp_method == "nonlinear":
         classifier = train.Classification_INN(data, config)  # HiDeNN-TD regressor class
     elif interp_method == "MLP":
-        classifier = train.Classification_MLP(data, config)  # HiDeNN-TD regressor class    
+        classifier = train.Classification_MLP(data, config)  # HiDeNN-TD regressor class
+    elif interp_method == "KAN":
+        classifier = train.Classification_KAN(data, config)  # KAN classifier class
+    elif interp_method == "FNO":
+        classifier = train.Classification_FNO(data, config)  # FNO classifier class
     classifier.train()  # Train module
 
     ## Save model

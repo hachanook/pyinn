@@ -183,7 +183,7 @@ class Regression_INN:
         
         ## Train
         start_time_train = time.time()
-        self.errors_train = [] # training error for every epoch
+        self.errors_train = [] # training error for every epoch 
         self.errors_val = [] # validation error for every epoch
         self.errors_epoch = [] # epochs where the erros are stored
         time_per_epochs = [] # training time per epoch
@@ -405,15 +405,97 @@ class Regression_MLP(Regression_INN):
         print(f"\tInference time: {time.time() - start_time_inference:.4f} seconds")    
     
 
+class Regression_KAN(Regression_INN):
+    def __init__(self, cls_data, config):
+        """Initialize KAN trainer for regression."""
+        # Don't call super().__init__ because we need custom initialization
+        self.interp_method = config['interp_method']
+        self.cls_data = cls_data
+        self.config = config
+        self.key = int(time.time())
+        self.num_epochs = int(self.config['TRAIN_PARAM']['num_epochs_KAN'])
+
+        # KAN-specific parameters
+        self.nlayers = config['MODEL_PARAM']['nlayers']
+        self.hidden_dim = config['MODEL_PARAM']['hidden_dim']
+        self.grid_size = config['MODEL_PARAM']['grid_size']
+        self.spline_order = config['MODEL_PARAM']['spline_order']
+
+        # Create KAN model
+        layer_sizes = [cls_data.dim] + self.nlayers * [self.hidden_dim] + [cls_data.var]
+        model = KAN(layer_sizes, self.grid_size, self.spline_order)
+        self.forward = model.forward
+        self.v_forward = model.v_forward
+        self.vv_forward = model.vv_forward
+
+        # Initialize parameters
+        self.params = self.init_kan_params(layer_sizes, model.grid_size, model.spline_order, jax.random.PRNGKey(self.key))
+
+        # Count parameters
+        num_params = 0
+        for spline_params, base_weights in self.params:
+            num_params += spline_params.size + base_weights.size
+
+        print(f"------------ KAN, {layer_sizes}, grid_size={self.grid_size}, spline_order={self.spline_order} -------------")
+        print(f"# of training parameters: {num_params}")
+
+    def init_kan_params(self, layer_sizes, grid_size, spline_order, key):
+        """
+        Initialize KAN parameters.
+
+        Returns:
+            List of (spline_params, base_weights) tuples for each layer
+        """
+        # Use grid_size directly (RBF basis count)
+        num_basis = grid_size
+
+        keys = jax.random.split(key, len(layer_sizes) - 1)
+        params = []
+
+        for in_dim, out_dim, k in zip(layer_sizes[:-1], layer_sizes[1:], keys):
+            spline_key, weight_key = jax.random.split(k)
+
+            # Initialize basis coefficients (in_features, out_features, num_basis)
+            spline_params = jax.random.normal(spline_key, (in_dim, out_dim, num_basis), dtype=jnp.float64) * 0.1
+
+            # Initialize base weights for residual connection (in_features, out_features)
+            base_weights = jax.random.normal(weight_key, (in_dim, out_dim), dtype=jnp.float64) * jnp.sqrt(1 / in_dim)
+
+            params.append((spline_params, base_weights))
+
+        return params
+
+    @partial(jax.jit, static_argnames=['self'])
+    def get_loss(self, params, x_data, u_data):
+        """Compute MSE loss for KAN."""
+        u_pred = self.v_forward(params, x_data)  # (ndata_train, var)
+        loss = ((u_pred - u_data) ** 2).mean()
+        return loss, u_pred
+
+    Grad_get_loss = jax.jit(jax.value_and_grad(get_loss, argnums=1, has_aux=True), static_argnames=['self'])
+
+    def inference(self, x_test):
+        """Inference timing for KAN."""
+        # Warm-up
+        u_pred = self.forward(self.params, x_test[0])
+        u_pred = self.forward(self.params, x_test[0])
+        u_pred = self.forward(self.params, x_test[0])
+
+        # Timed inference
+        start_time_inference = time.time()
+        u_pred = self.forward(self.params, x_test[0])
+        print(f"\tInference time: {time.time() - start_time_inference:.4f} seconds")
+
+
 class Classification_INN(Regression_INN):
     def __init__(self, cls_data, config):
         super().__init__(cls_data, config) # prob being dropout probability
-        
+
         ## classification problem always normalize inputs between 0 and 1
         self.x_dms_nds = jnp.tile(jnp.linspace(0,1,self.nnode, dtype=jnp.float64), (self.cls_data.dim,1)) # (dim,nnode)
-        
+
         ## initialization of trainable parameters
-        self.params = jax.random.uniform(jax.random.PRNGKey(self.key), (self.nmode, self.cls_data.dim, 
+        self.params = jax.random.uniform(jax.random.PRNGKey(self.key), (self.nmode, self.cls_data.dim,
                                                 self.cls_data.var, self.nnode), dtype=jnp.double,
                                                 minval=0.98, maxval=1.02) # for classification, we sould confine the params range
         # numParam = self.nmode*self.cls_data.dim*self.cls_data.var*self.nnode
@@ -450,6 +532,113 @@ class Classification_INN(Regression_INN):
         error_cum += error*len(u)
         ndata_cum += len(u)
         return error_cum, ndata_cum
+
+
+class Regression_FNO(Regression_INN):
+    def __init__(self, cls_data, config):
+        """Initialize FNO trainer for regression."""
+        # Custom initialization for FNO
+        self.interp_method = config['interp_method']
+        self.cls_data = cls_data
+        self.config = config
+        self.key = int(time.time())
+        self.num_epochs = int(self.config['TRAIN_PARAM']['num_epochs_FNO'])
+
+        # FNO-specific parameters
+        self.hidden_dim = config['MODEL_PARAM']['hidden_dim']
+        self.num_layers = config['MODEL_PARAM']['num_layers']
+        self.modes = config['MODEL_PARAM']['modes']
+
+        # Create FNO model
+        model = FNO(cls_data.dim, cls_data.var, self.hidden_dim, self.num_layers, self.modes)
+        self.forward = model.forward
+        self.v_forward = model.v_forward
+        self.vv_forward = model.vv_forward
+
+        # Initialize parameters
+        self.params = self.init_fno_params(cls_data.dim, cls_data.var, self.hidden_dim,
+                                            self.num_layers, self.modes, jax.random.PRNGKey(self.key))
+
+        # Count parameters
+        num_params = 0
+        num_params += self.params['lift'].size + self.params['lift_bias'].size
+        for spectral_w, linear_w, b in self.params['fourier_layers']:
+            num_params += spectral_w.size + linear_w.size + b.size
+        num_params += self.params['project'].size + self.params['project_bias'].size
+
+        print(f"------------ FNO, hidden_dim={self.hidden_dim}, num_layers={self.num_layers}, modes={self.modes} -------------")
+        print(f"# of training parameters: {num_params}")
+
+    def init_fno_params(self, input_dim, output_dim, hidden_dim, num_layers, modes, key):
+        """
+        Initialize FNO parameters.
+
+        Returns:
+            Dictionary with lifting, Fourier layers, and projection parameters
+        """
+        keys = jax.random.split(key, 2 + num_layers * 3)
+        key_idx = 0
+
+        # Lifting layer: input_dim -> hidden_dim
+        lift = jax.random.normal(keys[key_idx], (input_dim, hidden_dim), dtype=jnp.float64) * jnp.sqrt(2 / input_dim)
+        key_idx += 1
+        lift_bias = jnp.zeros(hidden_dim, dtype=jnp.float64)
+
+        # Fourier layers
+        fourier_layers = []
+        for _ in range(num_layers):
+            # Spectral weights (complex-valued for Fourier domain)
+            # Simplified: (modes, hidden_dim) instead of (modes, hidden_dim, hidden_dim)
+            spectral_real = jax.random.normal(keys[key_idx], (modes, hidden_dim), dtype=jnp.float64) * 0.02
+            key_idx += 1
+            spectral_imag = jax.random.normal(keys[key_idx], (modes, hidden_dim), dtype=jnp.float64) * 0.02
+            key_idx += 1
+            spectral_weights = spectral_real + 1j * spectral_imag
+
+            # Linear weights (physical space)
+            linear_weights = jax.random.normal(keys[key_idx], (hidden_dim, hidden_dim), dtype=jnp.float64) * jnp.sqrt(2 / hidden_dim)
+            key_idx += 1
+
+            # Bias
+            bias = jnp.zeros(hidden_dim, dtype=jnp.float64)
+
+            fourier_layers.append((spectral_weights, linear_weights, bias))
+
+        # Projection layer: hidden_dim -> output_dim
+        project = jax.random.normal(keys[key_idx], (hidden_dim, output_dim), dtype=jnp.float64) * jnp.sqrt(2 / hidden_dim)
+        key_idx += 1
+        project_bias = jnp.zeros(output_dim, dtype=jnp.float64)
+
+        params = {
+            'lift': lift,
+            'lift_bias': lift_bias,
+            'fourier_layers': fourier_layers,
+            'project': project,
+            'project_bias': project_bias
+        }
+
+        return params
+
+    @partial(jax.jit, static_argnames=['self'])
+    def get_loss(self, params, x_data, u_data):
+        """Compute MSE loss for FNO."""
+        u_pred = self.v_forward(params, x_data)  # (ndata_train, var)
+        loss = ((u_pred - u_data) ** 2).mean()
+        return loss, u_pred
+
+    Grad_get_loss = jax.jit(jax.value_and_grad(get_loss, argnums=1, has_aux=True), static_argnames=['self'])
+
+    def inference(self, x_test):
+        """Inference timing for FNO."""
+        # Warm-up
+        u_pred = self.forward(self.params, x_test[0])
+        u_pred = self.forward(self.params, x_test[0])
+        u_pred = self.forward(self.params, x_test[0])
+
+        # Timed inference
+        start_time_inference = time.time()
+        u_pred = self.forward(self.params, x_test[0])
+        print(f"\tInference time: {time.time() - start_time_inference:.4f} seconds")
 
 
 class Classification_MLP(Regression_MLP):

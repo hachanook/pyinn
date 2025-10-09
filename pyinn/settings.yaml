@@ -1,5 +1,5 @@
 GPU: 
-  gpu_idx: 4 # specify gpu index if there are mutiple GPUs. If not, leave it as it is.
+  gpu_idx: 3 # specify gpu index if there are mutiple GPUs. If not, leave it as it is.
 
 PROBLEM:
   run_type: "regression" 
@@ -9,6 +9,8 @@ PROBLEM:
   # interp_method: "linear" # INN
   # interp_method: "nonlinear" # INN
   interp_method: "MLP"
+  # interp_method: "KAN"
+  # interp_method: "FNO"
 
 DATA:
   ## ----------- regression data -------------
@@ -23,7 +25,8 @@ DATA:
   # data_name : '10D_5D_physics' # physcial equation
   # data_name : 'IGAMapping2D' # for IGA inverse mapping; multi-CAD-patch C-IGA paper
   # data_name : 'LAM'
-  data_name : 'RTX' # regression test for industrial application
+  # data_name : 'RTX' # regression test for industrial application
+  data_name : 'RTX_3params' # regression test for industrial application with 3 parameters
 
   ## ----------- classification data -------------
   # data_name : 'spiral'
