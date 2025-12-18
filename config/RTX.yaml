@@ -1,10 +1,10 @@
 MODEL_PARAM: 
 
   ## INN linear
-  nmode : [40]
+  nmode : [20]
   # nmode : [10,10] # 50, 100, 200, 300, 400
-  nseg : 20 # 
-  # nseg : [50,50,50,25] # (x,y,z,traction)
+  # nseg : 20 # 
+  nseg : [50,50,50,25] # (x,y,z,traction)
   # nseg : [20,20,5]
   
   ## INN nonlinear
@@ -49,10 +49,10 @@ DATA_PARAM:
   
   
 TRAIN_PARAM:
-  num_epochs_INN : 1 # 10
-  num_epochs_MLP : 1 # 50
-  num_epochs_KAN : 1 # 50 # training epochs for KAN
-  num_epochs_FNO : 1 # 50 # training epochs for FNO
+  num_epochs_INN : 10 # 10
+  num_epochs_MLP : 50 # 50
+  num_epochs_KAN : 50 # 50 # training epochs for KAN
+  num_epochs_FNO : 50 # 50 # training epochs for FNO
   batch_size : 128 # 128
   learning_rate : 1e-3
   bool_train_acc : False

@@ -31,9 +31,9 @@ DATA_PARAM:
   
   bool_data_generation : False # data is already stored and splitted
   # data_filenames: ['6D_4D_ansys_train.csv', '6D_4D_ansys_test.csv']
+  data_filenames: ['6D_4D_ansys_1364742.csv'] # original data
   # data_filenames: ['6D_4D_ansys_1364742.csv'] # original data
-  data_filenames: ['6D_4D_ansys_29285.csv'] # original data
-  split_ratio: [1.0] # [0.7,0.15,0.15]
+  split_ratio: [0.8,0.1,0.1] # [0.7,0.15,0.15]
 
   bool_normalize: True # whether we normalize the input data or not
   bool_shuffle : True # whether we shuffle the data
@@ -49,7 +49,7 @@ TRAIN_PARAM:
   validation_period : 1 # if this is greater than num_epochs, validation will not be conducted
   bool_denormalize: False # or True, whether we denormalize when measuring errors
   error_type : "rmse" # rmse or mse
-  patience : 100
+  patience : 3
   stopping_loss_train: 6e-5
 
 PLOT:

@@ -108,7 +108,7 @@ if run_type == "regression":
     ## plot
     plot.plot_regression(regressor, data, config)
 
-
+ 
 # --------------------- Classification --------------------------
 elif run_type == "classification": 
 

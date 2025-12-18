@@ -4,7 +4,7 @@ MODEL_PARAM:
   nmode : [40]
   # nmode : [10,10] # 50, 100, 200, 300, 400
   # nseg : 20 # 
-  nseg : [50,50,50,10,10,10] # (x,y,z,traction,r1,r2)
+  nseg : [50,50,50,20,20,20] # (x,y,z,traction,r1,r2)
   # nseg : [20,20,5]
   
   ## INN nonlinear
@@ -22,7 +22,7 @@ MODEL_PARAM:
 
   ## MLP
   nlayers : 3 # 5
-  nneurons : 100 # 1400
+  nneurons : 50 # 1400
   # activation : "relu"
   activation : "sigmoid"
 
@@ -37,11 +37,11 @@ MODEL_PARAM:
   modes : 16 # number of Fourier modes to keep (controls spectral resolution)
 
 DATA_PARAM:
-  input_col : [0,1,2,4,5,6] # (x,y,z,traction)
-  output_col : [3] # concentration
+  input_col : [0,1,2,3,4,5] # (x, y, z, pressure, r1, r2)
+  output_col : [7] # S EQ
   
   bool_data_generation : False # data is already stored and splitted
-  data_filenames: ['RTX_3S3P_train.csv','RTX_3S3P_test.csv'] # original data
+  data_filenames: ['RTX_3S3P_train_100.csv','RTX_3S3P_test.csv'] # original data
   # split_ratio: [0.8,0.1,0.1] # [0.7,0.15,0.15]
 
   bool_normalize: True # whether we normalize the input data or not
@@ -50,7 +50,7 @@ DATA_PARAM:
   
 TRAIN_PARAM:
   num_epochs_INN : 10
-  num_epochs_MLP : 10
+  num_epochs_MLP : 50
   num_epochs_KAN : 50 # training epochs for KAN
   num_epochs_FNO : 50 # training epochs for FNO
   batch_size : 128 # 128
