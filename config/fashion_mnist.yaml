@@ -25,11 +25,11 @@ TRAIN_PARAM:
   batch_size : 128
   learning_rate : 2e-4
   bool_train_acc : False
-  
-  validation_period : 1
+
+  validation_period : 10
   bool_denormalize: False # or True, whether we denormalize when measuring errors
   error_type : "accuracy" 
-  patience : 3
+  patience : 50
 
 PLOT:
   bool_plot: False

@@ -10,8 +10,8 @@ MODEL_PARAM:
   p_order: 2
   radial_basis : "cubicSpline" # Activataion functions
   # radial_basis : 'gaussian1'
-  INNactivation : 'polynomial'
-  # INNactivation : 'sinusoidal'
+  # INNactivation : 'polynomial'
+  INNactivation : 'sinusoidal'
   # INNactivation : 'exponential'
   # INNactivation : 'sigmoid'
   # INNactivation : 'tanh'
@@ -37,16 +37,17 @@ DATA_PARAM:
   
 
 TRAIN_PARAM:
-  num_epochs_INN : 100
+  num_epochs_INN : 2
   num_epochs_MLP : 100
   batch_size : 128
   learning_rate : 1e-3
   bool_train_acc : True
   
-  validation_period : 1
+  validation_period : 10
   bool_denormalize: False # or True, whether we denormalize when measuring errors
   error_type : "mse" # rmse or mse
-  patience : 10
+  patience : 50
+  bool_save_model: True
 
 
 PLOT:

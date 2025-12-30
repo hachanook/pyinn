@@ -1,7 +1,7 @@
 MODEL_PARAM: 
   
   ## INN linear
-  nmode : [1,1]
+  nmode : 1 # [1,1]
   nseg : 5
   
   ## INN nonlinear
@@ -43,10 +43,11 @@ TRAIN_PARAM:
   learning_rate : 1e-3
   bool_train_acc : True
   
-  validation_period : 1
+  validation_period : 10
   bool_denormalize: False # or True, whether we denormalize when measuring errors
   error_type : "rmse" # or mse
-  patience : 3
+  patience : 50
+  bool_save_model: True
 
 
 PLOT:

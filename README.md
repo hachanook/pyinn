@@ -5,109 +5,186 @@
 
 This is the github repo for the paper ["Interpolating neural network (INN): A novel unification of machine learning and interpolation theory"](https://arxiv.org/abs/2404.10296).
 
-INN is a lightweight yet precise network architecture that can replace MLPs for data training, partial differential equation (PDE) solving, and parameter calibration. The key features of INNs are:
+INN is a lightweight yet precise network architecture that can replace MLPs for data training, partial differential equation (PDE) solving, and parameter calibration. 
+
+## Features
 
 * Less trainable parameters than MLP without sacrificing accuracy
 * Faster and proven convergent behavior
 * Fully differntiable and GPU-optimized
 
+## Project Structure
+
+```
+├── pyinn/                  # Main training module
+│   ├── main.py             # Entry point for training
+│   ├── train.py            # Training loops (INN, MLP, KAN, FNO)
+│   ├── model.py            # Model architectures
+│   ├── dataset_regression.py    # Regression data loading
+│   ├── dataset_classification.py # Classification data loading
+│   ├── plot.py             # Loss visualization
+│   └── Interpolator.py     # Linear/Nonlinear interpolation
+├── config/                 # Training configurations
+├── data/                   # Datasets (CSV files)
+├── plots/                  # Generated plots
+└── requirements.txt        # Python dependencies
+```
 
 ## Installation
 
+### Prerequisites
 
-Clone the repository:
+- Python 3.9+
+- CUDA (optional, for GPU acceleration)
+
+### Setup
 
 ```bash
-git clone https://github.com/hachanook/pyinn.git
+# Clone the repository
+git clone <repository-url>
+cd pyinn_als
+
+# Create virtual environment
+python -m venv .venv
+source .venv/bin/activate  # Linux/Mac
+# or: .venv\Scripts\activate  # Windows
+
+# Install dependencies
+pip install -r requirements.txt
+
+# For GPU support (CUDA 12)
+pip install jax[cuda12]
+```
+
+## Quick Start
+
+### Training a Model
+
+```bash
 cd pyinn
+
+# Train with default settings (linear INN on 1s2p_1o dataset)
+python main.py
+
+# Train with specific dataset and method
+python main.py --data_name 2D_1D_sine --interp_method linear
+python main.py --data_name mnist --run_type classification --interp_method MLP
+
+# Available methods: linear, nonlinear, MLP, KAN, FNO
 ```
 
-Create a conda environment:
+### Running Benchmarks
 
 ```bash
-conda clean --all # [optional] to clear cache files in the base conda environment
-conda env create -f environment.yaml
-or
-conda install -n base -c conda-forge mamba # [optional] install mamba in the base conda environment
-mamba env create -f environment.yaml # this makes installation faster
-
-conda activate pyinn-env
+# From project root
+python -m benchmark.main --config 1s1p_1o   # 2D benchmark
+python -m benchmark.main --config 2s1p_1o   # 3D benchmark
+python -m benchmark.main --config 2s2p_1o   # 4D benchmark
 ```
 
-Install JAX
-- See jax installation [instructions](https://github.com/jax-ml/jax?tab=readme-ov-file#installation). Depending on your hardware, you may install the CPU or GPU version of JAX. Both will work, while GPU version usually gives better performance.
-- For CPU only (Linux/macOS/Windows), one can simply install JAX using:
-```bash
-pip install -U jax
-```
-- For GPU (NVIDIA, CUDA 12)
-```bash
-pip install -U "jax[cuda12]"
-```
-- For TPU (Google Cloud TPU VM)
-```bash
-pip install -U "jax[tpu]" -f https://storage.googleapis.com/jax-releases/libtpu_releases.html
-```
+## Configuration
 
-Install Optax (optimization library of JAX)
-```bash
-pip install optax
-```
+Training configurations are YAML files in `/config`. Example:
 
+```yaml
+MODEL_PARAM:
+  nmode: 20          # Number of CP modes
+  nseg: 20           # Grid segments per dimension
+  s_patch: 2         # Nonlinear patch size
+  p_order: 2         # Polynomial order
 
-Then there are two options to continue:
+DATA_PARAM:
+  input_col: [0,1,2] # Input column indices
+  output_col: [3]    # Output column indices
+  bool_normalize: False
+  bool_shuffle: True
 
-### Option 1
-
-Install the package locally:
-
-```bash
-
-pip install -e .
+TRAIN_PARAM:
+  num_epochs_INN: 1000
+  batch_size: 128
+  learning_rate: 1e-3
+  validation_period: 10
+  patience: 50
 ```
 
-### Option 2
+## Supported Models
 
-Install the package from the [PyPI release](https://pypi.org/project/pyinn/0.1.0/) directly:
+| Model | Description | Use Case |
+|-------|-------------|----------|
+| `linear` | Linear INN with CP decomposition | Fast training, smooth functions |
+| `nonlinear` | Nonlinear INN with radial basis | Complex nonlinear patterns |
+| `MLP` | Multi-Layer Perceptron | General-purpose baseline |
+| `KAN` | Kolmogorov-Arnold Network | Interpretable function learning |
+| `FNO` | Fourier Neural Operator | Spectral/periodic patterns |
 
-```bash
-pip install pyinn
-```
+## Datasets
 
-### Quick test
+### Regression Datasets
 
-```bash
-python ./pyinn/main.py
-```
+| Dataset | Dimensions | Description |
+|---------|------------|-------------|
+| `1D_1D_sine` | 1 in, 1 out | Sine function |
+| `2D_1D_sine` | 2 in, 1 out | 2D sine surface |
+| `6D_4D_ansys` | 6 in, 4 out | Engineering simulation |
+| `10D_5D_physics` | 10 in, 5 out | High-dimensional physics |
+| `1s2p_1o` | 3 in, 1 out | Parametric function |
 
-## Docker Usage
+### Classification Datasets
 
-For easy deployment and reproducible environments, we provide Docker support:
+| Dataset | Description |
+|---------|-------------|
+| `spiral` | 2D spiral classification |
+| `mnist` | Handwritten digits (requires torchvision) |
+| `fashion_mnist` | Fashion items (requires torchvision) |
 
-### Quick Start with Docker
+## Benchmark Framework
 
-```bash
-# Use pre-built image from Docker Hub
-docker run chanwookpark2024/pyinn:latest
-
-# Or build locally
-docker build -f docker/Dockerfile -t pyinn .
-docker run pyinn
-```
-
-### Run Jupyter Tutorials with Docker
+The `/benchmark` module compares INN against CP tensor decomposition:
 
 ```bash
-# Linux/macOS
-./docker/run_jupyter.sh
+# Run N-D benchmark
+python -m benchmark.main --config 1s2p_1o
 
-# Windows
-docker\run_jupyter.bat
-
-# Then open http://localhost:8888 in your browser
+# Available configurations:
+#   1s1p_1o  - 2D (1 spatial + 1 parametric)
+#   1s2p_1o  - 3D (1 spatial + 2 parametric)
+#   2s1p_1o  - 3D (2 spatial + 1 parametric)
+#   2s2p_1o  - 4D (2 spatial + 2 parametric)
+#   3s3p_1o  - 6D (3 spatial + 3 parametric)
 ```
 
-See the [`docker/`](docker/) directory for complete Docker setup instructions.
+### Benchmark Metrics
+
+- **RMSE**: Root Mean Square Error
+- **Max Error**: Maximum absolute error
+- **R² Score**: Coefficient of determination
+- **Training Time**: Wall-clock training duration
+
+## API Usage
+
+```python
+import yaml
+from pyinn.dataset_regression import Data_regression
+from pyinn.train import Regression_INN
+
+# Load configuration
+with open('config/2D_1D_sine.yaml', 'r') as f:
+    config = yaml.safe_load(f)
+
+config['interp_method'] = 'linear'
+config['TD_type'] = 'CP'
+
+# Load data
+data = Data_regression('2D_1D_sine', config)
+
+# Train model
+regressor = Regression_INN(data, config)
+regressor.train()
+
+# Access trained parameters
+params = regressor.params
+test_error = regressor.error_test
+```
 
 ## License
 This repository is licensed under [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/) — non-commercial use only.  

@@ -1,0 +1,45 @@
+# PyINN - Interpolating Neural Networks
+# Requirements for regression and classification tasks
+
+# =============================================================================
+# Core Dependencies (Required)
+# =============================================================================
+
+# JAX - High-performance machine learning framework
+# CPU version: pip install jax[cpu]
+# GPU version (CUDA): pip install jax[cuda12]
+jax>=0.4.20
+jaxlib>=0.4.20
+
+# JAX optimizer library
+optax>=0.1.7
+
+# Numerical computing
+numpy>=1.24.0
+scipy>=1.10.0
+
+# Configuration files
+PyYAML>=6.0
+
+# Data handling
+pandas>=2.0.0
+
+# Visualization
+matplotlib>=3.7.0
+
+# =============================================================================
+# Optional Dependencies
+# =============================================================================
+
+# Tensor decomposition (CP/Tucker decomposition)
+tensorly>=0.8.0
+
+# PyTorch (only needed for MNIST/Fashion-MNIST dataset download)
+# Not used in training loop - data loading is pure NumPy
+torchvision>=0.15.0
+
+# Machine learning utilities (optional, for additional metrics)
+scikit-learn>=1.3.0
+
+# Image processing (optional, for saving animations)
+imageio>=2.31.0

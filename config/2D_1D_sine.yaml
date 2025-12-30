@@ -2,8 +2,8 @@ MODEL_PARAM:
   
   ## INN linear
   nmode : 3
-  # nseg : 20
-  nseg : [20,25]
+  nseg : 20
+  # nseg : [20,25]
 
   ## INN nonlinear
   s_patch : 2
@@ -13,7 +13,7 @@ MODEL_PARAM:
   # radial_basis : 'gaussian1'
   INNactivation : 'polynomial'
   # INNactivation : 'sinusoidal'
-  # INNactivation : 'exponential'
+  # INNactivation : 'exponential' 
   # INNactivation : 'sigmoid'
   # INNactivation : 'tanh'
   # INNactivation : 'gelu'
@@ -39,16 +39,17 @@ DATA_PARAM:
   
   
 TRAIN_PARAM:
-  num_epochs_INN : 10
+  num_epochs_INN : 2
   num_epochs_MLP : 200
   batch_size : 50
   learning_rate : 1e-3
   bool_train_acc : True
   
-  validation_period : 1
+  validation_period : 10  
   bool_denormalize: False # or True, whether we denormalize when measuring errors
   error_type : "rmse" # or mse
-  patience : 3
+  patience : 50
+  bool_save_model: True
 
 
 PLOT:

@@ -8,6 +8,7 @@ pyinn.egg-info/
 tutorials/data/
 tutorials/plots/
 pip
-requirements.txt
+.venv/
 setup.py
 docker/
+tutorials/

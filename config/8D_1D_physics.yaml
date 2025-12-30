@@ -48,7 +48,7 @@ TRAIN_PARAM:
   validation_period : 10 # if this is greater than num_epochs, validation will not be conducted
   bool_denormalize: False # or True, whether we denormalize when measuring errors
   error_type : "mse" # rmse or mse
-  patience : 10
+  patience : 50
 
 
 PLOT:

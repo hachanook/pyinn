@@ -37,7 +37,7 @@ DATA_PARAM:
   bool_shuffle : True # whether we randomly split the data or not
   
 TRAIN_PARAM:
-  num_epochs_INN : 1000
+  num_epochs_INN : 5
   num_epochs_MLP : 1000
   batch_size : 128 # 128
   learning_rate : 1e-3
@@ -47,7 +47,7 @@ TRAIN_PARAM:
   # validation_period : 1
   bool_denormalize: False # or True, whether we denormalize when measuring errors
   error_type : "mse" # or mse
-  patience : 10 # for early stopping
+  patience : 50 # for early stopping
 
   stopping_loss_train: 4e-4
 
