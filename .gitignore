@@ -11,4 +11,4 @@ pip
 .venv/
 setup.py
 docker/
-tutorials/
+.claude/

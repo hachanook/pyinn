@@ -3,9 +3,9 @@
 
 ## Interpolating Neural Network
 
-This is the github repo for the paper ["Interpolating neural network (INN): A novel unification of machine learning and interpolation theory"](https://arxiv.org/abs/2404.10296).
+This is the github repo for the paper ["Unifying machine learning and interpolation theory via interpolating neural networks"](https://www.nature.com/articles/s41467-025-63790-8), published in Nature Communications.
 
-INN is a lightweight yet precise network architecture that can replace MLPs for data training, partial differential equation (PDE) solving, and parameter calibration. 
+INN is a lightweight yet precise network architecture that can replace MLPs or any AI/ML models for data training, partial differential equation (PDE) solving, and parameter calibration. 
 
 ## Features
 
