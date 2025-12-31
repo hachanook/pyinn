@@ -86,16 +86,16 @@ Examples:
         """
     )
 
-    parser.add_argument('--gpu_idx', type=int, default=0,
+    parser.add_argument('--gpu_idx', type=int, default=DEFAULT_SETTINGS['GPU']['gpu_idx'],
                         help='GPU device index (default: 0)')
     parser.add_argument('--run_type', type=str, choices=['regression', 'classification'],
-                        default='regression', help='Problem type')
+                        default=DEFAULT_SETTINGS['PROBLEM']['run_type'], help='Problem type')
     parser.add_argument('--interp_method', type=str, choices=SUPPORTED_METHODS,
-                        default='linear', help='Interpolation/model method')
-    parser.add_argument('--data_name', type=str, default=None,
+                        default=DEFAULT_SETTINGS['PROBLEM']['interp_method'], help='Interpolation/model method')
+    parser.add_argument('--data_name', type=str, default=DEFAULT_SETTINGS['DATA']['data_name'],
                         help='Dataset name (must match config file in /config)')
     parser.add_argument('--TD_type', type=str, choices=['CP', 'Tucker'],
-                        default='CP', help='Tensor decomposition type')
+                        default=DEFAULT_SETTINGS['PROBLEM']['TD_type'], help='Tensor decomposition type')
     parser.add_argument('--config_dir', type=str, default='./config',
                         help='Directory containing dataset config files')
 
