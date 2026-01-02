@@ -21,8 +21,8 @@ MODEL_PARAM:
   # INNactivation : 'gelu'
 
   ## MLP
-  nlayers : 3 # 5
-  nneurons : 40 # 1400
+  nlayers : 5 # 5
+  nneurons : 1400 # 1400
   # activation : "relu"
   activation : "sigmoid"
 

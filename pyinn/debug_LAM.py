@@ -3,8 +3,17 @@ import pandas as pd
 import time
 import os
 import pickle
+import yaml
 import tensorly as tl
 from tensorly.decomposition import parafac
+
+# GPU Configuration (same as main.py)
+with open('./pyinn/settings.yaml', 'r') as file:
+    settings = yaml.safe_load(file)
+
+gpu_idx = settings['GPU']['gpu_idx']
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_idx)
 
 
 def convert_data_to_tensor(train_filename, test_filename):
@@ -414,8 +423,8 @@ if __name__ == "__main__":
     train_filename = 'all_concentration_data_train20'
     test_filename = 'all_concentration_data_test'
 
-    # Convert data to tensor
-    convert_data_to_tensor(train_filename, test_filename)
+    # # Convert data to tensor and save in ./data directory as .pkl files
+    # convert_data_to_tensor(train_filename, test_filename)
 
     train_tensor, train_nodes, test_tensor, test_nodes = load_tensors_from_files(train_filename, test_filename) # (nnode, ntime, nflow), (nnode, ntime)
     
