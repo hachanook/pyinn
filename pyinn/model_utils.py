@@ -20,7 +20,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 import dataset_classification, dataset_regression, train
 
 def get_linspace(xmin, xmax, nnode):
-    return jnp.linspace(xmin,xmax,nnode, dtype=jnp.float64)
+    return jnp.linspace(xmin,xmax,nnode, dtype=jnp.float32)
 # v_get_linspace = jax.vmap(get_linspace, in_axes=(0,0,None))
 
 def save_model_data(config, data, params, data_name, interp_method):
@@ -152,7 +152,7 @@ def create_model_from_saved_data(model_data, run_type):
             
             ## initialization of trainable parameters
             if config["DATA_PARAM"]["bool_normalize"]: # when the data is normalized
-                grid_dms = jnp.linspace(0, 1, nnode, dtype=jnp.float64) # (nnode,) the most efficient way
+                grid_dms = jnp.linspace(0, 1, nnode, dtype=jnp.float32) # (nnode,) the most efficient way
             else: # when the data is not normalized
                 grid_dms = [get_linspace(xmin, xmax, nnode) for (xmin, xmax) in zip(config["DATA_PARAM"]["x_data_minmax"]["min"], config["DATA_PARAM"]["x_data_minmax"]["max"])]
             # params = jax.random.uniform(jax.random.PRNGKey(self.key), (nmode, config["DATA_PARAM"]["dim"], 
@@ -161,7 +161,7 @@ def create_model_from_saved_data(model_data, run_type):
         
         elif isinstance(config['MODEL_PARAM']['nseg'], list): # varying discretization across dimension
 
-            nseg = jnp.array(config['MODEL_PARAM']['nseg'], dtype=jnp.int64) # (dim,) 1D array of integers
+            nseg = jnp.array(config['MODEL_PARAM']['nseg'], dtype=jnp.int32) # (dim,) 1D array of integers
             nnode = nseg + 1
 
             # if len(self.nseg) != cls_data.dim:
@@ -172,7 +172,7 @@ def create_model_from_saved_data(model_data, run_type):
             grid_dms, params, numParam = [], [], 0
             for idm, nnode_idm in enumerate(nnode):
                 if config["DATA_PARAM"]["bool_normalize"]: # when the data is normalized
-                    grid_dms.append(jnp.linspace(0, 1, nnode_idm, dtype=jnp.float64))
+                    grid_dms.append(jnp.linspace(0, 1, nnode_idm, dtype=jnp.float32))
                 else: # when the data is not normalized
                     grid_dms.append(get_linspace(config["DATA_PARAM"]["x_data_minmax"]["min"][idm], config["DATA_PARAM"]["x_data_minmax"]["max"][idm], nnode_idm))
                 # params.append(jax.random.uniform(jax.random.PRNGKey(self.key), (nmode, config["DATA_PARAM"]["var"], nnode_idm), dtype=jnp.double))

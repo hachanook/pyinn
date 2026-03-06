@@ -23,9 +23,9 @@ import train
 
 # Test configurations
 run_types = ['regression', 'classification']
-interp_methods = ['nonlinear', 'linear', 'MLP']
+interp_methods = ['nonlinear', 'gaussian', 'MLP']
 
-data_names_regression = ['1D_1D_sine', '2D_1D_sine', '10D_5D_physics', '6D_4D_ansys']
+data_names_regression = ['1D_1D_sine', '2D_1D_sine', '10D_5D_physics']
 data_names_classification = ['spiral', 'mnist', 'fashion_mnist']
 
 # Default settings (previously from settings.yaml)
@@ -70,7 +70,7 @@ def run_debugging():
                         data = dataset_regression.Data_regression(data_name, config_data)
 
                         # Train
-                        if interp_method in ["linear", "nonlinear"]:
+                        if interp_method in ["linear", "nonlinear", "gaussian"]:
                             regressor = train.Regression_INN(data, config_data)
                         elif interp_method == "MLP":
                             regressor = train.Regression_MLP(data, config_data)
@@ -105,7 +105,7 @@ def run_debugging():
                         data = dataset_classification.Data_classification(data_name, config_data)
 
                         # Train
-                        if interp_method in ["linear", "nonlinear"]:
+                        if interp_method in ["linear", "nonlinear", "gaussian"]:
                             classifier = train.Classification_INN(data, config_data)
                         elif interp_method == "MLP":
                             classifier = train.Classification_MLP(data, config_data)

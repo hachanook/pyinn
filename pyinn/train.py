@@ -11,7 +11,7 @@ Northwestern University, Evanston, Illinois, US, chanwookpark2024@u.northwestern
 import jax
 import jax.numpy as jnp
 from jax import config
-config.update("jax_enable_x64", True)
+config.update("jax_enable_x64", False)  # Use float32 for better GPU performance
 import optax
 from functools import partial
 import numpy as np
@@ -19,12 +19,12 @@ import time
 import sys
 
 # Local imports (development mode - no package installation)
-from model import INN_linear, INN_nonlinear, MLP, KAN, FNO
+from model import INN_linear, INN_nonlinear, INN_gaussian, MLP, KAN, FNO
 
 
 def get_linspace(xmin, xmax, nnode):
     """Create linearly spaced grid points."""
-    return jnp.linspace(xmin, xmax, nnode, dtype=jnp.float64)
+    return jnp.linspace(xmin, xmax, nnode, dtype=jnp.float32)
 
 
 class Regression_INN:
@@ -51,7 +51,7 @@ class Regression_INN:
         self.scale = 1
 
         # Initialize trainable parameters for INN
-        if 'linear' in self.interp_method or self.interp_method == 'nonlinear':
+        if 'linear' in self.interp_method or self.interp_method in ['nonlinear', 'gaussian']:
             self.nmode = int(config['MODEL_PARAM']['nmode'])
 
             if isinstance(config['MODEL_PARAM']['nseg'], int):
@@ -61,7 +61,7 @@ class Regression_INN:
 
                 # Grid initialization
                 if cls_data.bool_normalize:
-                    self.grid_dms = jnp.linspace(0, 1, self.nnode, dtype=jnp.float64)
+                    self.grid_dms = jnp.linspace(0, 1, self.nnode, dtype=jnp.float32)
                 else:
                     self.grid_dms = [get_linspace(xmin, xmax, self.nnode)
                                      for (xmin, xmax) in zip(cls_data.x_data_minmax["min"],
@@ -71,13 +71,13 @@ class Regression_INN:
                 self.params = jax.random.uniform(
                     jax.random.PRNGKey(self.key),
                     (self.nmode, self.cls_data.dim, self.cls_data.var, self.nnode),
-                    dtype=jnp.double
+                    dtype=jnp.float32
                 ) / self.scale
                 numParam = self.nmode * self.cls_data.dim * self.cls_data.var * self.nnode
 
             elif isinstance(config['MODEL_PARAM']['nseg'], list):
                 # Varying discretization across dimensions
-                self.nseg = jnp.array(config['MODEL_PARAM']['nseg'], dtype=jnp.int64)
+                self.nseg = jnp.array(config['MODEL_PARAM']['nseg'], dtype=jnp.int32)
                 self.nnode = self.nseg + 1
 
                 if len(self.nseg) != cls_data.dim:
@@ -87,7 +87,7 @@ class Regression_INN:
                 self.grid_dms, self.params, numParam = [], [], 0
                 for idm, nnode_idm in enumerate(self.nnode):
                     if cls_data.bool_normalize:
-                        self.grid_dms.append(jnp.linspace(0, 1, nnode_idm, dtype=jnp.float64))
+                        self.grid_dms.append(jnp.linspace(0, 1, nnode_idm, dtype=jnp.float32))
                     else:
                         self.grid_dms.append(get_linspace(
                             cls_data.x_data_minmax["min"][idm],
@@ -97,7 +97,7 @@ class Regression_INN:
                     self.params.append(jax.random.uniform(
                         jax.random.PRNGKey(self.key),
                         (self.nmode, self.cls_data.var, nnode_idm),
-                        dtype=jnp.double
+                        dtype=jnp.float32
                     ) / self.scale)
                     numParam += self.nmode * self.cls_data.var * nnode_idm
 
@@ -106,12 +106,15 @@ class Regression_INN:
             model = INN_linear(self.grid_dms, self.config)
         elif self.interp_method == "nonlinear":
             model = INN_nonlinear(self.grid_dms, self.config)
+        elif self.interp_method == "gaussian":
+            model = INN_gaussian(self.grid_dms, self.config)
         else:
             raise ValueError(f"Unknown interpolation method: {self.interp_method}")
 
         self.forward = model.forward
         self.v_forward = model.v_forward
         self.vv_forward = model.vv_forward
+        self.get_std_dim = model.get_std_dim
 
         # Print model info
         if self.interp_method == "linear":
@@ -121,14 +124,27 @@ class Regression_INN:
             print(f"------------ INN {config['TD_type']} {self.interp_method}, "
                   f"nmode: {config['MODEL_PARAM']['nmode']}, nseg: {config['MODEL_PARAM']['nseg']}, "
                   f"s={config['MODEL_PARAM']['s_patch']}, P={config['MODEL_PARAM']['p_order']} -------------")
+        elif self.interp_method == "gaussian":
+            sigma_factor = config['MODEL_PARAM'].get('sigma_factor', 1.2)
+            print(f"------------ INN {config['TD_type']} {self.interp_method}, "
+                  f"nmode: {config['MODEL_PARAM']['nmode']}, nseg: {config['MODEL_PARAM']['nseg']}, "
+                  f"sigma_factor={sigma_factor} -------------")
         print(f"# of training parameters: {numParam}")
 
-    @partial(jax.jit, static_argnames=['self'])
+    @partial(jax.jit, static_argnames=['self']) ## We need this!
     def _loss_fn(self, params, x_data, u_data):
         """Compute MSE loss (JIT-compiled)."""
         u_pred = self.v_forward(params, x_data)
+
+        ## Case 1: with normalization of CPD
+        # std_dim = self.get_std_dim(params)
+        # loss = jnp.mean((u_pred - u_data) ** 2) + jnp.mean(std_dim)
+
+        ## Case 2: without normalization of CPD
         loss = jnp.mean((u_pred - u_data) ** 2)
+
         return loss, u_pred
+
 
     @partial(jax.jit, static_argnames=['self'])
     def _update_step(self, params, opt_state, x_data, u_data):
@@ -188,12 +204,17 @@ class Regression_INN:
         rng = np.random.default_rng(42)
 
         start_time = time.time()
+        data_transfer_time = 0.0
+        update_step_time = 0.0
+        validation_time = 0.0
 
         for epoch in range(self.num_epochs):
             # Shuffle training data (NumPy operation)
+            start_time_data_transfer = time.time()
             perm = rng.permutation(n_train)
             X_shuffled = X_train[perm]
             Y_shuffled = Y_train[perm]
+            data_transfer_time += time.time() - start_time_data_transfer
 
             epoch_loss = 0.0
 
@@ -203,18 +224,29 @@ class Regression_INN:
                 end_idx = min(start_idx + batch_size, n_train)
 
                 # Transfer batch from NumPy to JAX
+                start_time_data_transfer = time.time()
                 X_batch = jnp.array(X_shuffled[start_idx:end_idx])
                 Y_batch = jnp.array(Y_shuffled[start_idx:end_idx])
+                data_transfer_time += time.time() - start_time_data_transfer
 
                 # Training step
+                start_time_update_step = time.time()
                 params, opt_state, batch_loss = self._update_step(params, opt_state, X_batch, Y_batch)
                 epoch_loss += float(batch_loss) * (end_idx - start_idx)
+                update_step_time += time.time() - start_time_update_step
+
+                # ################### Debugging ###################
+                # std_dim = self.get_std_dim(params)
+                # print(jnp.mean(std_dim))
+                # ##################################################
+                
 
             # Average training loss for epoch
-            epoch_loss /= n_train
+            epoch_loss /= n_train # Mean squared error
             self.loss_history.append(epoch_loss)
 
             # Validation at specified intervals
+            start_time_validation = time.time()
             if (epoch + 1) % self.validation_period == 0:
                 # Compute validation loss (single forward pass)
                 val_loss, _ = self._loss_fn(params, X_val_jax, Y_val_jax)
@@ -246,9 +278,13 @@ class Regression_INN:
                     print(f"Reached target training loss at epoch {epoch + 1}")
                     break
 
-        train_time = time.time() - start_time
-        print(f"Training completed in {train_time:.2f} seconds")
+            validation_time += time.time() - start_time_validation
 
+        train_time = time.time() - start_time
+        if self.errors_train:
+            print(f"Train RMSE: {self.errors_train[-1]:.4e}")
+        else:
+            print(f"Train RMSE: {float(np.sqrt(self.loss_history[-1])):.4e}")
         self.params = params
 
         # Final test evaluation
@@ -258,6 +294,12 @@ class Regression_INN:
         test_rmse = float(np.sqrt(float(test_loss)))
         self.error_test = test_rmse
         print(f"Test rmse: {test_rmse:.4e}")
+
+        print(f"\tTraining completed in {train_time:.2f} seconds")
+        print(f"\tData transfer time: {data_transfer_time:.2f} seconds")
+        print(f"\tUpdate step time: {update_step_time:.2f} seconds")
+        print(f"\tValidation time: {validation_time:.2f} seconds")
+
 
         # Inference timing
         self._time_inference()
@@ -278,6 +320,7 @@ class Regression_INN:
 
 class Regression_INN_sequential(Regression_INN):
     """Sequential INN training for progressive mode addition."""
+    """ CPD noirmalization has not been implemented yet """
 
     def __init__(self, cls_data, config, params_prev):
         super().__init__(cls_data, config)
@@ -354,6 +397,13 @@ class Regression_MLP(Regression_INN):
             params.append((W, b))
         return params
 
+    @partial(jax.jit, static_argnames=['self']) ## We need this!
+    def _loss_fn(self, params, x_data, u_data):
+        """Compute MSE loss (JIT-compiled)."""
+        u_pred = self.v_forward(params, x_data)
+        loss = jnp.mean((u_pred - u_data) ** 2)
+        return loss, u_pred
+
 
 class Regression_KAN(Regression_INN):
     """KAN (Kolmogorov-Arnold Network) trainer for regression."""
@@ -396,14 +446,21 @@ class Regression_KAN(Regression_INN):
         for in_dim, out_dim, k in zip(layer_sizes[:-1], layer_sizes[1:], keys):
             spline_key, weight_key = jax.random.split(k)
             spline_params = jax.random.normal(
-                spline_key, (in_dim, out_dim, num_basis), dtype=jnp.float64
+                spline_key, (in_dim, out_dim, num_basis), dtype=jnp.float32
             ) * 0.1
             base_weights = jax.random.normal(
-                weight_key, (in_dim, out_dim), dtype=jnp.float64
+                weight_key, (in_dim, out_dim), dtype=jnp.float32
             ) * jnp.sqrt(1 / in_dim)
             params.append((spline_params, base_weights))
 
         return params
+
+    @partial(jax.jit, static_argnames=['self']) ## We need this!
+    def _loss_fn(self, params, x_data, u_data):
+        """Compute MSE loss (JIT-compiled)."""
+        u_pred = self.v_forward(params, x_data)
+        loss = jnp.mean((u_pred - u_data) ** 2)
+        return loss, u_pred
 
 
 class Regression_FNO(Regression_INN):
@@ -449,43 +506,50 @@ class Regression_FNO(Regression_INN):
 
         # Lifting layer
         lift = jax.random.normal(
-            keys[key_idx], (input_dim, self.hidden_dim), dtype=jnp.float64
+            keys[key_idx], (input_dim, self.hidden_dim), dtype=jnp.float32
         ) * jnp.sqrt(2 / input_dim)
         key_idx += 1
-        lift_bias = jnp.zeros(self.hidden_dim, dtype=jnp.float64)
+        lift_bias = jnp.zeros(self.hidden_dim, dtype=jnp.float32)
 
         # Fourier layers
         fourier_layers = []
         for _ in range(self.num_layers):
             spectral_real = jax.random.normal(
-                keys[key_idx], (self.modes, self.hidden_dim), dtype=jnp.float64
+                keys[key_idx], (self.modes, self.hidden_dim), dtype=jnp.float32
             ) * 0.02
             key_idx += 1
             spectral_imag = jax.random.normal(
-                keys[key_idx], (self.modes, self.hidden_dim), dtype=jnp.float64
+                keys[key_idx], (self.modes, self.hidden_dim), dtype=jnp.float32
             ) * 0.02
             key_idx += 1
             spectral_weights = spectral_real + 1j * spectral_imag
 
             linear_weights = jax.random.normal(
-                keys[key_idx], (self.hidden_dim, self.hidden_dim), dtype=jnp.float64
+                keys[key_idx], (self.hidden_dim, self.hidden_dim), dtype=jnp.float32
             ) * jnp.sqrt(2 / self.hidden_dim)
             key_idx += 1
 
-            bias = jnp.zeros(self.hidden_dim, dtype=jnp.float64)
+            bias = jnp.zeros(self.hidden_dim, dtype=jnp.float32)
             fourier_layers.append((spectral_weights, linear_weights, bias))
 
         # Projection layer
         project = jax.random.normal(
-            keys[key_idx], (self.hidden_dim, output_dim), dtype=jnp.float64
+            keys[key_idx], (self.hidden_dim, output_dim), dtype=jnp.float32
         ) * jnp.sqrt(2 / self.hidden_dim)
-        project_bias = jnp.zeros(output_dim, dtype=jnp.float64)
+        project_bias = jnp.zeros(output_dim, dtype=jnp.float32)
 
         return {
             'lift': lift, 'lift_bias': lift_bias,
             'fourier_layers': fourier_layers,
             'project': project, 'project_bias': project_bias
         }
+    
+    @partial(jax.jit, static_argnames=['self']) ## We need this!
+    def _loss_fn(self, params, x_data, u_data):
+        """Compute MSE loss (JIT-compiled)."""
+        u_pred = self.v_forward(params, x_data)
+        loss = jnp.mean((u_pred - u_data) ** 2)
+        return loss, u_pred
 
 
 # =============================================================================
@@ -502,7 +566,7 @@ class Classification_INN(Regression_INN):
         self.params = jax.random.uniform(
             jax.random.PRNGKey(self.key),
             (self.nmode, self.cls_data.dim, self.cls_data.var, self.nnode),
-            dtype=jnp.double, minval=0.98, maxval=1.02
+            dtype=jnp.float32, minval=0.98, maxval=1.02
         )
 
     @partial(jax.jit, static_argnames=['self'])
@@ -553,6 +617,9 @@ class Classification_INN(Regression_INN):
         rng = np.random.default_rng(42)
 
         start_time = time.time()
+        data_transfer_time = 0.0
+        update_step_time = 0.0
+        validation_time = 0.0
 
         for epoch in range(self.num_epochs):
             # Shuffle training data
@@ -567,20 +634,24 @@ class Classification_INN(Regression_INN):
                 start_idx = batch_idx * batch_size
                 end_idx = min(start_idx + batch_size, n_train)
 
+                start_time_data_transfer = time.time()
                 X_batch = jnp.array(X_shuffled[start_idx:end_idx])
                 Y_batch = jnp.array(Y_shuffled[start_idx:end_idx])
+                data_transfer_time += time.time() - start_time_data_transfer
 
+                start_time_update_step = time.time()
                 params, opt_state, batch_loss = self._update_step(params, opt_state, X_batch, Y_batch)
+                update_step_time += time.time() - start_time_update_step
                 epoch_loss += float(batch_loss) * (end_idx - start_idx)
 
             epoch_loss /= n_train
             self.loss_history.append(epoch_loss)
 
             # Validation
+            start_time_validation = time.time()
             if (epoch + 1) % self.validation_period == 0:
                 val_loss, val_pred = self._loss_fn(params, X_val_jax, Y_val_jax)
                 val_loss = float(val_loss)
-
                 # Compute accuracy
                 val_acc = float(jnp.mean(jnp.argmax(val_pred, axis=1) == jnp.argmax(Y_val_jax, axis=1)))
 
@@ -599,9 +670,14 @@ class Classification_INN(Regression_INN):
                 if patience_counter >= self.patience:
                     print(f"Early stopping at epoch {epoch + 1}")
                     break
+            validation_time += time.time() - start_time_validation
+            
 
         train_time = time.time() - start_time
         print(f"Training completed in {train_time:.2f} seconds")
+        print(f"Data transfer time: {data_transfer_time:.2f} seconds")
+        print(f"Update step time: {update_step_time:.2f} seconds")
+        print(f"Validation time: {validation_time:.2f} seconds")
 
         self.params = params
 

@@ -9,15 +9,15 @@ import jax
 import jax.numpy as jnp
 from jax.nn.initializers import uniform
 from jax import config
-config.update("jax_enable_x64", True)
+config.update("jax_enable_x64", False)  # Use float32 for better GPU performance
 from functools import partial
 from typing import (Any, Callable, Iterable, List, Optional, Sequence, Tuple, 
                     Union) 
 from jax.scipy.interpolate import RegularGridInterpolator
 import sys
 
-# from .Interpolator import LinearInterpolator, NonlinearInterpolator ## when using pyinn package
-from Interpolator import LinearInterpolator, NonlinearInterpolator ## when debugging
+# from .Interpolator import LinearInterpolator, NonlinearInterpolator, GaussianInterpolator ## when using pyinn package
+from Interpolator import LinearInterpolator, NonlinearInterpolator, GaussianInterpolator ## when debugging
 # from pyinn.Interpolator import LinearInterpolator, NonlinearInterpolator ## when debugging on streamlit
 
 class INN_linear:
@@ -33,18 +33,48 @@ class INN_linear:
         if isinstance(grid_dms, jnp.ndarray): # same grids over dimension and normalized
             self.interpolate = LinearInterpolator(grid_dms) # we will use the same interpolator for all dimensions
             self.interpolate_mds_dms_vars = self.get_Ju_idata_mds_dms_vars
+            self.get_std_dim = self.get_std_dim_same_grid
+            
         elif isinstance(grid_dms, list):
             self.interpolate = [LinearInterpolator(grid) for grid in grid_dms] # interpolate_dms
             
             all_same_length = all(len(grid) == len(grid_dms[0]) for grid in grid_dms) # check if all grids have the same length
             if all_same_length: # same grids over dimension but unnormalized
                 self.interpolate_mds_dms_vars = self.get_Ju_idata_mds_Vdms_vars
+                self.get_std_dim = self.get_std_dim_same_grid
             else: # varying grids over dimension and normalized/unnormalized
                 self.interpolate_mds_dms_vars = self.get_Ju_idata_mds_Vdms_vars_varying_grid
+                self.get_std_dim = self.get_std_dim_varying_grid  ## to be updated
         else:
             print("Error: check the grid type")
             exit()
     
+    ## CPD normalization functions
+    def get_std_dim_same_grid(self, params):
+        """ Compute the standard deviation of the dimension 
+        --- input ---
+        params: (M, dim, var, J)
+        --- output ---
+        std_dim: (M, var)
+        """
+        norm = jnp.linalg.norm(params, axis=-1) # (M, dim, var)
+        std_dim = jnp.std(norm, axis=1) # (M, var)
+        return std_dim
+    
+    def get_std_dim_varying_grid(self, params):
+        """ Compute the standard deviation of the dimension
+        --- input ---
+        params: dim-componented list of (M, var, J)
+        --- output ---
+        std_dim: (M, var)
+        """
+        # Compute norm for each dimension: list of (M, var)
+        norms = [jnp.linalg.norm(p, axis=-1) for p in params]
+        # Stack along axis=1 to get (M, dim, var)
+        norm_stacked = jnp.stack(norms, axis=1)
+        # Compute std along dim axis
+        std_dim = jnp.std(norm_stacked, axis=1)  # (M, var)
+        return std_dim
 
     ## Case 1: the same grids over dimension and normalized
     @partial(jax.jit, static_argnames=['self', 'interpolate'])
@@ -75,7 +105,7 @@ class INN_linear:
             --- output ---
             predicted output (M,dim,var)
         """
-        Ju_idata_mds_Vdms_vars = jnp.zeros((params.shape[0], params.shape[1], params.shape[2]), dtype=jnp.float64) # (M,dim,var)
+        Ju_idata_mds_Vdms_vars = jnp.zeros((params.shape[0], params.shape[1], params.shape[2]), dtype=jnp.float32) # (M,dim,var)
         for idm, (x_idm, interpolate) in enumerate(zip(x_idata, interpolate_dms)):
             u_idata_imd_idm_vars = self.get_Ju_idata_mds_idm_vars(x_idm, interpolate, params[:,idm,:,:]) # (M,var)
             Ju_idata_mds_Vdms_vars = Ju_idata_mds_Vdms_vars.at[:,idm,:].set(u_idata_imd_idm_vars)
@@ -92,7 +122,7 @@ class INN_linear:
             --- output ---
             predicted output (M,dim,var)
         """
-        Ju_idata_mds_Vdms_vars = jnp.zeros((params[0].shape[0], len(params), params[0].shape[1]), dtype=jnp.float64) # (M,dim,var)
+        Ju_idata_mds_Vdms_vars = jnp.zeros((params[0].shape[0], len(params), params[0].shape[1]), dtype=jnp.float32) # (M,dim,var)
         for idm, (x_idm, interpolate, param) in enumerate(zip(x_idata, interpolate_dms, params)):
             u_idata_imd_idm_vars = self.get_Ju_idata_mds_idm_vars(x_idm, interpolate, param) # (M,var)
             Ju_idata_mds_Vdms_vars = Ju_idata_mds_Vdms_vars.at[:,idm,:].set(u_idata_imd_idm_vars)
@@ -123,6 +153,7 @@ class INN_linear:
     gg_forward = jax.jacfwd(g_forward, argnums=2) # returns (var, dim, dim)
     v_g_forward = jax.vmap(g_forward, in_axes=(None,None, 0)) # returns (ndata, var, dim)
     vv_g_forward = jax.vmap(v_g_forward, in_axes=(None,None, 0)) # returns (ndata, var, dim)
+
 
     @partial(jax.jit, static_argnames=['self'])
     def forward_als(self, params, x_idata):
@@ -169,6 +200,35 @@ class INN_nonlinear(INN_linear):
         else:
             print("Error: check the grid type")
             exit()
+
+
+class INN_gaussian(INN_linear):
+    def __init__(self, grid_dms, config):
+        """
+        Gaussian RBF-based INN interpolation.
+        Supports extrapolation beyond the training domain.
+        --- input ---
+        grid_dms: (dim, J) array or list of 1D arrays for each dimension
+        config: configuration dictionary
+        """
+        super().__init__(grid_dms, config)
+
+        # Get sigma_factor from config (default: 1.2)
+        self.sigma_factor = config['MODEL_PARAM'].get('sigma_factor', 1.2)
+
+        # Override interpolator with GaussianInterpolator
+        if isinstance(grid_dms, jnp.ndarray):
+            # Same grid for all dimensions (normalized)
+            self.interpolate = GaussianInterpolator(grid_dms, self.sigma_factor)
+        elif isinstance(grid_dms, list):
+            # Different grids per dimension
+            self.interpolate = [GaussianInterpolator(grid, self.sigma_factor)
+                               for grid in grid_dms]
+
+        else:
+            print("Error: check the grid type")
+            exit()
+
 
 ## MLP
 
@@ -262,7 +322,7 @@ class KAN:
         self.num_layers = len(layer_sizes) - 1
 
         # Create basis function centers uniformly in [-3, 3]
-        self.centers = jnp.linspace(-3, 3, grid_size, dtype=jnp.float64)
+        self.centers = jnp.linspace(-3, 3, grid_size, dtype=jnp.float32)
         # Basis width parameter
         self.width = 6.0 / (grid_size - 1) * spline_order
 

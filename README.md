@@ -42,7 +42,7 @@ INN is a lightweight yet precise network architecture that can replace MLPs or a
 ```bash
 # Clone the repository
 git clone <repository-url>
-cd pyinn_als
+cd pyinn
 
 # Create virtual environment
 python -m venv .venv

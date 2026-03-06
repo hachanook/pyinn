@@ -38,6 +38,64 @@ class LinearInterpolator:
     return i, norm_distance
 
 
+class GaussianInterpolator:
+  """
+  Gaussian RBF interpolation using JAX for GPU acceleration.
+
+  Key Features:
+  - JAX-native implementation (jax.numpy operations only)
+  - Supports extrapolation: accepts inputs outside [x_min, x_max] domain
+  - Compatible with jax.vmap for batched operations
+  - JIT-compilable via JAX
+  """
+
+  def __init__(self, grid, sigma_factor=1.2):
+    """
+    Gaussian RBF interpolation
+    --- input ---
+    grid: (J,) JAX array of grid points (centers of Gaussian basis)
+    sigma_factor: multiplier for segment size to get sigma (default: 1.2)
+    """
+    self.grid = grid  # Centers of Gaussian basis functions (JAX array)
+    self.nnode = len(grid)
+
+    # Compute sigma based on segment size
+    if self.nnode > 1:
+      segment_size = (grid[-1] - grid[0]) / (self.nnode - 1)
+      self.sigma = sigma_factor * segment_size
+    else:
+      self.sigma = jnp.float32(1.0)  # Fallback for single node
+
+    # Precompute 2*sigma^2 for efficiency (JAX scalar)
+    self.two_sigma_sq = jnp.float32(2.0) * self.sigma ** 2
+
+  def __call__(self, xi, values):
+    """
+    Evaluate Gaussian RBF interpolation at point xi.
+
+    IMPORTANT: xi can be ANY real number (inside or outside grid domain).
+    This enables extrapolation beyond [x_min, x_max].
+
+    --- input ---
+    xi: scalar (JAX), query point (can be outside domain for extrapolation)
+    values: (J,) JAX array of nodal weights
+    --- output ---
+    result: scalar (JAX), interpolated/extrapolated value
+    """
+    # Compute all Gaussian basis values: φ_i(xi) = exp(-(xi - x_i)² / (2σ²))
+    # Note: No boundary checking - Gaussian is defined for all real x
+    # This enables extrapolation outside the training domain
+    basis_values = jnp.exp(-((xi - self.grid) ** 2) / self.two_sigma_sq)
+
+    # Normalize to partition of unity (sum to 1) for numerical stability
+    # This prevents gradient explosion in CP decomposition
+    basis_values = basis_values / jnp.sum(basis_values)
+
+    # Weighted sum (JAX dot product)
+    result = jnp.dot(basis_values, values)
+    return result
+
+
 class NonlinearInterpolator(LinearInterpolator):
   def __init__(self, grid,
                     s_patch, alpha_dil, p_order, 
@@ -58,7 +116,7 @@ class NonlinearInterpolator(LinearInterpolator):
     self.d_c = 1.0/self.nseg     # characteristic length in physical coord.
     self.a_dil = self.alpha_dil * self.d_c
 
-    self.Elem_nodes_host = np.zeros([self.nseg, self.nodes_per_elem], dtype=np.int64)
+    self.Elem_nodes_host = np.zeros([self.nseg, self.nodes_per_elem], dtype=np.int32)
     for j in range(1, self.nnode):
       self.Elem_nodes_host[j-1, 0] = j-1
       self.Elem_nodes_host[j-1, 1] = j 
@@ -125,9 +183,9 @@ class NonlinearInterpolator(LinearInterpolator):
       for (inode, jnode) in combinations(list(elem_nodes), 2):
         adj_rows += [inode, jnode]
         adj_cols += [jnode, inode]
-    adj_values = np.ones(len(adj_rows), dtype=np.int64)
-    adj_rows = np.array(adj_rows, dtype=np.int64)
-    adj_cols = np.array(adj_cols, dtype=np.int64)
+    adj_values = np.ones(len(adj_rows), dtype=np.int32)
+    adj_rows = np.array(adj_rows, dtype=np.int32)
+    adj_cols = np.array(adj_cols, dtype=np.int32)
     
     # build sparse matrix
     adj_sp = csc_matrix((adj_values, 
@@ -161,8 +219,8 @@ class NonlinearInterpolator(LinearInterpolator):
     
     dim = 1
     edex_max = (2+2*self.s_patch)**dim # estimated value of edex_max
-    edexes = np.zeros(self.nseg, dtype=np.int64) # (num_elements, )
-    ndexes = np.zeros((self.nseg, self.nodes_per_elem), dtype=np.int64) # static, (nseg, nodes_per_elem)
+    edexes = np.zeros(self.nseg, dtype=np.int32) # (num_elements, )
+    ndexes = np.zeros((self.nseg, self.nodes_per_elem), dtype=np.int32) # static, (nseg, nodes_per_elem)
     
     for ielem, elem_nodes in enumerate(self.Elem_nodes_host):
       if len(elem_nodes) == 2 and dim == 1: # 1D Linear element
@@ -197,13 +255,13 @@ class NonlinearInterpolator(LinearInterpolator):
     
     # Assign memory to variables
     ## Elemental patch
-    Elemental_patch_nodes_st = np.zeros((self.nseg, self.edex_max), dtype=np.int64) # edex_max should be grater than 100!
-    edexes = np.zeros(self.nseg, dtype=np.int64) # (num_elements, )
+    Elemental_patch_nodes_st = np.zeros((self.nseg, self.edex_max), dtype=np.int32) # edex_max should be grater than 100!
+    edexes = np.zeros(self.nseg, dtype=np.int32) # (num_elements, )
     ## Nodal patch
-    Nodal_patch_nodes_st = (-1)*np.ones((self.nseg, self.nodes_per_elem, self.ndex_max), dtype=np.int64) # static, (nseg, nodes_per_elem, ndex_max)
-    Nodal_patch_nodes_bool = np.zeros((self.nseg, self.nodes_per_elem, self.ndex_max), dtype=np.int64) # static, (nseg, nodes_per_elem, ndex_max)
-    Nodal_patch_nodes_idx = (-1)*np.ones((self.nseg, self.nodes_per_elem, self.ndex_max), dtype=np.int64) # static, (nseg, nodes_per_elem, ndex_max)
-    ndexes = np.zeros((self.nseg, self.nodes_per_elem), dtype=np.int64) # static, (nseg, nodes_per_elem)
+    Nodal_patch_nodes_st = (-1)*np.ones((self.nseg, self.nodes_per_elem, self.ndex_max), dtype=np.int32) # static, (nseg, nodes_per_elem, ndex_max)
+    Nodal_patch_nodes_bool = np.zeros((self.nseg, self.nodes_per_elem, self.ndex_max), dtype=np.int32) # static, (nseg, nodes_per_elem, ndex_max)
+    Nodal_patch_nodes_idx = (-1)*np.ones((self.nseg, self.nodes_per_elem, self.ndex_max), dtype=np.int32) # static, (nseg, nodes_per_elem, ndex_max)
+    ndexes = np.zeros((self.nseg, self.nodes_per_elem), dtype=np.int32) # static, (nseg, nodes_per_elem)
     
     
     for ielem, elem_nodes in enumerate(self.Elem_nodes_host):
@@ -324,7 +382,7 @@ class NonlinearInterpolator(LinearInterpolator):
     RP: [R(x), P(x)] vector, R(x) is the radial basis, P(x) is the polynomial basis, (ndex_max + m_basis,)
     """
     
-    RP = jnp.zeros(self.ndex_max + self.mbasis, dtype=jnp.double)
+    RP = jnp.zeros(self.ndex_max + self.mbasis, dtype=jnp.float32)
     
     if self.radial_basis == 'cubicSpline':
         RP = RP.at[:self.ndex_max].set(self.v_get_R_cubicSpline(xy, xv, self.a_dil) * nodal_patch_nodes_bool)
@@ -428,7 +486,7 @@ class NonlinearInterpolator(LinearInterpolator):
     G: assembled moment matrix, (ndex_max + m_basis, ndex_max + m_basis)
     '''
     # nodal_patch_nodes_bool: (ndex_max,)
-    G = jnp.zeros((self.ndex_max + self.mbasis, self.ndex_max + self.mbasis), dtype=jnp.double)
+    G = jnp.zeros((self.ndex_max + self.mbasis, self.ndex_max + self.mbasis), dtype=jnp.float32)
     xv = XY[nodal_patch_nodes,:]
     RPs = self.v_Compute_RadialBasis_1D(xv, xv, ndex, nodal_patch_nodes_bool) # (ndex_max + mbasis, ndex_max)
     

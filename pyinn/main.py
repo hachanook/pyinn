@@ -22,12 +22,12 @@ Supported Models:
 """
 
 import os
-import sys
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'  # Suppress TF/XLA warnings
 import argparse
 import yaml
 from jax import config as jax_config
 import jax.numpy as jnp
-jax_config.update("jax_enable_x64", True)
+jax_config.update("jax_enable_x64", False) # single precision
 
 # Local imports (development mode - no package installation)
 import dataset_classification
@@ -48,7 +48,7 @@ DEFAULT_SETTINGS = {
     'PROBLEM': {
         'run_type': 'regression',      # 'regression' or 'classification'
         'TD_type': 'CP',               # Tensor decomposition type: 'CP' or 'Tucker'
-        'interp_method': 'nonlinear',  # 'linear', 'nonlinear', 'MLP', 'KAN', 'FNO'
+        'interp_method': 'gaussian',  # 'linear', 'nonlinear', 'gaussian', 'MLP', 'KAN', 'FNO'
     },
     'DATA': {
         'data_name': '1D_1D_sine',     # Dataset name (must match config file in /config)
@@ -60,13 +60,15 @@ REGRESSION_DATASETS = [
     '1D_1D_sine', '1D_1D_exp', '1D_2D_sine_exp',
     '2D_1D_sine', '2D_1D_exp', '3D_1D_exp',
     '6D_4D_ansys', '8D_1D_physics', '10D_5D_physics',
+    'IGAMapping2D', 'LAM', 'RTX', 'RTX_3S3P', 'RTX_nose_cone_2S3P', 'RTX_nose_cone_modal',
+    '1s2p_1o', 'composition_and_properties', 'icml',
 ]
 
 CLASSIFICATION_DATASETS = [
     'spiral', 'mnist', 'fashion_mnist'
 ]
 
-SUPPORTED_METHODS = ['linear', 'nonlinear', 'MLP', 'KAN', 'FNO']
+SUPPORTED_METHODS = ['linear', 'nonlinear', 'gaussian', 'MLP', 'KAN', 'FNO']
 
 
 # =============================================================================
@@ -206,7 +208,7 @@ def train_model(settings, config_dir=None):
         data = dataset_regression.Data_regression(data_name, config)
 
         # Select trainer based on method
-        if interp_method in ["linear", "nonlinear"]:
+        if interp_method in ["linear", "nonlinear", "gaussian"]: # for INN
             # Handle sequential training for INN
             if isinstance(config['MODEL_PARAM']['nmode'], list):
                 nmode_list = config['MODEL_PARAM']['nmode']
@@ -270,7 +272,7 @@ def train_model(settings, config_dir=None):
             save_model_data(config, data, regressor.params, data_name, interp_method)
             save_errors_val(regressor.errors_val, data_name, interp_method)
 
-        # Plot results
+        # Plot results (includes spatial comparison if plot_in_axis is specified)
         plot.plot_regression(regressor, data, config)
 
         return regressor
