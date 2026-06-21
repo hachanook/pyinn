@@ -170,6 +170,7 @@ class Regression_INN:
         self.learning_rate = float(self.config['TRAIN_PARAM']['learning_rate'])
         self.validation_period = int(self.config['TRAIN_PARAM']['validation_period'])
         self.patience = int(self.config['TRAIN_PARAM']['patience'])
+        self.early_stopping = bool(self.config['TRAIN_PARAM'].get('early_stopping', True))
         self.batch_size = int(self.cls_data.batch_size)
 
         # Get data as NumPy arrays
@@ -268,7 +269,7 @@ class Regression_INN:
                 else:
                     patience_counter += 1
 
-                if patience_counter >= self.patience:
+                if self.early_stopping and patience_counter >= self.patience:
                     print(f"Early stopping at epoch {epoch + 1}")
                     break
 
@@ -583,6 +584,7 @@ class Classification_INN(Regression_INN):
         self.learning_rate = float(self.config['TRAIN_PARAM']['learning_rate'])
         self.validation_period = int(self.config['TRAIN_PARAM']['validation_period'])
         self.patience = int(self.config['TRAIN_PARAM']['patience'])
+        self.early_stopping = bool(self.config['TRAIN_PARAM'].get('early_stopping', True))
         self.batch_size = int(self.cls_data.batch_size)
 
         # Get data as NumPy arrays
@@ -667,7 +669,7 @@ class Classification_INN(Regression_INN):
                 else:
                     patience_counter += 1
 
-                if patience_counter >= self.patience:
+                if self.early_stopping and patience_counter >= self.patience:
                     print(f"Early stopping at epoch {epoch + 1}")
                     break
             validation_time += time.time() - start_time_validation
@@ -709,6 +711,7 @@ class Classification_MLP(Regression_MLP):
         self.learning_rate = float(self.config['TRAIN_PARAM']['learning_rate'])
         self.validation_period = int(self.config['TRAIN_PARAM']['validation_period'])
         self.patience = int(self.config['TRAIN_PARAM']['patience'])
+        self.early_stopping = bool(self.config['TRAIN_PARAM'].get('early_stopping', True))
         self.batch_size = int(self.cls_data.batch_size)
 
         X_train = self.cls_data.x_data_train
@@ -768,7 +771,7 @@ class Classification_MLP(Regression_MLP):
                 else:
                     patience_counter += 1
 
-                if patience_counter >= self.patience:
+                if self.early_stopping and patience_counter >= self.patience:
                     print(f"Early stopping at epoch {epoch + 1}")
                     break
 
